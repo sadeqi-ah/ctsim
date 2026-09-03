@@ -13,9 +13,10 @@ plots/**/results/
 *.dot
 plots/**/*.csv
 plots/**/*.tex
-plots/**/CAPTIONS*.md
-MANIFEST.sha256
-MANIFEST.json
+
+# Fingerprints written by tools/regen_figures.py
+/MANIFEST.sha256
+/MANIFEST.json
 
 # Python
 __pycache__/

@@ -11,8 +11,8 @@ Outputs (this directory):
   fig_energy_mean_ci_ce.{png,pdf}  # CI vs CE side-by-side means
   fig_latency_vs_energy.{png,pdf}  # latency–energy trade-off
   fig_energy_stacked.{png,pdf}     # optional distribution (fixed bins)
+  energy_per_proposal.csv          # per-proposal amortized energy (raw)
   energy_summary.csv               # table for paper
-  CAPTIONS.md                      # figure captions + method blurb
 """
 
 from __future__ import annotations
@@ -405,71 +405,6 @@ def plot_stacked_fixed(df: pd.DataFrame) -> None:
     print("Wrote fig_energy_stacked.png/pdf")
 
 
-def write_captions(summary: pd.DataFrame) -> None:
-    # build small markdown table
-    lines = [
-        "# Paper figures: amortized per-decision energy",
-        "",
-        "## Method (put in Evaluation / caption)",
-        "",
-        "For each committed proposal $i$ with lifetime $[s_i, e_i)$, define",
-        "",
-        "$$E_i = \\sum_{t=s_i}^{e_i-1} \\frac{A_t}{C_t},$$",
-        "",
-        "where $A_t$ is the number of awake nodes (Listen + Flood) at slot $t$",
-        "(from simulator snapshots) and $C_t$ is the number of proposals whose",
-        "lifetime covers $t$. This **amortizes** radio activity across concurrent",
-        "pipeline proposals and prevents double-counting under CI. CE executes",
-        "proposals sequentially ($C_t \\approx 1$), so $E_i \\approx \\sum_t A_t$",
-        "over the proposal window.",
-        "",
-        "Settings: $N{=}27$, random topology, loss rate $5\\%$, $100$ proposals,",
-        "abort probability $0$, seed $99$, snapshot interval $1$ slot.",
-        "",
-        "## Figures",
-        "",
-        "### Figure: energy boxplot (`fig_energy_boxplot`)",
-        "",
-        "> **Figure X.** Distribution of amortized radio-on cost per committed decision",
-        "> $E_i=\\sum_t A_t/C_t$. Boxes show median and IQR; points are individual proposals.",
-        "> CI pipelines share radio activity across concurrent proposals, yielding lower",
-        "> per-decision energy than sequential CE despite (for 2PC CI) much larger latency.",
-        "",
-        "### Figure: CI vs CE means (`fig_energy_mean_ci_ce`)",
-        "",
-        "> **Figure Y.** Mean amortized energy per decision for TOM, Paxos, and 2PC under",
-        "> CI vs CE. Labels show the CE/CI ratio.",
-        "",
-        "### Figure: latency–energy (`fig_latency_vs_energy`)",
-        "",
-        "> **Figure Z.** Mean latency vs mean amortized energy (log $x$-axis).",
-        "> 2PC (CI) sits far right (high latency) yet low on energy due to amortization;",
-        "> 2PC (CE) is both slower-than-TOM and energy-expensive (two-phase + full radio-on).",
-        "",
-        "### Optional: stacked histogram (`fig_energy_stacked`)",
-        "",
-        "> Fixed-bin histogram of $E_i$ (secondary view of the same distribution).",
-        "",
-        "## Summary table (`energy_summary.csv`)",
-        "",
-        "```",
-        summary.to_string(index=False),
-        "```",
-        "",
-        "## Claim-safe wording",
-        "",
-        "- Safe: *“Under amortized radio-on cost, CI pipelines reduce energy per committed",
-        "  decision relative to sequential CE for the same workload.”*",
-        "- Safe: *“Latency and energy can diverge under pipelining (2PC CI).”*",
-        "- Avoid: *“CI is always faster”* (progress plots show protocol-dependent crossovers).",
-        "- Avoid: KDE of per-slot awake counts for CE (zero variance at $N$).",
-        "",
-    ]
-    path = OUT / "CAPTIONS.md"
-    path.write_text("\n".join(lines))
-    print(f"Wrote {path}")
-
-
 def main():
     if not RESULTS.is_dir():
         raise SystemExit(f"Missing results dir: {RESULTS}")
@@ -490,7 +425,6 @@ def main():
     plot_mean_ci_ce(summary)
     plot_latency_vs_energy(df)
     plot_stacked_fixed(df)
-    write_captions(summary)
     print("Done.")
 
 

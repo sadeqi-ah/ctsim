@@ -153,7 +153,11 @@ python3 plots/energy/plot_paper_energy.py        # amortized energy figures + ta
 python3 plots/duty_cycle/plot_kde_awake.py       # awake-node distribution / duty cycle
 ```
 
-See [`plots/README.md`](plots/README.md) for which script produces which figure.
+See [`plots/README.md`](plots/README.md) for which script produces which figure,
+and for the flags (`--only`, `--force`, `--compare`) the driver accepts.
+
+Tables are emitted alongside the figures as `.csv` and as a bare LaTeX
+`tabular` block ready to `\input`, and are printed to stdout as well.
 
 ## Repository layout
 

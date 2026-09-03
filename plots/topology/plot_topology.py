@@ -7,7 +7,6 @@ Generates:
   3. energy_vs_topology.{png,pdf}
   4. efficiency_vs_topology.{png,pdf}
   5. table_topology_N27_loss05.csv / .tex
-  6. CAPTIONS.md
 
 Runs cargo sweep if CSV missing or --force.
 """
@@ -180,74 +179,14 @@ def table(df: pd.DataFrame) -> pd.DataFrame:
             f"{r['lat']:.1f} & {r['eng']:.1f} & {r['eff']:.2f} \\\\"
         )
     lines += [r"\hline", r"\end{tabular}", ""]
+    n_seeds = df["seed"].nunique() if "seed" in df.columns else 0
     (OUT / "table_topology_N27_loss05.tex").write_text(
-        "% N=27, loss=5%, 100 proposals, 3 seeds (mean)\n"
+        f"% N=27, loss=5%, 100 proposals, {n_seeds} seeds (mean)\n"
         "% Thr=committed/end_slot; Energy/dec=(listen+flood)/committed\n"
         + "\n".join(lines)
     )
     print("Wrote table_topology_N27_loss05.csv / .tex")
     return g
-
-
-def write_captions(g: pd.DataFrame):
-    text = f"""# Topology sensitivity captions
-
-**Settings:** $N{{=}}27$, loss $5\\%$, $100$ proposals, seeds $\\{{99,12345,42\\}}$.
-Topologies ordered sparse$\\to$dense: Line, Partial mesh, Random, Scale-free, Full mesh.
-
-## What to look for
-
-| Expectation | Why |
-|-------------|-----|
-| Line worst thr / highest lat | Diameter $N-1$; floods take many slots |
-| Full mesh best thr / lowest lat | Diameter 1; one hop |
-| CE more sensitive to diameter | Goal-based rounds stretch with hop count; always-on radio |
-| CI less sensitive on thr | Fixed flood rounds + pipeline amortize diameter cost |
-| Energy: CE $\\approx N\\cdot L$ still | Topology changes $L$, thus $E$ |
-| Energy: CI stays lower | Duty-cycle after flood wave |
-
-## Figure: thr_vs_topology
-
-> **Figure T1.** Throughput versus topology at $N{{=}}27$ and $5\\%$ loss (mean $\\pm$ s.d. over three seeds).
-> Sparse graphs (line) reduce throughput for all protocols; dense graphs (full mesh) raise it.
-> CI pipelines for Paxos/2PC remain competitive with, or above, their CE counterparts across topologies.
-> TOM (CE) often leads on dense graphs where short dissemination rounds dominate.
-
-## Figure: lat_vs_topology
-
-> **Figure T2.** Mean decision latency versus topology (log scale if needed).
-> Latency grows with diameter: line $\\gg$ random $\\approx$ partial mesh $\\gtrsim$ scale-free $>$ full mesh.
-> 2PC (CI) remains highest latency (pipeline + unanimity) but still completes under all topologies tested.
-> CE latencies track diameter closely (goal-based round length).
-
-## Figure: energy_vs_topology
-
-> **Figure T3.** Mean radio-on energy per committed decision, $(\\mathrm{{Listen}}+\\mathrm{{Flood}})/\\mathrm{{committed}}$.
-> CE energy scales with round length and thus with diameter; CI energy stays lower via duty-cycling.
-> Topology does not reverse the CI energy advantage.
-
-## Figure: efficiency_vs_topology
-
-> **Figure T4.** Energy efficiency $\\propto$ Throughput / Energy-per-decision.
-> CI protocols keep the highest efficiency across topologies; the gap widens on sparse graphs where CE rounds become long and fully awake.
-
-## Table
-
-`table_topology_N27_loss05.csv` / `.tex` — means over seeds.
-
-### Snapshot means
-
-```
-{g.to_string(index=False)}
-```
-
-## Placement
-
-After scalability-vs-$N$ (or as a short subsection **Topology sensitivity**).
-One paragraph: *results are qualitatively robust; diameter shifts absolute thr/lat but not CI vs CE energy ranking.*
-"""
-    (OUT / "CAPTIONS.md").write_text(text)
-    print("Wrote CAPTIONS.md")
 
 
 def main():
@@ -266,7 +205,7 @@ def main():
     bar_metric(df, "energy_per_dec", "Energy per decision (node-slots)", "energy_vs_topology", logy=True)
     bar_metric(df, "efficiency", "Energy efficiency (score)", "efficiency_vs_topology", logy=True)
     g = table(df)
-    write_captions(g)
+    print(g.to_string(index=False))
     print("Topology analysis done.")
 
 

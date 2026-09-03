@@ -118,8 +118,9 @@ def summary_table(df: pd.DataFrame) -> pd.DataFrame:
             f"{r['latency_slots']:.1f} & {r['energy_per_dec']:.1f} & {r['efficiency']:.2f} \\\\"
         )
     lines += [r"\hline", r"\end{tabular}", ""]
+    n_seeds = int(sub["seed"].nunique())
     (OUT / "table_summary_N27_loss05.tex").write_text(
-        "% Baseline: N=27, loss=5%, random topo, 100 proposals, 3 seeds (mean)\n"
+        f"% Baseline: N=27, loss=5%, random topo, 100 proposals, {n_seeds} seeds (mean)\n"
         "% Thr. = committed/end_slot; Lat. = mean slots/decision;\n"
         "% Energy/dec = (listen+flood)/committed; Eff. ∝ thr/energy\n"
         + "\n".join(lines)
@@ -203,74 +204,13 @@ def plot_commit_rate_vs_nodes(df: pd.DataFrame) -> None:
     print("Wrote commit_rate_vs_nodes.png/pdf")
 
 
-def write_captions(summary: pd.DataFrame) -> None:
-    text = f"""# P0: Summary table & commit rate
-
-## Table — baseline metrics ($N=27$, loss $5\\%$)
-
-**File:** `table_summary_N27_loss05.csv` / `.tex`
-
-### Caption
-
-> **Table 1.** Baseline performance at $N{{=}}27$, random topology, $5\\%$ link loss, $100$ proposals (mean over three seeds).
-> Commit rate is the fraction of proposals that reach a terminal **Committed** outcome under the all-node completion bar.
-> Throughput $= \\mathrm{{committed}}/\\mathrm{{end\\_slot}}$ (decisions per slot).
-> Latency is mean slots per committed decision.
-> Energy/dec $= (\\mathrm{{Listen}}+\\mathrm{{Flood}})/\\mathrm{{committed}}$ (amortized radio-on node-slots per decision under concurrent proposals).
-> Efficiency $\\propto$ Throughput / Energy per decision (higher is better).
-
-### Values (mean)
-
-```
-{summary.to_string(index=False)}
-```
-
----
-
-## Figure — Commit rate vs loss (`commit_rate_vs_loss`)
-
-### Caption
-
-> **Figure C1.** Fraction of proposals that commit successfully versus link loss rate at $N{{=}}27$ (random topology, $100$ proposals, three seeds; mean $\\pm$ s.d.).
-> TOM and Paxos maintain near-$100\\%$ commit rates across the tested loss range.
-> **2PC (CI)** degrades under higher loss: unanimity is harder to achieve, so more proposals abort by design (2PC safety).
-> CE 2PC remains highly successful in these runs but at much lower throughput and higher energy (see scalability figures).
-
-### Body (short)
-
-> Reliability is not uniform across protocols. Majority-based Paxos and pure dissemination (TOM) almost always complete.
-> Unanimity-based 2PC on CI pipelines is the only scheme that systematically trades success rate for safety when loss rises, which also explains its throughput drop in Figure~3 (throughput vs loss).
-
----
-
-## Figure — Commit rate vs $N$ (`commit_rate_vs_nodes`)
-
-### Caption
-
-> **Figure C2.** Commit rate versus network size at $5\\%$ loss (same workload and seeds).
-> All protocols except 2PC (CI) stay near full success as $N$ grows.
-> 2PC (CI) shows mild degradation at large $N$ under loss, consistent with longer pipeline windows and more opportunities for incomplete vote collection.
-
----
-
-## Placement in paper
-
-1. **Table 1** early in Evaluation (baseline numbers).
-2. **Commit rate vs loss** next to throughput-vs-loss (reliability + rate).
-3. **Commit rate vs $N$** optional if space; otherwise one sentence: *"Except 2PC (CI) under high loss, commit rate remains $\\approx 100\\%$."*
-"""
-    (OUT / "CAPTIONS_summary_commit.md").write_text(text)
-    print("Wrote CAPTIONS_summary_commit.md")
-
-
 def main():
     if not CSV.exists():
         raise SystemExit(f"Missing {CSV}")
     df = load()
-    summary = summary_table(df)
+    summary_table(df)
     plot_commit_rate_vs_loss(df)
     plot_commit_rate_vs_nodes(df)
-    write_captions(summary)
     print("P0 done.")
 
 
