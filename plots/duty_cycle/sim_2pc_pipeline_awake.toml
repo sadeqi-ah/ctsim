@@ -1,0 +1,19 @@
+seed = 99
+phy_mode = "ci"
+protocol = "2pc_pipeline"
+num_proposals = 100
+snapshot_interval = 1
+max_slots = 50000
+abort_probability = 0.0
+
+[network]
+num_nodes = 27
+topology = "random"
+loss_rate = 0.05
+
+[ci]
+flood_repeats = 1
+
+[ce]
+listen_timeout = 5
+max_round_slots = 512

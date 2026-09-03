@@ -1,0 +1,15 @@
+# Python dependencies for the figure-generation scripts under plots/ and the
+# regeneration driver in tools/. The simulator itself is pure Rust and needs
+# none of this.
+#
+#   python3 -m venv venv && source venv/bin/activate
+#   pip install -r requirements.txt
+#
+# Lower bounds are the versions the paper's figures were produced with.
+pandas>=2.0
+numpy>=1.24
+matplotlib>=3.7
+seaborn>=0.13
+# Pillow ships with matplotlib, but tools/regen_figures.py imports it directly
+# to compare figures by decoded pixels, so it is declared explicitly.
+pillow>=10.0
