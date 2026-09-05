@@ -5,10 +5,10 @@
 //! existing simulation entry point beyond the public graph builders, so a
 //! failure here means a graph builder changed, not that a protocol regressed.
 
-use ctsim::config::NetworkConfig;
+use ctsim::config::{CeConfig, NetworkConfig};
 use ctsim::event::NodeId;
 use ctsim::network::NetworkGraph;
-use ctsim::run::build_graph;
+use ctsim::run::{build_graph, make_sim_config, run_experiment};
 use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
 
@@ -112,6 +112,87 @@ fn every_published_graph_is_connected() {
          component diameter and their commit rates are affected:\n{}",
         disconnected.join("\n")
     );
+}
+
+/// Decision 19: the snapshot series and the energy counters must agree exactly.
+///
+/// `node.tick()` charges every node-slot to exactly one of Listen/Flood/Sleep, so
+/// `listen + flood + sleep == N * (slots simulated)` identically. The snapshot
+/// series is a second accounting of the same slots, and the amortised-energy
+/// metric integrates over it (`plots/energy/plot_paper_energy.py:101-125`). If a
+/// slot is emitted that was never ticked, or a ticked slot is not emitted, the two
+/// disagree and the amortised figures are wrong by that amount.
+///
+/// Two defects made them disagree before this test existed: `phy/ci.rs` emitted the
+/// round-boundary slot with the pre-`reset_round()` all-Sleep state (one row per
+/// round, `N` node-slots each, ~1.41x under-count on CI), and both orchestrators
+/// emitted a trailing snapshot for the first *free* slot, duplicating one row.
+///
+/// SCOPE: this invariant is defined at `snapshot_interval = 1` ONLY, which is what
+/// these six runs use. At any larger interval the series is a deliberate *sample*
+/// and `rows * N == L+F+S` fails by construction — a 455-slot run emits 23 rows at
+/// interval 20 (594 node-slots against 12285 charged). The published sweeps use 20
+/// and `config.rs:73` defaults to 50, so this test does NOT cover them; the
+/// amortised-energy path refuses a sampled series instead
+/// (`plots/_common.py::require_per_slot_series`). What this test does not check:
+/// any interval but 1, any topology but `random`, any N but 27, and whether the
+/// *values* in each row are right — only that every ticked slot is represented
+/// exactly once and that the two accountings of it agree.
+#[test]
+fn snapshot_series_accounts_for_every_ticked_slot() {
+    let ce = CeConfig {
+        listen_timeout: 5,
+        max_round_slots: 300,
+    };
+    let arms = [
+        ("ci", "tom_pipeline"),
+        ("ci", "paxos_pipeline"),
+        ("ci", "2pc_pipeline"),
+        ("ce", "tom_ce"),
+        ("ce", "paxos_ce"),
+        ("ce", "2pc_ce"),
+    ];
+
+    for (phy, protocol) in arms {
+        let config = make_sim_config(
+            99, phy, protocol, 27, "random", 0.05, 1, &ce, 100, 1, 50_000, 0.0,
+        );
+        let result = run_experiment(config);
+        let s = &result.summary;
+        let snaps = &result.metrics.snapshots;
+
+        let awake_ticks = s.total_listen + s.total_flood;
+        let awake_snaps: u64 = snaps
+            .iter()
+            .map(|x| (x.nodes_listening + x.nodes_flooding) as u64)
+            .sum();
+        assert_eq!(
+            awake_ticks, awake_snaps,
+            "{protocol}: energy counters charged {awake_ticks} awake node-slots but the \
+             snapshot series accounts for {awake_snaps}"
+        );
+
+        let sleep_snaps: u64 = snaps.iter().map(|x| x.nodes_sleeping as u64).sum();
+        assert_eq!(sleep_snaps, s.total_sleep, "{protocol}: sleep disagrees");
+
+        // Every ticked slot emitted exactly once: no duplicate rows, contiguous from 0.
+        let mut slots: Vec<u64> = snaps.iter().map(|x| x.slot).collect();
+        let rows = slots.len();
+        slots.sort_unstable();
+        slots.dedup();
+        assert_eq!(rows, slots.len(), "{protocol}: duplicate snapshot rows");
+        assert_eq!(slots[0], 0, "{protocol}: snapshots do not start at slot 0");
+        assert_eq!(
+            *slots.last().unwrap(),
+            rows as u64 - 1,
+            "{protocol}: snapshot slots are not contiguous"
+        );
+        assert_eq!(
+            rows as u64 * 27,
+            s.total_listen + s.total_flood + s.total_sleep,
+            "{protocol}: rows * N != total node-slots charged"
+        );
+    }
 }
 
 /// The connectivity above is not luck: `random_topology` and `partial_mesh` both

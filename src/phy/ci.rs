@@ -110,13 +110,13 @@ pub fn flood_identical_round(
         let next_any_flood = nodes.iter().any(|n| n.state == NodeState::Flood);
         slot += 1;
         if !next_any_flood {
-            // Snapshot the all-Sleep (or Listen-stuck) state at `slot` once if due,
-            // then stop — do not run empty padding slots until round_end.
-            while *next_snapshot <= slot && slot < round_end {
-                // tick already done for previous; for end-of-wave we don't invent extra ticks
-                metrics.take_snapshot(*next_snapshot, nodes);
-                *next_snapshot += snapshot_interval;
-            }
+            // Do NOT snapshot `slot`: no node has been ticked for it. The next round
+            // starts there, `reset_round()` puts every node back to Listen, and the
+            // first tick of that round charges it as awake — that round snapshots it
+            // with the state the energy counters actually charged. Emitting a row here
+            // recorded the pre-reset all-Sleep state for a slot charged as awake, so
+            // the snapshot series under-counted awake node-slots by N per round
+            // (~1.41x on CI) while `node.tick()` stayed exact.
             break;
         }
     }

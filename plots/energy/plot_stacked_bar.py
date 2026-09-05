@@ -75,6 +75,8 @@ def run_simulation_and_extract_per_proposal():
         if csv_results.exists() and csv_snaps.exists():
             df_res = pd.read_csv(csv_results)
             df_snap = pd.read_csv(csv_snaps)
+            # Decision 23: Eq. (5) needs a per-slot series, not a sampled one.
+            _common.require_per_slot_series(df_snap["slot"], f"{label} [{csv_snaps.name}]")
             df_snap["awake"] = df_snap["nodes_listening"] + df_snap["nodes_flooding"]
 
             for _, row in df_res.iterrows():

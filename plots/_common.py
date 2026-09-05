@@ -82,3 +82,33 @@ def snapshot_csv(protocol: str) -> Path:
 
 def results_csv_for(protocol: str) -> Path:
     return results_csv(f"results_{_PIPELINE_STEM.get(protocol, protocol)}.csv")
+
+
+def require_per_slot_series(slots, label: str) -> None:
+    """Guard the amortised-energy path: the snapshot series must be per-slot.
+
+    Equation (5) integrates awake node-slots over each decision's window, so it
+    needs one row per *simulated* slot, contiguous from zero. At
+    ``snapshot_interval > 1`` the series is a SAMPLE, not a series: a 455-slot
+    run emits 23 rows at interval 20, and the integral silently loses 95 % of
+    the awake node-slots it is supposed to sum. The published sweeps use 20 and
+    ``config.rs:73`` defaults to 50, so a config that never intended to feed
+    this path can reach it.
+
+    The invariant ``len(snapshots) * N == listen + flood + sleep`` therefore
+    holds at interval 1 only. Fail loudly rather than rescale: a rescaled
+    integral would be a plausible-looking number with no physical meaning.
+    """
+    import numpy as np
+
+    s = np.asarray(slots, dtype=np.int64)
+    if len(s) == 0:
+        raise ValueError(f"{label}: empty snapshot series")
+    step = np.unique(np.diff(s)) if len(s) > 1 else np.array([1])
+    if s[0] != 0 or step.tolist() not in ([1], []):
+        raise ValueError(
+            f"{label}: amortised energy requires a per-slot snapshot series "
+            f"(snapshot_interval = 1), got slots starting at {s[0]} with step(s) "
+            f"{step.tolist()} over {len(s)} rows spanning {s[0]}..{s[-1]}. "
+            f"Re-run this configuration with snapshot_interval = 1."
+        )

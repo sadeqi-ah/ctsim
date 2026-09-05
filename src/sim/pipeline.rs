@@ -158,7 +158,11 @@ pub fn run_ci_pipeline<P: CiProtocol>(mut protocol: P, mut core: CiPipelineCore)
         }
     }
 
-    core.metrics.take_snapshot(core.current_slot, &core.nodes);
+    // No trailing snapshot: `current_slot` is the first FREE slot — nothing was ever
+    // ticked for it, so a row here would be an extra sample the energy counters never
+    // charged (and `take_snapshot` at the same index the loop already emitted was
+    // double-counting one slot in every run). Every ticked slot is emitted, once, by
+    // the round loop above.
     core.metrics.print_summary(&core.nodes, core.config.quiet);
     protocol.on_finish(&mut core);
     core

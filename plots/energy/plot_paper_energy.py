@@ -87,6 +87,9 @@ def load_amortized() -> pd.DataFrame:
         df_res = pd.read_csv(res_p)
         df_snap = pd.read_csv(snap_p)
         df_snap = df_snap.sort_values("slot").reset_index(drop=True)
+        # Decision 23: Eq. (5) is defined on a per-slot series only. Fail loudly
+        # rather than integrate a sampled one (see _common.require_per_slot_series).
+        _common.require_per_slot_series(df_snap["slot"], f"{label} [{snap_p.name}]")
         awake = (
             df_snap["nodes_listening"].to_numpy(dtype=np.float64)
             + df_snap["nodes_flooding"].to_numpy(dtype=np.float64)

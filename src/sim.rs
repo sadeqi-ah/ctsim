@@ -128,13 +128,18 @@ impl Simulator {
                 }
             }
 
-            while next_snapshot <= self.current_slot {
-                self.metrics.take_snapshot(next_snapshot, &self.nodes);
-                next_snapshot += snapshot_interval;
-            }
+            // No snapshot here. `current_slot` is the first FREE slot: the round that
+            // just returned never ticked it, and the NEXT round starts there, calls
+            // reset_round() and ticks it — emitting it from its own loop with the state
+            // the energy counters charged. Emitting it here recorded the pre-reset state
+            // instead, and after the final proposal it produced a row for a slot that was
+            // never ticked at all (plus a duplicate of it, from the trailing snapshot
+            // below: 457 rows for 456 distinct slots).
         }
 
-        self.metrics.take_snapshot(self.current_slot, &self.nodes);
+        // ponytail: every ticked slot is now emitted exactly once, by the round loop
+        // that ticked it. Snapshot rows and tick counters agree by construction; the
+        // amortised-energy integral over rows equals listen+flood exactly.
         self.metrics.print_summary(&self.nodes, self.config.quiet);
     }
 }
