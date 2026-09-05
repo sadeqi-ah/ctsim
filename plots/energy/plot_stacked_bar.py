@@ -9,6 +9,7 @@ figure of amortized per-proposal awake cost, and (b) leaves fresh CSVs under
 Run from anywhere:  python3 plots/energy/plot_stacked_bar.py
 """
 
+import argparse
 import os
 import sys
 
@@ -21,9 +22,14 @@ import _common  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 
+# The published seed set, identical to the one both sweeps use. Decision 27: no
+# printed number may rest on a single run, so the distribution is pooled over all
+# fifteen. Override with --seeds for a single-run illustration.
+SEEDS = [2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47]
 
-def generate_toml(proto, phy):
-    return f"""seed = 99
+
+def generate_toml(proto, phy, seed):
+    return f"""seed = {seed}
 phy_mode = "{phy}"
 protocol = "{proto}"
 num_proposals = 100
@@ -55,24 +61,27 @@ PROTOCOLS = [
 ]
 
 
-def run_simulation_and_extract_per_proposal():
+def run_simulation_and_extract_per_proposal(seeds):
     per_proposal_data = []
 
     print("Compiling Rust simulator...")
     _common.build_release()
 
     for proto, phy, label in PROTOCOLS:
-        print(f"Running simulation for {label}...")
-        _common.RESULTS_DIR.mkdir(exist_ok=True)
-        toml_path = _common.RESULTS_DIR / f"sim_{proto}_per_prop.toml"
-        with open(toml_path, "w") as f:
-            f.write(generate_toml(proto, phy))
-        _common.run_config(toml_path)
+        for seed in seeds:
+            print(f"Running simulation for {label}, seed {seed}...")
+            _common.RESULTS_DIR.mkdir(exist_ok=True)
+            toml_path = _common.RESULTS_DIR / f"sim_{proto}_per_prop.toml"
+            with open(toml_path, "w") as f:
+                f.write(generate_toml(proto, phy, seed))
+            _common.run_config(toml_path)
 
-        csv_results = _common.results_csv_for(proto)
-        csv_snaps = _common.snapshot_csv(proto)
+            csv_results = _common.results_csv_for(proto)
+            csv_snaps = _common.snapshot_csv(proto)
+            if not (csv_results.exists() and csv_snaps.exists()):
+                print(f"  -> Warning: missing files for {proto} seed {seed}")
+                continue
 
-        if csv_results.exists() and csv_snaps.exists():
             df_res = pd.read_csv(csv_results)
             df_snap = pd.read_csv(csv_snaps)
             # Decision 23: Eq. (5) needs a per-slot series, not a sampled one.
@@ -102,24 +111,29 @@ def run_simulation_and_extract_per_proposal():
                     per_proposal_data.append(
                         {
                             "Protocol": label,
+                            "seed": seed,
                             "proposal_id": row["proposal_id"],
                             "awake_slots": amortized_awake,
                         }
                     )
-        else:
-            print(f"  -> Warning: missing files for {proto}")
 
     return pd.DataFrame(per_proposal_data)
 
 
 def main():
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument("--seeds", type=int, nargs="+", default=SEEDS,
+                    help="seeds to pool over (default: the published fifteen)")
+    args = ap.parse_args()
+
     _common.academic_style()
     plt.rcParams.update({"font.size": 14, "axes.labelsize": 16})
 
-    df = run_simulation_and_extract_per_proposal()
+    df = run_simulation_and_extract_per_proposal(args.seeds)
     if df.empty:
         print("No data collected.")
         return
+    n_seeds = df["seed"].nunique()
 
     max_awake = int(df["awake_slots"].max())
     step = max(50, (max_awake // 12) // 50 * 50)
@@ -147,7 +161,7 @@ def main():
     plt.ylabel("Number of Proposals (Frequency)")
     plt.title(
         "Distribution of Per-Proposal Energy Footprint\n"
-        "(27 nodes, Random, Loss = 5%, 100 Decisions)",
+        f"(27 nodes, Random, Loss = 5%, 100 Decisions, {n_seeds} seeds)",
         pad=15,
     )
     plt.xticks(rotation=45, ha="right")
