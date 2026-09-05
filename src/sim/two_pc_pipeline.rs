@@ -8,7 +8,7 @@ use crate::protocol::two_pc_pipeline::{
 };
 use crate::sim::pipeline::{run_ci_pipeline, CiPipelineCore, CiProtocol};
 use rand::Rng;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 pub struct TwoPcPipelineSim {
     pub metrics: MetricsCollector,
@@ -38,6 +38,7 @@ impl TwoPcPipelineSim {
             txs_generated: 0,
             num_txs: self.num_txs,
             abort_probability: self.abort_probability,
+            tx_starts: HashMap::new(),
             piggyback_tx: None,
             piggyback_state: None,
             stop: false,
@@ -58,6 +59,11 @@ struct TwoPcCi {
     txs_generated: usize,
     num_txs: usize,
     abort_probability: f64,
+    /// Slot at which each tx was first floated by its originating initiator.
+    /// Same pattern as `paxos_pipeline::PaxosCi::proposal_starts` and
+    /// `tom_pipeline::TomCi::msg_starts`: recorded directly, never derived from
+    /// a round index times a round length.
+    tx_starts: HashMap<u64, u64>,
     piggyback_tx: Option<u64>,
     piggyback_state: Option<TwoPcState>,
     stop: bool,
@@ -110,6 +116,7 @@ impl CiProtocol for TwoPcCi {
             });
             self.tx_counter += 1;
             self.txs_generated += 1;
+            self.tx_starts.insert(t, core.current_slot);
             (t, d, TwoPcState::Prepare)
         } else {
             (
@@ -123,13 +130,13 @@ impl CiProtocol for TwoPcCi {
         for p in &state.pending {
             if round_num >= p.start_round + (num_nodes as u64) {
                 if state.check_unanimity(p.tx_id) {
-                    newly_resolved.push((p.tx_id, TwoPcState::Committed, p.start_round));
+                    newly_resolved.push((p.tx_id, TwoPcState::Committed));
                 } else {
-                    newly_resolved.push((p.tx_id, TwoPcState::Aborted, p.start_round));
+                    newly_resolved.push((p.tx_id, TwoPcState::Aborted));
                 }
             }
         }
-        for (t, s, start_r) in newly_resolved {
+        for (t, s) in newly_resolved {
             state.finalize_tx(t, s);
             if self.recorded.insert(t) {
                 let outcome = match s {
@@ -137,13 +144,7 @@ impl CiProtocol for TwoPcCi {
                     TwoPcState::Aborted => crate::protocol::ProposalOutcome::Aborted,
                     _ => unreachable!(),
                 };
-                let round_len = core
-                    .config
-                    .ci
-                    .as_ref()
-                    .and_then(|c| c.round_slots)
-                    .unwrap_or(0);
-                let start_slot = start_r * round_len;
+                let start_slot = self.tx_starts.get(&t).copied().unwrap_or(0);
                 core.metrics
                     .record_proposal(t as usize, start_slot, core.current_slot, outcome);
             }
@@ -244,9 +245,12 @@ impl CiProtocol for TwoPcCi {
             for t in fast_aborts {
                 state.finalize_tx(t, TwoPcState::Aborted);
                 if self.recorded.insert(t) {
+                    // Same start-slot source as the commit path above: the slot the
+                    // tx was floated, not a hand-written 0.
+                    let start_slot = self.tx_starts.get(&t).copied().unwrap_or(0);
                     core.metrics.record_proposal(
                         t as usize,
-                        0,
+                        start_slot,
                         core.current_slot,
                         crate::protocol::ProposalOutcome::Aborted,
                     );
