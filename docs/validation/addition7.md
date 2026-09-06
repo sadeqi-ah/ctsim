@@ -22,9 +22,14 @@ python3 docs/validation/addition7/scripts/addition7_boxplot.py
 
 ## Decision 40 first — the reconciliation gate
 
-`runs.csv` is **not** a re-run of the published sweeps and **not** a re-derivation
-over a different denominator. It is an independent set of runs at the same
-configuration, and it agrees with both published sweeps in every cell:
+`runs.csv` is **not** a re-derivation over a different denominator: it is a
+deterministic re-execution of the same seeds at the same configuration, and it
+agrees with both published sweeps in every cell. Charge 21 is upheld — zero
+differing cells across 630 comparisons including `avg_latency` to two decimals is
+what determinism produces, not what an independent set of runs would produce, since
+exact agreement on a real-valued quantity would then be impossible. **Decision 40 is
+a determinism check.** The only genuinely independent comparison in the table below
+is the third row, the two published sweeps against each other.
 
 | reference | rows compared | cells compared | cells differing | `phy` mismatches | clean |
 |---|---|---|---|---|---|
@@ -71,16 +76,21 @@ its **magnitude**: relative half-widths of 99 % and 96 %. TOM-CI is the only arm
 
 | arm | seeds with a tail | duty overall | duty inside tail ÷ duty overall |
 |---|---|---|---|
-| TOM-CI | 1 / 15 (seed 41) | 0.6935 | 1.0847, n = 1, no interval |
+| TOM-CI | 1 / 15 (seed 41) | 0.6935 | 1.036123, n = 1, no interval |
 | Paxos-CI | 15 / 15 | 0.6940 | **1.0478 ± 0.0387** → [1.0091, 1.0865] |
 | 2PC-CI | 15 / 15 | 0.6955 | 1.0143 ± 0.0509 → [0.9634, 1.0652] |
 | all three CE | 0 / 15 | 1.0000 | — |
 
-Printable form, per charge 15: **no arm's tail is sparser than its own run average**
-— all three point estimates exceed 1 — **Paxos-CI is significantly denser**, and
-2PC-CI is indistinguishable from its own average. The seed-99 values (0.8783 for
-Paxos, 1.0973 for 2PC) were both unrepresentative, and Paxos's sits outside the
-fifteen-seed interval entirely.
+Printable form, per charge 15 and decision 47: **no arm's drain tail is materially
+sparser than its own run average.** That is the negative statement, and it holds
+under every aggregation. The positive form does not: these are means of per-seed
+ratios, and pooling the same series as a ratio of sums reverses the direction on TOM
+and Paxos — 0.997775 / 0.996336 / 1.000566, i.e. sparser rather than denser. A
+Simpson reversal in exactly the quantity the sentence turns on, recorded in
+`addition8.md` under charge 18. So the point estimates above are not evidence that
+any tail is denser; they are one aggregation of a quantity whose sign is
+aggregation-dependent. The seed-99 values (0.8783 for Paxos, 1.0973 for 2PC) were
+both unrepresentative, and Paxos's sits outside the fifteen-seed interval entirely.
 
 The conclusion this supports is unchanged and negative: "the drain tail is nearly free
 because the radio is off anyway" has no measured basis in any arm. The tail is cheap
@@ -273,27 +283,39 @@ values:
 
 | arm | N = 6 | 13 | 27 | 54 | 188 | pattern |
 |---|---|---|---|---|---|---|
-| TOM-CI | 1 | 1 | 1 | 1 | 1 | **1 on every run** |
-| Paxos-CI | 3 | 6–7 | 13–14 | 27–28 | 77–95 | ≈ N/2, never above |
-| 2PC-CI | **6** | **13** | **27** | **54** | **100** | **= min(N, 100) on all 15 seeds** |
+| TOM-CI | 1 | 1 | 1 | 1 | 1 | **1 on every one of the 75 runs** |
+| Paxos-CI | 3 | 7 | 14 | 28 | 95 | **= ⌊N/2⌋+1 for N ≥ 13, unattained at N = 6** |
+| 2PC-CI | **6** | **13** | **27** | **54** | **100** | **= min(N, 100) on all 75 runs** |
 
 **`max C_t = 27` at N = 27 is not a coincidence — it is `min(N, num_proposals)`.**
-2PC-CI hits it on every seed at every N below the proposal count, and at N = 188 it
-saturates at 100 = `num_proposals`. The mechanism is `src/sim/two_pc_pipeline.rs:131`,
-`round_num >= p.start_round + (num_nodes as u64)`: a transaction stays pending for
-exactly N rounds, so N of them are in flight at once. Paxos tracks ⌈N/2⌉ instead
-because `check_quorum` at `src/protocol/paxos.rs:102` releases at
-`bitmap.len() / 2 + 1` votes rather than waiting for unanimity.
+2PC-CI hits it on every one of its 75 runs, not merely at the maxima, and at N = 188
+it saturates at 100 = `num_proposals`. The mechanism is
+`src/sim/two_pc_pipeline.rs:131`, `round_num >= p.start_round + (num_nodes as u64)`:
+a transaction stays pending for exactly N rounds, so N of them are in flight at once.
+
+Paxos's bound is the **majority size, `⌊N/2⌋+1`**, from `check_quorum` at
+`src/protocol/paxos.rs:102`, which releases at `bitmap.len() / 2 + 1` votes rather
+than waiting for unanimity — and in integer arithmetic that expression *is*
+`⌊N/2⌋+1`, not `⌈N/2⌉`. The two agree for odd N and differ by one for even N, so the
+earlier `⌈N/2⌉` claim failed at exactly the two even values in the sweep, N = 54 and
+N = 188, where it predicts 27 and 94 against an observed 28 and 95 (decision 45).
+Nothing published moves: the reference point N = 27 is odd. The saturation caveat of
+decision 46 travels with the 2PC row — at N = 188 the bound binds on the workload,
+not on N, so no cross-N depth claim may use that point unqualified.
 
 So the earlier assertion is withdrawn and replaced by a structural result with a
-file:line. Note this is a *different* standard of evidence from TOM's `C_t ≤ 1`, which
-remains measured-only: here the bound is visible in the code, there it is not.
+file:line. TOM's `C_t ≤ 1` has a second, independent witness that no longer makes it
+measured-only in the weak sense: every one of TOM-CI's 1500 per-decision energies is
+an **integer**, while Paxos-CI's and 2PC-CI's are not, because `A_t / C_t` turns
+fractional the moment a slot is shared. Integrality across a 1500-value distribution
+is a signature of `C_t = 1`, and it is uniform over all 75 TOM runs.
 
 ### Charge 15 — accepted. See item (b) for the printable form.
 
 2PC-CI's duty-ratio interval [0.9634, 1.0652] includes 1, so "uniformly denser" is not
-established. "No arm is sparser; Paxos is significantly denser; 2PC is
-indistinguishable from its own average" is what the data supports.
+established. Under decision 47 the printable form is the negative one and no arm is
+claimed to be denser at all: **no arm's drain tail is materially sparser than its own
+run average**, which survives the aggregation reversal recorded in item (b).
 
 ### Charge 16 — resolved, and no number moved. Two different quantities carried the same name.
 
