@@ -13,7 +13,7 @@ copy and not a reconstruction. Apply the entries **bottom-up** — from the
 highest line number to the lowest — so that earlier edits do not shift the
 line numbers of later ones.
 
-Entries are in line order. 32 entries, all final. Blocked items carry no
+Entries are in line order. 34 entries, all final. Blocked items carry no
 numbers and are listed separately at the end.
 
 ---
@@ -62,7 +62,7 @@ about 21 for 2PC, yielding up to 4x higher throughput and up to 5.7x better
 per-decision energy efficiency than CE-based counterparts. We
 ```
 
-**Sources.** depth: runs.csv, committed/end_slot x avg_latency, 15 seeds -> 11.6615 and 21.2547. Ratio: runs.csv awake_tick/committed, ratio of means, 15 seeds -> 5.671896 +- 0.298615 (jackknife 95 %). 'amortized' deleted: decision 36 prints the cumulative metric only.
+**Sources.** depth: runs.csv, committed/end_slot x avg_latency, 15 seeds -> 11.6615 and 21.2547. Ratio: runs.csv awake_tick/committed, ratio of means, 15 seeds -> 5.671896 +- 0.273692 (t-interval on the 15 per-seed ratios, decision 123). 'amortized' deleted: decision 36 prints the cumulative metric only.
 
 **Blocked:** no.
 
@@ -295,7 +295,7 @@ Paxos (\CI) & 0.1903 & 61.4  & 11.66 \\
 2PC (\CI)   & 0.1681 & 126.8 & 21.25 \\
 ```
 
-**Sources.** runs.csv, 15 seeds: depth 1.000000 +- 0.000000, 11.661524 +- 0.015311, 21.254664 +- 0.218137 (jackknife 95 %). Latency from sweep_summary.csv. TOM and Paxos throughput and latency unchanged.
+**Sources.** runs.csv, 15 seeds: depth 1.000000 +- 0.000000, 11.661524 +- 0.015311, 21.254664 +- 0.218137 (t-interval, t(0.975,14) = 2.144787; v2 mislabelled this one as jackknife). Latency from sweep_summary.csv. TOM and Paxos throughput and latency unchanged.
 
 **Blocked:** no.
 
@@ -398,7 +398,36 @@ And the radio of every node stays on
 
 ---
 
-## 14. `paper/paper.tex` lines 1943-1954
+## 14. `paper/paper.tex` lines 1904-1907
+
+Authorised by decisions 36, 44.
+
+**Current text** (byte-exact, 4 lines):
+
+```latex
+Equation~\eqref{eq:amortized} collapses the per-decision energy of the
+baseline onto exactly the ceiling anticipated analytically in
+Equation~\eqref{eq:ece}, with $\Lround$ instantiated as the latency of the
+decision.
+```
+
+**Replacement text:**
+
+```latex
+both energy definitions collapse the per-decision energy of the baseline
+onto exactly the ceiling anticipated analytically in
+Equation~\eqref{eq:ece}, with $\Lround$ instantiated as the latency of the
+decision; under \CE{} the cumulative and decomposed accounts coincide, so the
+ceiling does not depend on which of the two is used.
+```
+
+**Sources.** No new numbers. Decisions 36 and 44 retire the amortised decomposition as the basis for every printed ratio, so the paragraph that establishes E_CE = N x L must not rest on that metric alone. DELETES the reference to Equation~eqref{eq:amortized} at base 1904 and states the collapse for both definitions, which is what the data show: decisions.csv gives amortised = 27 x latency exactly on all 4500 CE rows, and the two accounts agree on every CE row of runs.csv, so the ceiling is definition-independent under CE. SMALLEST-SPAN NOTE, decision 55: base 1903 ends with 'Substituting both conditions into', outside the span, so the replacement opens with the grammatical complement of 'into'. Base 1906 is RE-SUPPLIED VERBATIM and not changed. eq:amortized keeps its other references (base 1936, 1937 and the 2190-2197 replacement), so no label is orphaned and no equation is deleted.
+
+**Blocked:** no.
+
+---
+
+## 15. `paper/paper.tex` lines 1943-1954
 
 Authorised by decisions 19, 36, 42, 44.
 
@@ -433,13 +462,13 @@ radio cost for TOM, $1.66\,\%$ for Paxos and $4.57\,\%$ for 2PC. All ratios
 reported in this paper are cumulative, so no result depends on that gap.
 ```
 
-**Sources.** f, energy share including orphans, ratio of sums, 15 seeds: runs.csv awake_outside_windows and decisions.csv amortised -> 0.00084857 / 0.01662420 / 0.04571172. The 4500 CE decisions: decisions.csv, amortised = 27 x latency exactly on every row. The deleted claim that the gap 'is itself a measure of the fixed overhead of the pipeline' and 'shrinks for larger workloads' is untestable here: num_proposals = 100 in all 2250 sweep rows. The deleted 'roughly 59 against 88' was one seed; the corrected pair is 86.07 against 88.00.
+**Sources.** The gap, 15 seeds: 1 - sum(decisions.csv amortised)/sum(runs.csv awake_tick) -> 0.00084857 / 0.01662420 / 0.04571172, printing 0.08 / 1.66 / 4.57 %. NOTE, v3: the runs.csv awake_outside_windows share is a different quantity, 0.00084857 / 0.01662420 / 0.03299890 -- it coincides for TOM and Paxos but not for 2PC, so the 2PC figure must be read off the per-decision file and not off awake_outside_windows. The printed triple is unchanged; only this attribution is corrected. The 4500 CE decisions: decisions.csv, amortised = 27 x latency exactly on every row. The deleted claim that the gap 'is itself a measure of the fixed overhead of the pipeline' and 'shrinks for larger workloads' is untestable here: num_proposals = 100 in all 2250 sweep rows. The deleted 'roughly 59 against 88' was one seed; the corrected pair is 86.07 against 88.00.
 
 **Blocked:** no.
 
 ---
 
-## 15. `paper/paper.tex` lines 1968-1971
+## 16. `paper/paper.tex` lines 1968-1971
 
 Authorised by decisions 36, 42, 43, 51.
 
@@ -457,17 +486,17 @@ on the same workload, by a factor of about 5.4 for Paxos and about 8.2 for
 ```latex
 Under the cumulative criterion, the pipeline reduces the energy required
 per final decision, relative to sequential execution of the same protocol
-on the same workload, by a factor of $3.83 \pm 0.08$ for Paxos and
-$5.67 \pm 0.30$ for 2PC (95\,\% intervals over fifteen seeds).
+on the same workload, by a factor of $3.83 \pm 0.07$ for Paxos and
+$5.67 \pm 0.27$ for 2PC (95\,\% intervals over fifteen seeds).
 ```
 
-**Sources.** runs.csv awake_tick/committed, ratio of means, 15 seeds: 3.827738 +- 0.075337 and 5.671896 +- 0.298615, jackknife 95 % at t(0.975,14) = 2.144787. Neither printed digit is resolved by its own interval ([3.7524, 3.9031] and [5.3733, 5.9705]); the interval is printed beside the value for that reason.
+**Sources.** runs.csv cumulative_per_dec, CE over CI, 15 seeds. Point estimate is the ratio of means: 3.827738 and 5.671896. DECISION 123 changes the interval: the printed 0.08 and 0.30 were jackknife half-widths of the ratio of means (0.075337 and 0.298615); the reported interval is now the t-interval on the fifteen per-seed ratios at t(0.975,14) = 2.144787, half-widths 0.067094 and 0.273692, so 0.08 -> 0.07 and 0.30 -> 0.27. Centred on the ratio of means the intervals are [3.760644, 3.894832] and [5.398204, 5.945588]; the mean of the per-seed ratios (3.832605 and 5.704037) differs from the ratio of means by 0.005 and 0.032, well inside the half-width, so the choice of centre does not move a printed digit. Neither printed digit is resolved by its own interval; the interval is printed beside the value for that reason.
 
 **Blocked:** no.
 
 ---
 
-## 16. `paper/paper.tex` lines 1973-1983
+## 17. `paper/paper.tex` lines 1973-1983
 
 Authorised by decisions 36, 41, 42, 43, 44, 48, 50.
 
@@ -500,17 +529,18 @@ which accounts for the measured ratio to within $0.6\,\%$. The number $1.43$
 therefore marks the floor of the saving offered by the \CI{} architecture---the
 part available even in the complete absence of concurrency. The rise from there
 to $5.67$ under 2PC is not proposal sharing, which accounts for $1.6\,\%$ of
-it; it is the number of slots a decision occupies, which runs from $4.70$ to
-$6.18$ under \CI{} against $4.68$ to $24.34$ under \CE.
+it; it is the number of slots a decision occupies, measured as total simulated
+slots per committed decision and summed over seeds, which runs from $4.70$ to
+$6.17$ under \CI{} against $4.68$ to $24.34$ under \CE.
 ```
 
-**Sources.** Triple as at 1968-1971, plus TOM 1.434823 +- 0.018025. Duty: runs.csv awake_tick/(27 x simulated_slots), ratio of sums, 0.692900 / 0.693253 / 0.694603, prints 0.69. Floor: 1/duty (ratio of sums) = 1.443210 against a measured 1.434823, +0.5845 %, and the two-factor product closes to 0.0 % exactly under that aggregation (addition8_closure.py). Sharing: 1/(1-f) = 1.047902 for 2PC; carrying TOM net of its own factor, (1.434823/1.000850) x 1.047901 = 1.502277, i.e. 0.067454 of a span of 4.237073 = 1.592 %; carrying it gross gives 1.503554 and 1.6221 %. Both print 1.6 %. Slots per decision, ratio of sums: CI 4.7033/5.3540/6.1705, CE 4.6760/14.2073/24.3353. DELETED: 'it tracks the depth column of Table~ref{tab:depth} exactly' -- false, the ratio rises 3.95x while depth rises 21.25x. DELETED: 'the distance from there to 8.2 is the additional contribution of amortisation' -- void, it describes the retired metric.
+**Sources.** Triple as at 1968-1971, plus TOM 1.434823 +- 0.018025. Duty: runs.csv awake_tick/(27 x simulated_slots), ratio of sums, 0.692900 / 0.693253 / 0.694603, prints 0.69. Floor: 1/duty (ratio of sums) = 1.443210 against a measured 1.434823, +0.5845 %, and the two-factor product closes to 0.0 % exactly under that aggregation (addition8_closure.py). Sharing: 1/(1-f) = 1.047902 for 2PC; carrying TOM net of its own factor, (1.434823/1.000850) x 1.047901 = 1.502277, i.e. 0.067454 of a span of 4.237073 = 1.592 %; carrying it gross gives 1.503554 and 1.6221 %. Both print 1.6 %. Slots per decision = simulated_slots/committed, ratio of sums: CI 4.703333/5.354000/6.170485, CE 4.676000/14.207333/24.335333. DECISION 138: the printed upper end is 6.17, the ratio of sums, not the 6.18 of the mean of per-seed ratios (6.178465); the ratio of sums is the aggregation used for every other ratio in the paper, and the definition is now written into the sentence. 6.18 occurs nowhere in the base text, only in the v2 replacement. DELETED: 'it tracks the depth column of Table~ref{tab:depth} exactly' -- false, the ratio rises 3.95x while depth rises 21.25x. DELETED: 'the distance from there to 8.2 is the additional contribution of amortisation' -- void, it describes the retired metric.
 
 **Blocked:** no.
 
 ---
 
-## 17. `paper/paper.tex` lines 2003-2009
+## 18. `paper/paper.tex` lines 2003-2009
 
 Authorised by decisions 34, 38.
 
@@ -550,7 +580,7 @@ median \CE{} latency of 5 slots.
 
 ---
 
-## 18. `paper/paper.tex` lines 2011-2021
+## 19. `paper/paper.tex` lines 2011-2021
 
 Authorised by decisions 34, 38, 39, 47.
 
@@ -593,7 +623,7 @@ by $4.2\,\%$.
 
 ---
 
-## 19. `paper/paper.tex` lines 2028-2032
+## 20. `paper/paper.tex` lines 2028-2032
 
 Authorised by decision 38.
 
@@ -623,7 +653,7 @@ $1\,\%$ of the \CI{} family overlapping them.
 
 ---
 
-## 20. `paper/paper.tex` lines 2063-2064
+## 21. `paper/paper.tex` lines 2063-2064
 
 Authorised by decisions 36, 38.
 
@@ -647,7 +677,7 @@ averaged over fifteen seeds.}
 
 ---
 
-## 21. `paper/paper.tex` lines 2075-2077
+## 22. `paper/paper.tex` lines 2075-2077
 
 Authorised by decisions 9, 19, 36, 42.
 
@@ -673,7 +703,7 @@ Paxos (\CI) & 61.4  & 100.2 & 1658 & $16.5\times$ \\
 
 ---
 
-## 22. `paper/paper.tex` lines 2082-2084
+## 23. `paper/paper.tex` lines 2082-2084
 
 Authorised by decisions 9, 36, 42.
 
@@ -699,7 +729,7 @@ column grows by only about \textbf{1.3 times}. In the pipelined
 
 ---
 
-## 23. `paper/paper.tex` lines 2086-2092
+## 24. `paper/paper.tex` lines 2086-2092
 
 Authorised by decisions 9, 42, 44.
 
@@ -733,7 +763,7 @@ some twenty others, sharing the radio cost of every slot with them.
 
 ---
 
-## 24. `paper/paper.tex` lines 2190-2197
+## 25. `paper/paper.tex` lines 2190-2197
 
 Authorised by decisions 36, 42, 44.
 
@@ -769,7 +799,7 @@ and no ratio reported anywhere in this paper is corrected by it.
 
 ---
 
-## 25. `paper/paper.tex` lines 2292-2298
+## 26. `paper/paper.tex` lines 2292-2298
 
 Authorised by decision 32.
 
@@ -795,16 +825,16 @@ sleeps, each of the $\Nnodes$ nodes is awake in each of the $L$ slots a
 decision occupies, so the product is what the accounting computes. What can be
 checked is the instrument, and it holds throughout the topology space---three
 \CE{} protocols on five topologies, a twenty-six-fold range of diameter and a
-forty-fold range of energy per decision.
+ninety-sevenfold range of energy per decision.
 ```
 
-**Sources.** sweep_summary.csv: the sleep counter is exactly zero in all 1125 CE rows; diameter 1 to 26 across the five topologies; CE energy per decision spans 126.3 to 5136.5 node-slots, a factor of 40.7. Deletes the reference to tab:identity, which the following entry removes.
+**Sources.** Two files, not one: the sleep counter is exactly zero in all 1125 CE rows, being 225 rows in plots/topology/results/sweep_summary.csv plus 900 in plots/scalability/results/sweep_summary.csv. Diameters present are 1, 3, 4, 5 and 26 across the five topologies. CE energy per decision, (listen+flood+sleep)/committed as group means over the 15 protocol-topology groups, spans 73.93 (TOM, full_mesh) to 7190.93 (2PC, line) node-slots, a factor of 97.3; the same aggregation reproduces tab:baseline exactly at the reference point (126.25 / 383.60 / 657.05), and 7190.93 is the value the deleted tab:identity carried at base 2335. CORRECTS v2, which printed 'forty-fold' from a range of 126.3 to 5136.5 that no aggregation of the committed CSVs reproduces. Deletes the reference to tab:identity, which the following entry removes.
 
 **Blocked:** no.
 
 ---
 
-## 26. `paper/paper.tex` lines 2300-2338
+## 27. `paper/paper.tex` lines 2300-2338
 
 Authorised by decisions 32, 37.
 
@@ -863,17 +893,17 @@ decision and not only in aggregate: every one of the $4500$ \CE{} per-decision
 energies measured at the reference point is an integer multiple of $\Nnodes$,
 so the \CE{} per-decision energy distribution is the latency distribution
 rescaled by $\Nnodes$. No \CI{} arm has that property---the per-decision
-energies of Paxos and 2PC over \CI{} are not integers at all, because a slot
-shared between $k$ decisions contributes $1/k$ to each.
+energies of Paxos and 2PC over \CI{} are in general not integers, because a
+slot shared between $k$ decisions contributes $1/k$ to each.
 ```
 
-**Sources.** sweep_summary.csv: (listen+flood+sleep) = 27 x simulated slots on all 2250 rows. runs.csv: awake/committed against 27 x avg_latency agrees to 2.2e-16 on all 45 CE rows. decisions.csv: all 4500 CE amortised values are integer multiples of 27; TOM-CI values are integers but not multiples of 27; Paxos-CI and 2PC-CI are fractional. DELETES the fifteen-row table float: its error column was zero by construction in all fifteen rows, so it assumed the identity it reported as verified. No surviving \ref to tab:identity remains after this entry and the preceding one.
+**Sources.** sweep_summary.csv: (listen+flood+sleep) = 27 x simulated slots on all 2250 rows. runs.csv: awake/committed against 27 x avg_latency agrees to 2.2e-16 on all 45 CE rows. decisions.csv: all 4500 CE amortised values are integer multiples of 27. CORRECTS v2, which claimed the CI values 'are not integers at all': 82 of 1500 Paxos-CI and 20 of 1484 2PC-CI values are in fact integers, so the sentence now reads 'in general not integers'. The arm-level claim survives unchanged, because no CI arm has every value an integer multiple of 27: TOM-CI is integral throughout but only 81 of its 1500 values are multiples of 27, and no Paxos-CI or 2PC-CI value is one at all. DELETES the fifteen-row table float: its error column was zero by construction in all fifteen rows, so it assumed the identity it reported as verified. No surviving \ref to tab:identity remains after this entry and the preceding one.
 
 **Blocked:** no.
 
 ---
 
-## 27. `paper/paper.tex` lines 2340-2356
+## 28. `paper/paper.tex` lines 2340-2356
 
 Authorised by decisions 10, 32, 42, 49.
 
@@ -920,13 +950,13 @@ fifteen groups and reaches $1.94\,\%$ on a single seed of 2PC over \CE{} on the
 line topology, where two of the fifteen seeds commit 99 proposals of 100.
 ```
 
-**Sources.** Shortfall, ratio of sums per topology, 15 seeds: partial_mesh 22.66-23.05 %, full_mesh 26.19-26.33 %, scale_free 28.20-28.43 %, random 30.54-30.71 %, so '22 and 31' stands. Residual: 1/depth - 1 on the topology sweep, zero to machine precision in 14 of 15 groups; line/2PC-CE group mean 0.257653 % (mean of per-seed residuals), worst single seed 37 at 1.936210 %, 13 of 15 seeds committing 100. The printed 1.94 % is the WORST SEED and is named as such; the group mean 0.26 % is not printed. Formula is 1/d - 1, not 'the reciprocal of the depth'.
+**Sources.** Shortfall, ratio of sums per topology, 15 seeds: partial_mesh 22.66-23.05 %, full_mesh 26.19-26.33 %, scale_free 28.20-28.43 %, random 30.54-30.71 %, so '22 and 31' stands, and the shortfall is exactly 1 - duty: the runs.csv duty cycle at the random point gives 30.71/30.67/30.54 %, matching the sweep to the digit. Residual: res = 1/d - 1 with d = (committed/end_slot) x avg_latency, computed per seed on the topology sweep. It is zero to 2.2e-16 in 14 of the 15 protocol-topology groups; the sole nonzero group is line/2PC-CE, group mean 0.25765264 % (mean of per-seed residuals), worst single seed 37 at 1.93620964 % and seed 23 at 1.92857998 %, 13 of 15 seeds committing 100. The printed 1.94 % is the WORST SEED and is named as such; the group mean 0.26 % is not printed. Formula is 1/d - 1, not 'the reciprocal of the depth'. This is NOT the orphan share f = orphan/(end_slot + orphan) recorded under decision 114 (1.890834 / 1.898617 %); the two are related by res = f/(1-f) per decision 113, and the sentence here describes res, so 1.94 % stands.
 
 **Blocked:** no.
 
 ---
 
-## 28. `paper/paper.tex` lines 2371-2374
+## 29. `paper/paper.tex` lines 2371-2374
 
 Authorised by decisions 9, 42.
 
@@ -954,7 +984,31 @@ twenty-one in every case.
 
 ---
 
-## 29. `paper/paper.tex` line 2431
+## 30. `paper/paper.tex` lines 2376-2377
+
+Authorised by decisions 36, 42.
+
+**Current text** (byte-exact, 2 lines):
+
+```latex
+This invariance shows that the amortisation factor is an
+\emph{architectural design parameter} and not a network accident. The
+```
+
+**Replacement text:**
+
+```latex
+This invariance shows that the pipeline depth is an
+\emph{architectural design parameter} and not a network accident. The
+```
+
+**Sources.** No new numbers. Decision 36 retires the amortisation factor, so the conclusion of the subsection must be stated about the quantity the subsection actually measures. The preceding entry at 2371-2374 prints depth, and sweep_summary.csv gives depth = (committed/end_slot) x avg_latency invariant across the four dense topologies: TOM 1.000/1.000/1.000/1.002, Paxos 11.589/11.623/11.662/11.657, 2PC 21.446/21.455/21.255/20.954. SMALLEST-SPAN NOTE, decision 55: the changed words end mid-line at base 2377, so the remainder of that line is RE-SUPPLIED VERBATIM and not changed -- 'and not a network accident. The', whose continuation at base 2378 ('pipeline structurally holds a certain number of proposals in flight') lies outside the span. Blank base line 2375 separates this entry from 2371-2374, so no blank base line falls inside either span.
+
+**Blocked:** no.
+
+---
+
+## 31. `paper/paper.tex` line 2431
 
 Authorised by decision 9.
 
@@ -976,7 +1030,7 @@ Authorised by decision 9.
 
 ---
 
-## 30. `paper/paper.tex` lines 2565-2568
+## 32. `paper/paper.tex` lines 2565-2568
 
 Authorised by decisions 18, 42, 43, 44.
 
@@ -1004,7 +1058,7 @@ concurrency, together with the ability to sleep the radio, reduces the
 
 ---
 
-## 31. `paper/paper.tex` lines 2573-2577
+## 33. `paper/paper.tex` lines 2573-2577
 
 Authorised by decisions 32, 37.
 
@@ -1028,13 +1082,13 @@ diameter, and the pipeline depth is effectively constant across the four
 dense topologies, so the mechanism that produces the energy saving is
 ```
 
-**Sources.** As at 2292-2338: no error band exists to quote, because the residual is 1/depth - 1. sweep_summary.csv, 1125 CE rows, sleep = 0 throughout. The span ends at 2577 so that 'is' keeps its complement at 2578 ('architectural rather than topological').
+**Sources.** As at 2292-2338: no error band exists to quote, because the residual is 1/depth - 1. 1125 CE rows with sleep = 0 throughout, being 225 topology rows plus 900 scalability rows across two sweep_summary.csv files. The span ends at 2577 so that 'is' keeps its complement at 2578 ('architectural rather than topological').
 
 **Blocked:** no.
 
 ---
 
-## 32. `paper/paper.tex` lines 2617-2620
+## 34. `paper/paper.tex` lines 2617-2620
 
 Authorised by decision 42.
 
@@ -1091,9 +1145,9 @@ numbers are not final.
 
 **Why.** The float is commented out in the manuscript. The figure itself exists at plots/energy/energy_boxplot_15seed.pdf and its caption text is settled -- box = q25/q75, whiskers = p1/p99, points are the outer 1 % on each side, n = 1500 per arm except 2PC over CI at 1484, and the paper's headline ratios are cumulative -- but the lines to patch do not exist until the float is uncommented.
 
-## B5. 1470-1478 and the surrounding commit-rate prose
+## B5. 1470-1478, base 2505-2509, and the surrounding commit-rate prose
 
-**What is blocked.** the 98.9 % commit rate discussion, and the zero-commit rows of the topology and scalability tables
+**What is blocked.** the 98.9 % commit rate discussion, the zero-commit rows of the topology and scalability tables, and the '(190,180)' efficiency figure at base 2507
 
-**Why.** Decision 12's artefact-level treatment and decision 10's conditional-mean reporting are settled in principle, but the affected figures have not been regenerated, so the replacement cells are not final. 28 of 225 scalability runs commit fewer than 100, all 2PC over CI, one of them zero at N = 188.
+**Why.** Decision 12's artefact-level treatment and decision 10's conditional-mean reporting are settled in principle, but the affected figures have not been regenerated, so the replacement cells are not final. 28 of 225 scalability runs commit fewer than 100, all 2PC over CI, one of them zero at N = 188. The 2507 figure is not recoverable from the committed data under decision 10: at line/2PC-CI, N = 27, 5 % loss, exactly one of the fifteen seeds commits at all (seed 29, 3 decisions, a 0.2 % commit rate, 81940.0 slots per decision), so a conditional mean would rest on n = 1 and cannot honestly be reported as a mean.
 
