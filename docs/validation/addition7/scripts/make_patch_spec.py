@@ -3,8 +3,10 @@
 
 Decision 31/35: the agent does not write to paper/paper.tex. This emits a
 specification the author applies. Every "current text" block is sliced out of
-paper/paper.tex by line number, so it is a byte-exact copy by construction and
-never a retyped quote.
+paper/paper.tex by line number. Byte-exactness of those blocks is therefore an
+INVARIANT of this script and not something it verifies: a generator cannot be
+its own verifier (decision 88). The independent recomputation of every number
+lives in the companion script, check_patch_spec.py.
 
 Run from the repository root:
     ./venv/bin/python docs/validation/addition7/scripts/make_patch_spec.py
@@ -12,6 +14,7 @@ Run from the repository root:
 import hashlib
 import os
 import subprocess
+import sys
 
 ROOT = subprocess.run(["git", "rev-parse", "--show-toplevel"], capture_output=True,
                       text=True, check=True).stdout.strip()
@@ -20,11 +23,19 @@ OUT = os.path.join(ROOT, "docs", "validation", "patch_spec.md")
 RAW = open(TEX, "rb").read()
 SHA = hashlib.sha256(RAW).hexdigest()
 LINES = RAW.decode("utf-8").split("\n")
+# Decision 87: split("\n") on a file that ends with a newline yields a final ''
+# which is not a line. The spec header used len(LINES) and so advertised
+# "2701 lines" for a 2700-line file. Count content lines explicitly.
+N_BASE = len(LINES) - (1 if LINES and LINES[-1] == "" else 0)
 BASE_SHA = "039118e9c14c5f7a0f8e324e0957535b87ca9899befa1384547930e1ce694c27"
 
 
 def cur(a, b):
-    """Byte-exact slice of paper.tex, lines a..b inclusive, 1-indexed."""
+    """Byte-exact slice of paper.tex, lines a..b inclusive, 1-indexed.
+
+    INVARIANT, not a check: the slice is taken from the file, so it cannot
+    disagree with the file. Never report this as verification (decision 88).
+    """
     return "\n".join(LINES[a - 1:b])
 
 
@@ -605,7 +616,7 @@ P.append("")
 P.append("Author-applied, per decisions 31 and 35. **Nothing in this file has been")
 P.append("applied to `paper/paper.tex`.** No agent writes to the manuscript.")
 P.append("")
-P.append("Base file: `paper/paper.tex`, %d lines, sha256" % len(LINES))
+P.append("Base file: `paper/paper.tex`, %d lines, sha256" % N_BASE)
 P.append("`%s`." % SHA)
 if SHA != BASE_SHA:
     P.append("")
@@ -666,9 +677,12 @@ for i, b in enumerate(B, 1):
     P.append("**Why.** %s" % b["why"])
     P.append("")
 
-open(OUT, "w").write("\n".join(P) + "\n")
-print("wrote %s" % OUT)
-print("entries=%d blocked=%d base_sha_matches=%s" % (len(E), len(B), SHA == BASE_SHA))
+# Decision 89: nothing is written until every check below has passed, so a
+# failing run cannot be mistaken for a passing one by looking at the output
+# directory or at a printed hash.
+SPEC_TEXT = "\n".join(P) + "\n"
+print("built spec in memory: entries=%d blocked=%d base_sha_matches=%s"
+      % (len(E), len(B), SHA == BASE_SHA))
 
 # ================================================================= SELF-CHECK
 # Round 17.10: verifying the SOURCE text is not enough. Apply the whole spec in
@@ -684,6 +698,14 @@ for e in sorted(E, key=lambda x: x["a"], reverse=True):   # bottom-up
     out[e["a"] - 1:e["b"]] = e["repl"].split("\n")
 
 fail = []
+
+# --- (0) the base must be the file the spans were written against -----------
+# The in-document WARNING branch above is now unreachable in a written spec: a
+# base-sha mismatch fails here and nothing is written at all.
+if SHA != BASE_SHA:
+    fail.append("BASE FILE CHANGED: paper.tex is %s but every span was "
+                "written against %s, so all line numbers are invalid"
+                % (SHA, BASE_SHA))
 
 # --- (1) no line repeated adjacently -----------------------------------------
 for i in range(len(out) - 1):
@@ -717,17 +739,32 @@ import re as _re
 body = "\n".join(out)
 RETIRED = [r"357\.7", r"\b358\b", r"60\.1", r"\b11\.7\b", r"8\.2", r"76 times",
            r"within 1\.5", r"1\.5\\,\\%", r"to better than", r"350\.0",
-           r"tab:identity", r"9658", r"-2\.2", r"\\times 60", r"\bsixty\b",
+           r"tab:identity", r"9658", r"-2\.2", r"\bsixty\b",
            r"\b76\b"]
+# Decision 91: a regression pattern with no occurrence in the base cannot fail,
+# so it certifies nothing. r"\\times 60" was exactly that -- zero base
+# occurrences -- and is deleted. Every remaining pattern must be shown present
+# in the base, with its line numbers, or this run fails.
+print("")
+print("%-18s %11s  %s" % ("pattern", "base count", "base line numbers"))
 for pat in RETIRED:
+    base_hits = [i + 1 for i, l in enumerate(LINES) if _re.search(pat, l)]
+    print("%-18s %11d  %s" % (pat, len(base_hits), base_hits))
+    if not base_hits:
+        fail.append("RETIRED PATTERN %s NEVER OCCURRED IN THE BASE: delete "
+                    "it, or name the site it is meant to guard" % pat)
     hits = [i + 1 for i, l in enumerate(out) if _re.search(pat, l)]
     if hits:
         fail.append("RETIRED PATTERN %s SURVIVES at %s" % (pat, hits))
-# 'amortis' is legitimate where it names the retired metric as retired; report,
-# do not fail, and list every survivor so each can be judged.
-am = [(i + 1, l) for i, l in enumerate(out) if "amortis" in l]
-print("'amortis' survivors: %d (base %d)"
-      % (len(am), sum(1 for l in LINES if "amortis" in l)))
+# Decision 84: the old scan tested one spelling and was blind to the other.
+# Match both, and report base and applied sites with their line numbers.
+_AM = _re.compile(r"amorti[sz]")
+am = [(i + 1, l) for i, l in enumerate(out) if _AM.search(l)]
+am_base = [i + 1 for i, l in enumerate(LINES) if _AM.search(l)]
+print("")
+print("'amorti[sz]' sites: base %d -> applied %d" % (len(am_base), len(am)))
+print("   base lines:    %s" % am_base)
+print("   applied lines: %s" % [i for i, _ in am])
 for i, l in am:
     print("   %5d| %s" % (i, l[:96]))
 if body.count("\\TBD{") != "\n".join(LINES).count("\\TBD{"):
@@ -751,9 +788,12 @@ for r in set(_re.findall(r"\\(?:eq)?ref\{([^}]+)\}", body)):
 # The only check that constrains the HAND-WRITTEN side. difflib reports a
 # changed region, not a whole span: where a replacement leaves some of the
 # span's lines untouched, one entry yields several hunks. So assign every hunk
-# to the entry whose base span contains it, then require (a) no hunk outside
-# every span, (b) no hunk straddling two spans, (c) every entry accounted for,
-# and (d) the patched lines of each entry equal to its replacement verbatim.
+# to the entry whose base span contains it. The real findings are (a) no hunk
+# falls outside every span and (b) no hunk straddles two spans, plus (c) every
+# entry actually changed the file. Condition (d) -- patched lines equal to the
+# replacement -- CANNOT FAIL by construction, because the applier above assigns
+# e["repl"] straight into out[a-1:b]. It is kept only as a tripwire against a
+# future change to the applier, and is never evidence (decision 88).
 import difflib
 sm = difflib.SequenceMatcher(None, LINES, out, autojunk=False)
 raw = [(tag, i1 + 1, i2, j1 + 1, j2) for tag, i1, i2, j1, j2 in sm.get_opcodes()
@@ -782,8 +822,9 @@ for k, e in enumerate(ordered):
     if out[pa - 1:pb] != e["repl"].split("\n"):
         fail.append("PATCHED LINES != REPLACEMENT at base %d-%d" % (e["a"], e["b"]))
 if not missing and not [f for f in fail if f.startswith(("HUNK", "PATCHED"))]:
-    print("   every hunk lies inside exactly one entry; every entry changed the file;")
-    print("   every entry's patched lines equal its replacement verbatim")
+    print("   every hunk lies inside exactly one entry; every entry changed the file")
+    print("   (patched lines == replacement is an INVARIANT of the applier, not")
+    print("   evidence -- decision 88)")
 
 # --- (9) SENTENCE SEAMS: the sentence, reflowed, not two lines --------------
 def seam(a, b, src):
@@ -837,13 +878,30 @@ print()
 print("checks failed: %d" % len(fail))
 for f in fail:
     print("  !! %s" % f)
-if not fail:
-    print("  all clean")
+
+# ------------------------------------------------------- decision 89 gate ----
+# Past this point the run is a pass. Before it, no artefact and no hash exist.
+if fail:
+    print()
+    print("NOTHING WRITTEN: %d check(s) failed." % len(fail))
+    print("No artefact and no hash are emitted from a failing run.")
+    print("Neither %s nor /tmp/paper_patched.tex was created or updated." % OUT)
+    sys.exit(1)
+
+print("  all clean")
 
 PATCHED = "/tmp/paper_patched.tex"
+assert SHA == BASE_SHA, "base sha drifted past the gate"
+assert base_n + tot == out_n, "line accounting drifted past the gate"
+assert nb_out == nb_base, "blank-line total drifted past the gate"
+assert len(E) == 32, "entry count changed -- update this number deliberately"
+assert len(B) == 5, "blocked count changed -- update this number deliberately"
+open(OUT, "w").write(SPEC_TEXT)
 open(PATCHED, "w").write("\n".join(out))
 print()
+print("wrote %s" % OUT)
 print("wrote %s" % PATCHED)
 print("lines=%d  bytes=%d" % (out_n, len("\n".join(out).encode())))
 print("sha256=%s" % hashlib.sha256("\n".join(out).encode()).hexdigest())
+print("spec  =%s" % hashlib.sha256(SPEC_TEXT.encode()).hexdigest())
 print("base  =%s  (paper/paper.tex UNCHANGED)" % SHA)
