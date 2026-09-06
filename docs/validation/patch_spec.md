@@ -3,7 +3,7 @@
 Author-applied, per decisions 31 and 35. **Nothing in this file has been
 applied to `paper/paper.tex`.** No agent writes to the manuscript.
 
-Base file: `paper/paper.tex`, 2701 lines, sha256
+Base file: `paper/paper.tex`, 2700 lines, sha256
 `039118e9c14c5f7a0f8e324e0957535b87ca9899befa1384547930e1ce694c27`.
 This matches the agreed base, so every line number below is valid.
 
