@@ -1,0 +1,54 @@
+=== paxos_ce_line_n27_loss05_seed23 ===
+Topology: n=27 edges=26 diameter=26 → results/topology.dot, results/topology.svg
+═══ Simulation Results ═══
+Proposals: 100 total, 100 committed, 0 aborted, 0 timed out
+Avg latency (committed): 113.9 slots
+Energy profile: Listen=250327 Flood=57284 Sleep=0
+Recovery Events: NACKs=0 Piggybacks=0 CE_Timeouts=41655
+Exported: results/results_paxos_ce.csv, results/snapshots_paxos_ce.csv
+    results rows=100 snapshot rows=11393
+=== paxos_ce_line_n27_loss05_seed37 ===
+Topology: n=27 edges=26 diameter=26 → results/topology.dot, results/topology.svg
+═══ Simulation Results ═══
+Proposals: 100 total, 100 committed, 0 aborted, 0 timed out
+Avg latency (committed): 113.8 slots
+Energy profile: Listen=250020 Flood=57159 Sleep=0
+Recovery Events: NACKs=0 Piggybacks=0 CE_Timeouts=41543
+Exported: results/results_paxos_ce.csv, results/snapshots_paxos_ce.csv
+    results rows=100 snapshot rows=11377
+=== 2pc_ce_line_n27_loss05_seed23 ===
+Topology: n=27 edges=26 diameter=26 → results/topology.dot, results/topology.svg
+═══ Simulation Results ═══
+Proposals: 100 total, 99 committed, 1 aborted, 0 timed out
+Avg latency (committed): 268.3 slots
+Energy profile: Listen=594999 Flood=136107 Sleep=0
+Recovery Events: NACKs=0 Piggybacks=0 CE_Timeouts=103150
+Exported: results/results_2pc_ce.csv, results/snapshots_2pc_ce.csv
+    results rows=100 snapshot rows=27078
+=== 2pc_ce_line_n27_loss05_seed37 ===
+Topology: n=27 edges=26 diameter=26 → results/topology.dot, results/topology.svg
+═══ Simulation Results ═══
+Proposals: 100 total, 99 committed, 1 aborted, 0 timed out
+Avg latency (committed): 267.2 slots
+Energy profile: Listen=592684 Flood=135425 Sleep=0
+Recovery Events: NACKs=0 Piggybacks=0 CE_Timeouts=102420
+Exported: results/results_2pc_ce.csv, results/snapshots_2pc_ce.csv
+    results rows=100 snapshot rows=26967
+=== tom_ce_line_n27_loss05_seed23 ===
+Topology: n=27 edges=26 diameter=26 → results/topology.dot, results/topology.svg
+═══ Simulation Results ═══
+Proposals: 100 total, 100 committed, 0 aborted, 0 timed out
+Avg latency (committed): 108.8 slots
+Energy profile: Listen=238867 Flood=54866 Sleep=0
+Recovery Events: NACKs=0 Piggybacks=0 CE_Timeouts=39710
+Exported: results/results_tom_ce.csv, results/snapshots_tom_ce.csv
+    results rows=100 snapshot rows=10879
+=== tom_ce_line_n27_loss05_seed37 ===
+Topology: n=27 edges=26 diameter=26 → results/topology.dot, results/topology.svg
+═══ Simulation Results ═══
+Proposals: 100 total, 100 committed, 0 aborted, 0 timed out
+Avg latency (committed): 108.2 slots
+Energy profile: Listen=238046 Flood=54067 Sleep=0
+Recovery Events: NACKs=0 Piggybacks=0 CE_Timeouts=39769
+Exported: results/results_tom_ce.csv, results/snapshots_tom_ce.csv
+    results rows=100 snapshot rows=10819

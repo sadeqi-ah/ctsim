@@ -1,0 +1,46 @@
+    Finished `release` profile [optimized] target(s) in 0.11s
+     Running unittests src/lib.rs (target/release/deps/ctsim-973b889214a8f21d)
+
+running 9 tests
+test network::tests::full_mesh_diameter_is_one ... ok
+test network::tests::line_diameter_is_n_minus_one ... ok
+test network::tests::grid_3x3_diameter_is_four ... ok
+test network::tests::star_diameter_is_two ... ok
+test network::tests::to_dot_contains_edges ... ok
+test node::tests::new_node_starts_listening ... ok
+test network::tests::seeded_partial_mesh_is_deterministic ... ok
+test network::tests::scale_free_is_deterministic_for_a_fixed_seed ... ok
+test node::tests::tick_increments_correct_counter ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/main.rs (target/release/deps/ctsim-776368cb1b825526)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/reproducibility.rs (target/release/deps/reproducibility-e02f75bb82b77457)
+
+running 3 tests
+test a_different_seed_changes_the_run_under_loss ... ok
+test every_example_makes_progress ... ok
+test same_seed_reproduces_every_example_exactly ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.06s
+
+     Running tests/validation.rs (target/release/deps/validation-5efcce25070eade1)
+
+running 3 tests
+test random_builders_are_connected_by_construction_not_by_degree ... ok
+test every_published_graph_is_connected ... ok
+test snapshot_series_accounts_for_every_ticked_slot ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.19s
+
+   Doc-tests ctsim
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+

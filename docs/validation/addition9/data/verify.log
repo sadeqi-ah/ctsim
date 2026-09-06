@@ -1,0 +1,17 @@
+protocol   seed   comm   t/o   abt  end_slot     sum_L run_avg_lat  sweep_avg     orphan
+paxos_ce   23      100     0     0     11393     11393  113.930000     113.93          0
+paxos_ce   37      100     0     0     11377     11377  113.770000     113.77          0
+2pc_ce     23       99     0     1     27078     26566  268.343434     268.34        512
+2pc_ce     37       99     0     1     26967     26455  267.222222     267.22        512
+tom_ce     23      100     0     0     10879     10879  108.790000     108.79          0
+tom_ce     37      100     0     0     10819     10819  108.190000     108.19          0
+
+outcome tallies per run:
+  paxos_ce   seed 23  {'committed': 100}
+  paxos_ce   seed 37  {'committed': 100}
+  2pc_ce     seed 23  {'committed': 99, 'aborted': 1}
+      id=23 start=5990 end=6502 latency=512 outcome=aborted
+  2pc_ce     seed 37  {'committed': 99, 'aborted': 1}
+      id=52 start=14183 end=14695 latency=512 outcome=aborted
+  tom_ce     seed 23  {'committed': 100}
+  tom_ce     seed 37  {'committed': 100}

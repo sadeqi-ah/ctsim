@@ -1,0 +1,18 @@
+# Addition 9: single-run reproduction of the sweep_topology.toml cell
+# (line, N=27, loss 0.05, 2pc_ce, seed 23).
+seed = 23
+phy_mode = "ce"
+protocol = "2pc_ce"
+num_proposals = 100
+snapshot_interval = 1
+max_slots = 100000
+abort_probability = 0.0
+
+[network]
+num_nodes = 27
+topology = "line"
+loss_rate = 0.05
+
+[ce]
+listen_timeout = 5
+max_round_slots = 512
