@@ -81,6 +81,8 @@
 \newcommand{\Cdepth}{\bar{C}}             % mean pipeline depth
 \newcommand{\Ece}{E_{\mathrm{CE}}}        % per-decision energy, CE
 \newcommand{\ReLI}{ReLI}                  % protocol name, kept upright
+\newcommand{\Send}{S_{\mathrm{end}}}      % slot of the last commit
+\newcommand{\Ssim}{S_{\mathrm{sim}}}      % total slots ticked
 % Placeholder for numbers that must come from the simulator run.
 % Grep for \TBD before submission -- none may remain.
 \newcommand{\TBD}[1]{\textbf{[TBD: #1]}}
@@ -157,11 +159,11 @@ format that combines a participation bitmap, cumulative commitment, and
 NACK-driven cascading recovery to keep several decisions in flight while
 preserving total order. Extensive slot-level simulation shows that the
 pipeline sustains, on average, about 12 concurrent proposals for Paxos and
-about 60 for 2PC, yielding up to 4x higher throughput and up to 8.2x better
-amortized per-decision energy efficiency than CE-based counterparts. We
+about 21 for 2PC, yielding up to 4x higher throughput and up to 5.7x better
+per-decision energy efficiency than CE-based counterparts. We
 further show that CE architectures obey a structural identity that locks
-per-decision energy to per-decision latency, validated within 1.5 percent
-across fifteen independent configurations, and that pipelining breaks this
+per-decision energy to per-decision latency, exactly and by construction, and
+that pipelining breaks this
 coupling and turns latency into a spendable design variable. Results hold
 across five topologies with diameters from 1 to 26, confirming that the
 effect is architectural rather than topological.
@@ -308,13 +310,13 @@ instant, 2PC commits without a coordinator and therefore never blocks,
 achieving 3PC-grade availability \cite{skeen81nonblocking} at 2PC message
 cost. Evaluating all six protocol--substrate combinations in a slot-level
 simulator, we find that the pipeline sustains about 12 concurrent proposals
-for Paxos and about 60 for 2PC, that this concurrency yields up to
-$4\times$ higher throughput and up to $8.2\times$ better amortized
+for Paxos and about 21 for 2PC, that this concurrency yields up to
+$4\times$ higher throughput and up to $5.7\times$ better
 per-decision energy, and---most importantly---that \CE{} architectures obey
-the identity $\Ece = \Nnodes L$, which holds within 1.5\% across fifteen
-independent measurements spanning a $26\times$ range of network diameters.
-Pipelining breaks that identity: across our \CI{} configurations,
-per-decision latency varies by roughly $76\times$ while amortized energy
+the identity $\Ece = \Nnodes L$, which holds exactly and by construction
+across fifteen independent measurements spanning a $26\times$ range of network
+diameters. Pipelining breaks that identity: across our \CI{} configurations,
+per-decision latency varies by roughly $27\times$ while per-decision energy
 varies by only about $1.3\times$. Latency stops being a proxy for energy
 and becomes a variable a designer can deliberately spend.
 
@@ -540,7 +542,7 @@ instance---but they relieve different bottlenecks, and only pipelining
 removes the one-decision-per-round constraint identified above.
 Section~\ref{sec:design} develops the mechanism, and
 Section~\ref{sec:results} reports the resulting depth: approximately 12
-concurrent proposals for Paxos and 60 for 2PC.
+concurrent proposals for Paxos and 21 for 2PC.
 
 Table~\ref{tab:ce-vs-ci} summarises the structural differences between the
 \CE-based architectures reviewed above and the approach proposed in this
@@ -1245,10 +1247,13 @@ pipelined system.
 radio was transmitting, receiving or listening. In low-power wireless,
 radio-on time is the dominant contributor to energy consumption, and the
 distribution of this quantity across nodes indicates how evenly that cost
-is borne. Section~\ref{sec:results} additionally derives a per-decision
-amortised form of this metric, which is the appropriate basis for
-comparing architectures that complete different numbers of decisions in
-the same interval.
+is borne. Two run lengths must be distinguished, because they differ whenever
+the pipeline drains. $\Send$ is the slot at which the last decision commits,
+and throughput and pipeline depth are per $\Send$; $\Ssim$ is the total number
+of slots ticked, and energy is per $\Ssim$. Under \CE{} the two coincide in
+every measurement reported here. Under \CI{} they differ by the drain tail,
+by $0.09\,\%$ for TOM, $1.70\,\%$ for Paxos and $3.41\,\%$ for 2PC at the
+reference point, reaching $23.4\,\%$ on a single seed.
 
 \item \textbf{Commit rate.} The fraction of the offered workload that
 reaches a definitive global decision. This metric exposes the robustness
@@ -1294,8 +1299,8 @@ that the design predicts independently of any measurement. Observed round
 lengths must equal $\Diam + \Nretx$ slots for every topology, per
 Equation~\eqref{eq:round}; the radio-on cost of the baseline must satisfy
 the identity $\Ece = \Nnodes \cdot \Lround$ of
-Equation~\eqref{eq:ece}, which Section~\ref{sec:results} confirms to
-within 1.5\,\% across fifteen configurations; per-node radio state
+Equation~\eqref{eq:ece}, which Section~\ref{sec:results} confirms exactly
+across fifteen configurations; per-node radio state
 counters must sum to the aggregate energy totals; and no decision may be
 reported as committed unless the corresponding quorum condition is
 satisfied in the recorded bitmaps. These are necessary conditions, and we
@@ -1435,7 +1440,7 @@ Sleep = total node sleep slots.}
 \midrule
 TOM (\CI)   & 100.0 & 0.2132 & 4.7   & 88.0  & 2.429 & 3900 \\
 Paxos (\CI) & 100.0 & 0.1903 & 61.4  & 100.2 & 1.906 & 4434 \\
-2PC (\CI)   & 98.9  & 0.1681 & 357.7 & 115.8 & 1.463 & 5034 \\
+2PC (\CI)   & 98.9  & 0.1681 & 126.8 & 115.8 & 1.463 & 5034 \\
 \addlinespace
 TOM (\CE)   & 100.0 & 0.2143 & 4.7   & 126.3 & 1.705 & 0 \\
 Paxos (\CE) & 100.0 & 0.0704 & 14.2  & 383.6 & 0.184 & 0 \\
@@ -1457,7 +1462,7 @@ all node-slots asleep. This is Equation~\eqref{eq:ece} made visible.
 
 For the vote-based protocols the pattern differs. The \CI{} variants are
 far ahead on throughput and efficiency despite latencies several times
-higher: 2PC over \CI{} takes 357.7 slots per decision against 24.3 for
+higher: 2PC over \CI{} takes 126.8 slots per decision against 24.3 for
 its \CE{} counterpart, yet delivers more than four times the throughput
 and more than twenty times the efficiency. The commit-rate column shows
 that at this operating point the architectural difference does not
@@ -1809,8 +1814,8 @@ Paxos (\CE) & 0.0704 & 14.2  & 1.00 \\
 2PC (\CE)   & 0.0412 & 24.3  & 1.00 \\
 \addlinespace
 TOM (\CI)   & 0.2132 & 4.7   & 1.00 \\
-Paxos (\CI) & 0.1903 & 61.4  & 11.7 \\
-2PC (\CI)   & 0.1681 & 357.7 & 60.1 \\
+Paxos (\CI) & 0.1903 & 61.4  & 11.66 \\
+2PC (\CI)   & 0.1681 & 126.8 & 21.25 \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -1824,9 +1829,9 @@ identity derived below.
 
 Second, the informal claim of overlap becomes a specific number: Paxos
 over \CI{} keeps about twelve proposals in flight on average and 2PC over
-\CI{} about sixty. This is precisely how 2PC over \CI{} sustains a
+\CI{} about twenty-one. This is precisely how 2PC over \CI{} sustains a
 throughput of 0.168 decisions per slot while each individual decision
-takes 358 slots---the high latency is not slowness but the consequence of
+takes 127 slots---the high latency is not slowness but the consequence of
 each decision spending most of its life alongside dozens of others. It
 also explains why 2PC runs deeper than Paxos: the longer waiting window
 imposed by unanimity accumulates more proposals in the system
@@ -1874,11 +1879,12 @@ architecture consumes less energy at no cost in speed.
 
 A fair accounting of energy under high offered load must take into account
 that in the pipelined architecture several decisions are in flight at
-once, as Table~\ref{tab:depth} has just quantified. Conventional
-radio-on accounting double-counts in this situation: a slot of radio
-activity that simultaneously serves sixty proposals must not be charged
-sixty times at full cost. We therefore define the amortised per-decision
-energy. For each successful proposal $i$ with lifetime $[s_i, e_i)$,
+once, as Table~\ref{tab:depth} has just quantified. Alongside the cumulative
+metric we therefore also decompose the radio cost across the decisions that
+were in flight when it was incurred. This decomposition is not the basis of
+any ratio reported in this paper; it exists to give the per-decision
+\emph{distributions} below. For each
+successful proposal $i$ with lifetime $[s_i, e_i)$,
 
 \begin{equation}
 \label{eq:amortized}
@@ -1896,15 +1902,16 @@ Before turning to numbers, one structural property of the baseline
 deserves attention, because it is the key to reading every result in this
 subsection. Two conditions hold simultaneously in the \CE{} protocols.
 Processing is strictly sequential, so at most one proposal is in flight
-and $C_t \equiv 1$---an assumption Table~\ref{tab:depth} has now confirmed
-empirically to two decimal places. And the radio of every node stays on
+and $C_t \equiv 1$---which is structural under \CE{} rather than measured.
+And the radio of every node stays on
 for the whole round and never sleeps, so $A_t = \Nnodes$, which the zero
 Sleep column of Table~\ref{tab:baseline} confirms for all three \CE{}
 combinations. Substituting both conditions into
-Equation~\eqref{eq:amortized} collapses the per-decision energy of the
-baseline onto exactly the ceiling anticipated analytically in
+both energy definitions collapse the per-decision energy of the baseline
+onto exactly the ceiling anticipated analytically in
 Equation~\eqref{eq:ece}, with $\Lround$ instantiated as the latency of the
-decision.
+decision; under \CE{} the cumulative and decomposed accounts coincide, so the
+ceiling does not depend on which of the two is used.
 
 This is not an empirical fit but a direct consequence of the structure of
 the baseline, and the measurements confirm it closely: for TOM,
@@ -1941,17 +1948,14 @@ concurrency. Unlike the first, this definition produces a
 distributional views below require.
 
 The relationship between the two is instructively architecture-dependent.
-Under \CE, strict sequentiality means that in practice no slot falls
-outside the lifetime of some active proposal, so the two metrics coincide
-and both reduce to $\Nnodes \cdot L$. Under \CI, the amortised metric is
-systematically smaller than the cumulative one---for TOM, roughly 59
-against 88---because it does not charge the decisions for the slots spent
-filling the pipeline at the start of the run and draining it at the end.
-\textbf{The gap between the two metrics under \CI{} is itself a measure of
-the fixed overhead of the pipeline}, and it shrinks for larger workloads,
-over which that overhead is amortised across more decisions. Under either
-definition the relative ordering of the combinations is the same and the
-qualitative conclusions of this paper are unaffected.
+Under \CE, strict sequentiality means that no slot falls outside the lifetime
+of some active proposal, so the two coincide and both reduce to
+$\Nnodes \cdot L$; this was verified on every one of the 4500 \CE{} decisions
+measured. Under \CI{} the decomposition is smaller than the cumulative metric,
+because it does not charge the decisions for the slots after the last one
+commits. The gap is small and it is not a fixed overhead: $0.08\,\%$ of the
+radio cost for TOM, $1.66\,\%$ for Paxos and $4.57\,\%$ for 2PC. All ratios
+reported in this paper are cumulative, so no result depends on that gap.
 
 \subsubsection{The magnitude of the reduction}
 
@@ -1965,22 +1969,24 @@ qualitative conclusions of this paper are unaffected.
 % \label{fig:energy-mean}
 % \end{figure}
 
-Under the amortised criterion, the pipeline reduces the energy required
+Under the cumulative criterion, the pipeline reduces the energy required
 per final decision, relative to sequential execution of the same protocol
-on the same workload, by a factor of about 5.4 for Paxos and about 8.2 for
-2PC.
+on the same workload, by a factor of $3.83 \pm 0.07$ for Paxos and
+$5.67 \pm 0.27$ for 2PC (95\,\% intervals over fifteen seeds).
 
-The ascending order of these ratios---about 2.1 for TOM, 5.4 for Paxos and
-8.2 for 2PC---is informative in itself, and it tracks the depth column of
-Table~\ref{tab:depth} exactly. The heavier the protocol and the longer its
-waiting window, the more proposals accumulate in the pipeline
-simultaneously and the larger the contribution of amortisation to the
-saving. At the low end of that spectrum sits TOM with unit depth, where
-amortisation contributes nothing at all and the 2.1-fold saving arises
-\textbf{entirely from duty cycling}. The number 2.1 therefore marks the
-floor of the saving offered by the \CI{} architecture---the part available
-even in the complete absence of concurrency---and the distance from there
-to 8.2 under 2PC is the additional contribution of amortisation.
+The ascending order of these ratios---$1.43 \pm 0.02$ for TOM, $3.83$ for
+Paxos and $5.67$ for 2PC---is informative in itself. The heavier the protocol
+and the longer its waiting window, the more slots each decision occupies and
+the deeper the pipeline runs. At the low end of that spectrum sits TOM with
+unit depth, where the $1.43$-fold saving arises \textbf{entirely from duty
+cycling}: the measured radio duty cycle of $0.69$ predicts $1/0.69 = 1.443$,
+which accounts for the measured ratio to within $0.6\,\%$. The number $1.43$
+therefore marks the floor of the saving offered by the \CI{} architecture---the
+part available even in the complete absence of concurrency. The rise from there
+to $5.67$ under 2PC is not proposal sharing, which accounts for $1.6\,\%$ of
+it; it is the number of slots a decision occupies, measured as total simulated
+slots per committed decision and summed over seeds, which runs from $4.70$ to
+$6.17$ under \CI{} against $4.68$ to $24.34$ under \CE.
 
 It must be stressed that this advantage is \textbf{intra-protocol} and
 does not amount to a claim that \CI{} dominates \CE{} across protocols.
@@ -2000,25 +2006,32 @@ protocol cannot be compensated for by pipelining alone.
 % \label{fig:energy-box}
 % \end{figure}
 
-The distributional view adds two further observations. First, Paxos and
-2PC over \CE{} not only have higher means, their boxes sit at a height
-entirely disjoint from the \CI{} family: the \emph{most} expensive
-decision under \CI---including its outliers---is still cheaper than the
-\emph{least} expensive decision under Paxos over \CE. TOM over \CE{}
-occupies an intermediate position, its median near 127, above all three
-\CI{} combinations but far below the two vote-based \CE{} protocols.
+The distributional view adds two further observations. First, the \CI{} and
+the vote-based \CE{} families occupy separate regions of the cost axis: the
+upper quartile of the pooled \CI{} decisions lies at 94.5 node-slots and the
+lower quartile of Paxos over \CE{} at 351, a factor of $3.7$ apart with no
+interquartile overlap, and the $99$th percentile of the pooled \CI{}
+decisions, 269.9, still lies below the $1$st percentile of Paxos over \CE,
+324.0. The extreme tails do meet---the most expensive \CI{} decision observed
+costs 369.3 against 297.0 for the cheapest Paxos decision over \CE---so the
+separation is a statement about the bulk of the distributions and not about
+their extremes. TOM over \CE{} occupies an intermediate position, its median
+decision costing 135 node-slots, above every \CI{} median and far below the
+two vote-based \CE{} protocols; that median is exactly $\Nnodes$ times the
+median \CE{} latency of 5 slots.
 
-Second, the spread of 2PC over \CI{} is noticeably larger than that of the
-other \CI{} combinations, with a wide interquartile range. This is not a
-defect but a direct reflection of the amortisation mechanism. Proposals in
-flight in the middle of the run, at peak pipeline saturation, divide their
-cost among dozens of parallel transactions and end up very cheap---so much
-so that the cheapest 2PC decisions under \CI{} cost less than the median
-TOM decision under \CI---whereas proposals at the beginning and end of the
-run, during fill and drain, find less concurrency to share with and end up
-more expensive. The width of that box therefore traces the operating range
-over which the pipeline is effective, and its upper outliers are the cost
-of the transient phases.
+Second, the three \CI{} combinations are ordered by median cost---87.0 for
+TOM, 89.0 for Paxos, 90.6 for 2PC---while their concurrency spans a factor of
+twenty-one, and the cost of that concurrency lands in the upper tail rather
+than in the box: the $99$th percentiles run 109.0, 269.5 and 334.5. The three
+distributions interleave at the bottom, the $1$st percentile of 2PC over \CI{}
+at 83.5 falling inside the interquartile range of TOM, and separate at the top.
+Spread is not monotone in concurrency---Paxos carries eleven times TOM's
+concurrency in a narrower interquartile range, 7.2 against 9.0---so it is the
+median and the upper percentile, not the width of the box, that measure what
+the pipeline costs. This is the decoupling in its per-decision form: mean
+concurrency rises from 1.00 to 20.84 while the median cost of a decision rises
+by $4.2\,\%$.
 
 % NOTE: the separate energy-histogram float was removed during figure
 % consolidation. The multimodal structure it showed is described in the
@@ -2028,8 +2041,8 @@ of the transient phases.
 A frequency view of the same data brings out the multimodal structure of
 the distribution: the bulk of the \CI{} decisions falls in the cheapest
 bins, below 100; TOM over \CE{} sits coherently between 100 and 150; and
-Paxos and 2PC over \CE{} lie entirely in the expensive bins above 300,
-with no overlap at all with the \CI{} family.
+Paxos and 2PC over \CE{} lie in the expensive bins above 300, with less than
+$1\,\%$ of the \CI{} family overlapping them.
 
 \subsubsection{Divergence of latency and energy}
 
@@ -2060,8 +2073,8 @@ Table~\ref{tab:escape} quantifies the effect.
 
 \begin{table}[!t]
 \caption{Distance of the pipelined combinations from the structural
-energy ceiling of the baseline. Energy values use the amortised metric of
-Equation~\eqref{eq:amortized}.}
+energy ceiling of the baseline. Energy is cumulative per-decision energy
+averaged over fifteen seeds.}
 \label{tab:escape}
 \centering
 \footnotesize
@@ -2072,24 +2085,24 @@ Equation~\eqref{eq:amortized}.}
 \textbf{Amortised $E$} & \textbf{Ceiling $\Nnodes L$} &
 \textbf{Escape} \\
 \midrule
-TOM (\CI)   & 4.7   & $\approx 59$ & 127  & $\approx 2\times$ \\
-Paxos (\CI) & 61.4  & $\approx 69$ & 1658 & $\approx 24\times$ \\
-2PC (\CI)   & 357.7 & $\approx 78$ & 9658 & $\approx 124\times$ \\
+TOM (\CI)   & 4.7   & 88.0  & 127  & $1.4\times$ \\
+Paxos (\CI) & 61.4  & 100.2 & 1658 & $16.5\times$ \\
+2PC (\CI)   & 126.8 & 115.8 & 3424 & $29.6\times$ \\
 \bottomrule
 \end{tabular}
 \end{table}
 
 The central observation is that between TOM and 2PC over \CI{} the latency
-column grows by roughly \textbf{76 times} while the amortised energy
+column grows by roughly \textbf{27 times} while the energy
 column grows by only about \textbf{1.3 times}. In the pipelined
 architecture, in other words, energy is very nearly
 \textbf{independent of latency}. 2PC over \CI{} is the extreme case: it
-sits at the far right of the plane, with a latency approaching four
-hundred slots, yet its energy per decision remains at the level of TOM,
+sits at the far right of the plane, with a latency of about one hundred and
+thirty slots, yet its energy per decision remains at the level of TOM,
 the lightest protocol in the system. The reason has already been
 quantified: the high latency of 2PC over \CI{} is not slowness but the
 fact that each decision spent that entire interval in flight alongside
-some sixty others, sharing the radio cost of every slot with them.
+some twenty others, sharing the radio cost of every slot with them.
 
 This reframes the trade-off that is conventionally assumed in low-power
 networking. The usual expectation is that reducing latency and reducing
@@ -2187,14 +2200,14 @@ possible to separate the effect of \emph{diameter} from the effect of
 \emph{connectivity structure}---an experiment that yields an unexpected
 result below.
 
-One remark on the energy metric is needed before the results. This
-subsection uses the \emph{cumulative} metric of
+One remark on the energy metric is needed before the results. Every energy
+ratio in this paper, here and above, is the \emph{cumulative} metric of
 Section~\ref{sec:results-energy}, the same quantity reported in
-Table~\ref{tab:baseline}. The ratios quoted earlier were based on the
-\emph{amortised} metric of Equation~\eqref{eq:amortized} and are therefore
-larger. As established there, the two metrics coincide under \CE{} and
-differ under \CI{} by the fixed overhead of the pipeline; the relative
-ordering of the combinations is the same under either.
+Table~\ref{tab:baseline}. The per-decision decomposition of
+Equation~\eqref{eq:amortized} is used only for the per-decision
+distributions of Section~\ref{sec:results-energy}; it is smaller than the cumulative
+metric by $0.08\,\%$ for TOM, $1.66\,\%$ for Paxos and $4.57\,\%$ for 2PC,
+and no ratio reported anywhere in this paper is corrected by it.
 
 \subsubsection{Effect of diameter: who benefits from a better network?}
 
@@ -2291,69 +2304,40 @@ topology but a structural property.
 
 Equation~\eqref{eq:ece} claims that under \CE{} the energy of a decision
 is exactly the product of the network size and the latency of that
-decision. So far that claim has been tested on one topology.
-Table~\ref{tab:identity} now confronts it with fifteen independent
-cases---three \CE{} protocols on five topologies---across which the
-diameter varies by a factor of twenty-six and the energy per decision by
-more than a factor of forty.
+decision. The claim is not open to measurement error: if the radio never
+sleeps, each of the $\Nnodes$ nodes is awake in each of the $L$ slots a
+decision occupies, so the product is what the accounting computes. What can be
+checked is the instrument, and it holds throughout the topology space---three
+\CE{} protocols on five topologies, a twenty-six-fold range of diameter and a
+ninety-sevenfold range of energy per decision.
 
-\begin{table*}[!t]
-\caption{Validation of the identity $\Ece = \Nnodes L$ across the topology
-space ($\Nnodes = 27$ throughout, 5\,\% loss, 100 proposals, fifteen
-seeds). Latency and energy are per decision and are reported in slots and
-in node-slots of radio-on time respectively; the two are measured
-independently, $L$ from the slot counter and $\Ece$ from the per-node radio
-state log. Diameters are the modal values of the generated instances
-(Table~\ref{tab:topologies}).}
-\label{tab:identity}
-\centering
-\small
-\begin{tabular}{@{}lclrrrr@{}}
-\toprule
-\textbf{Topology} & \textbf{Diameter} & \textbf{Protocol} &
-\textbf{Latency $L$} & \textbf{Predicted $\Nnodes L$} &
-\textbf{Measured $\Ece$} & \textbf{Error} \\
-\midrule
-Full mesh    & 1  & TOM   & 2.738   & 73.926   & 73.926   & $<10^{-12}$ \\
-             &    & Paxos & 15.277  & 412.470  & 412.470  & $<10^{-12}$ \\
-             &    & 2PC   & 30.899  & 834.264  & 834.264  & $<10^{-12}$ \\
-\addlinespace
-Partial mesh & 3  & TOM   & 3.406   & 91.962   & 91.962   & $<10^{-12}$ \\
-             &    & Paxos & 12.499  & 337.482  & 337.482  & $<10^{-12}$ \\
-             &    & 2PC   & 23.225  & 627.066  & 627.066  & $<10^{-12}$ \\
-\addlinespace
-Random       & 4  & TOM   & 4.676   & 126.252  & 126.252  & $<10^{-12}$ \\
-             &    & Paxos & 14.207  & 383.598  & 383.598  & $<10^{-12}$ \\
-             &    & 2PC   & 24.335  & 657.054  & 657.054  & $<10^{-12}$ \\
-\addlinespace
-Scale-free   & 4  & TOM   & 4.614   & 124.578  & 124.578  & $<10^{-12}$ \\
-             &    & Paxos & 15.899  & 429.282  & 429.282  & $<10^{-12}$ \\
-             &    & 2PC   & 33.315  & 899.496  & 899.496  & $<10^{-12}$ \\
-\addlinespace
-Line         & 26 & TOM   & 108.001 & 2916.018 & 2916.018 & $<10^{-12}$ \\
-             &    & Paxos & 114.409 & 3089.034 & 3089.034 & $<10^{-12}$ \\
-             &    & 2PC   & 266.331 & 7190.926 & 7190.926 & $<10^{-12}$ \\
-\bottomrule
-\end{tabular}
-\end{table*}
+The check is on the instrument rather than on the arithmetic: the per-node
+radio counters sum to $\Nnodes$ times the slots ticked in all $2250$ runs of
+the study, and measured energy per decision agrees with $\Nnodes \cdot L$ to
+the last bit the simulator represents. The identity is moreover visible per
+decision and not only in aggregate: every one of the $4500$ \CE{} per-decision
+energies measured at the reference point is an integer multiple of $\Nnodes$,
+so the \CE{} per-decision energy distribution is the latency distribution
+rescaled by $\Nnodes$. No \CI{} arm has that property---the per-decision
+energies of Paxos and 2PC over \CI{} are in general not integers, because a
+slot shared between $k$ decisions contributes $1/k$ to each.
 
-The two independently measured quantities agree in all fifteen cases to the
-full precision the simulator records. Exactness here is expected rather than
-surprising, and that is the point: if the radio never sleeps, each of the
-$\Nnodes$ nodes is awake in each of the $L$ slots that a decision occupies, so
-the identity is a property of the architecture and the table is a check that
-the energy accounting contains no leak anywhere in the space. What the check
-licenses is the stronger reading. It establishes $\Ece = \Nnodes L$ as a
-\textbf{structural law} of the \CE{} architecture: as long as the
-communication mechanism is sequential and the radio never sleeps, the energy
-of a decision is locked to its latency regardless of the structure of the
-network, and the designer has no lever at all---neither a better topology nor
-a different protocol---with which to break that coupling. Every departure
-from the law is then attributable to sleep alone, and the size of the
+What the check licenses is the stronger reading. It establishes
+$\Ece = \Nnodes L$ as a \textbf{structural law} of the \CE{} architecture: as
+long as the communication mechanism is sequential and the radio never sleeps,
+the energy of a decision is locked to its latency regardless of the structure
+of the network, and the designer has no lever at all---neither a better
+topology nor a different protocol---with which to break that coupling. Every
+departure from the law is then attributable to sleep alone, and the size of the
 departure measures what pipelining buys: under \CI{} the same accounting
 falls short of $\Nnodes L$ by between 22 and 31\,\% on the dense topologies,
 which is exactly the fraction of node-slots those protocols spend with the
-radio off.
+radio off. The one departure visible in the \CE{} measurements themselves is
+not energy at all: where a configuration leaves a proposal uncommitted, energy
+per decision exceeds $\Nnodes \bar{L}$ by $1/d - 1$, where $d$ is the measured
+pipeline depth. That residual is zero to machine precision in fourteen of the
+fifteen groups and reaches $1.94\,\%$ on a single seed of 2PC over \CE{} on the
+line topology, where two of the fifteen seeds commit 99 proposals of 100.
 
 On the other side, the \CI{} architecture consumes less energy than its
 \CE{} counterpart for all three protocols on all five topologies. The
@@ -2370,10 +2354,10 @@ topologies produces what may be the most important finding of this
 subsection. Across the four dense topologies the diameter varies by a
 factor of four and throughput by a factor of about 1.7, yet
 \textbf{the pipeline depth remains effectively unchanged}: TOM over \CI{}
-stays at unity, Paxos over \CI{} at about 11.7 and 2PC over \CI{} at about
-sixty in every case.
+stays at unity, Paxos over \CI{} at about 11.6 and 2PC over \CI{} at about
+twenty-one in every case.
 
-This invariance shows that the amortisation factor is an
+This invariance shows that the pipeline depth is an
 \emph{architectural design parameter} and not a network accident. The
 pipeline structurally holds a certain number of proposals in flight, and
 the topology determines only how long each of them takes---not how many
@@ -2428,7 +2412,7 @@ per-seed relative differences.}
 \midrule
 TOM (\CI)   & 0.2197 & $+3.0$\,\%  & 4.6   & $-2.8$\,\%  \\
 Paxos (\CI) & 0.1958 & $+2.9$\,\%  & 59.6  & $-2.9$\,\%  \\
-2PC (\CI)   & 0.1682 & $+0.1$\,\%  & 350.0 & $-2.2$\,\%  \\
+2PC (\CI)   & 0.1682 & $+0.1$\,\%  & 124.7 & $-1.6$\,\%  \\
 TOM (\CE)   & 0.2170 & $+1.3$\,\%  & 4.6   & $-1.3$\,\%  \\
 \addlinespace
 Paxos (\CE) & 0.0629 & $-10.7$\,\% & 15.9  & $+11.9$\,\% \\
@@ -2563,7 +2547,7 @@ misleading: all three pipelined protocols finish the workload before
 either vote-based \CE{} protocol.
 
 The underlying mechanism was quantified by Little's law: the pipeline
-holds about twelve proposals in flight under Paxos and about sixty under
+holds about twelve proposals in flight under Paxos and about twenty-one under
 2PC, while all three \CE{} protocols are confined to unit depth. That
 concurrency, together with the ability to sleep the radio, reduces the
 energy per decision substantially and---more importantly---breaks the
@@ -2571,8 +2555,8 @@ structural coupling between latency and energy that is unavoidable in the
 baseline architecture.
 
 The generalisation study shows that these results do not depend on a
-particular network. The identity $\Ece = \Nnodes L$ holds to better than
-1.5\,\% in fifteen independent cases spanning a twenty-six-fold range of
+particular network. The identity $\Ece = \Nnodes L$ holds exactly in fifteen
+independent cases spanning a twenty-six-fold range of
 diameter, and the pipeline depth is effectively constant across the four
 dense topologies, so the mechanism that produces the energy saving is
 architectural rather than topological. Two complementary findings show
@@ -2616,7 +2600,7 @@ once while a total order over them is still guaranteed.
 
 The evaluation carries three messages. First, the pipeline produces real
 and measurable concurrency---on average twelve simultaneous proposals for
-Paxos and sixty for 2PC---and that concurrency raises throughput by up to
+Paxos and twenty-one for 2PC---and that concurrency raises throughput by up to
 a factor of four and shortens workload completion by a larger factor
 still, relative to the strongest baseline competitor. Second, under \CE{}
 the energy of a decision is structurally locked to its latency,
