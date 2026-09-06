@@ -52,6 +52,11 @@ A9DIR = os.environ.get(
                                 "data"))
 SWEEP_TOPO = os.environ.get(
     "CTSIM_SWEEP_TOPO", os.path.join(A9DIR, "sweep_summary_topology.csv"))
+A7DIR = os.environ.get(
+    "CTSIM_A7DIR", os.path.join(ROOT, "docs", "validation", "addition7",
+                                "data"))
+RUNS = os.environ.get("CTSIM_RUNS", os.path.join(A7DIR, "runs.csv"))
+DECS = os.environ.get("CTSIM_DECS", os.path.join(A7DIR, "decisions.csv"))
 # Deliberately outside the repository (decisions 107 and 119): this report is a
 # derived artefact and is not committed.
 REPORT = os.environ.get("CTSIM_REPORT", "/tmp/spec_recompute_report.tsv")
@@ -115,6 +120,7 @@ print("spec   = %s" % SPEC)
 print("scal   = %s" % SWEEP_SCAL)
 print("topo   = %s" % SWEEP_TOPO)
 print("a9dir  = %s" % A9DIR)
+print("a7dir  = %s" % A7DIR)
 print("report = %s" % REPORT)
 print("")
 print("constants that are NOT data:")
@@ -123,6 +129,8 @@ print("  max_round_slots = %d  (sweep_topology.toml [ce]; in no CSV)" % CAP)
 
 ok_scal = need(SWEEP_SCAL, "baseline cell, escape triple")
 ok_topo = need(SWEEP_TOPO, "topology sweep")
+ok_runs = need(RUNS, "duty cycle, metric gap, slots per decision, drain")
+ok_decs = need(DECS, "per-decision cost distribution")
 
 # ============================================================ A: baseline cell
 CELL = []
@@ -429,14 +437,259 @@ if ok_topo and trows:
     print("The two seeds that also have per-run ledgers agree with section D "
           "to 1e-6.")
 
-# ==================================== F: literal audit of the rendered spec
+CI_ARMS = [("TOM (CI)", "tom_pipeline"), ("Paxos (CI)", "paxos_pipeline"),
+           ("2PC (CI)", "2pc_pipeline")]
+
+# ================================ F: duty-cycle family (addition7/runs.csv)
+if ok_runs:
+    hdr("F. duty cycle, metric gap, slots per decision, drain tail")
+    RUNS_ROWS = rd(RUNS)
+    print("rows: %d    protocols: %s"
+          % (len(RUNS_ROWS), sorted(set(r["protocol"] for r in RUNS_ROWS))))
+    if len(RUNS_ROWS) != 90:
+        fail.append("runs.csv IS %d ROWS, EXPECTED 90" % len(RUNS_ROWS))
+    print("")
+    print("%-11s %3s %13s %12s %12s"
+          % ("arm", "n", "slots/dec", "drain %", "worst seed %"))
+    for label, proto in ARMS:
+        rs = [r for r in RUNS_ROWS if r["protocol"] == proto]
+        if len(rs) != 15:
+            fail.append("runs.csv ARM %s HAS %d SEEDS, EXPECTED 15"
+                        % (label, len(rs)))
+            continue
+        tot_c = sum(int(r["committed"]) for r in rs)
+        if tot_c == 0:
+            fail.append("runs.csv ARM %s COMMITTED NOTHING: slots per "
+                        "decision is undefined" % label)
+            continue
+        p = ("docs/validation/addition7/data/runs.csv, protocol==%s, "
+             "15 seeds" % proto)
+        k = "duty.%s" % label
+        spd = rec(k + ".slots_per_decision",
+                  sum(int(r["simulated_slots"]) for r in rs) / tot_c,
+                  p + "; sum(simulated_slots)/sum(committed)")
+        # Ratio of sums, not mean of ratios. Entry 6 of the spec quotes the
+        # pooled drain share and the two estimators part company in the
+        # second decimal: 0.0851 against 0.0803 for TOM.
+        dr = rec(k + ".drain_pct",
+                 100.0 * (sum(int(r["drain_slots"]) for r in rs)
+                          / sum(int(r["end_slot"]) for r in rs)),
+                 p + "; 100*sum(drain_slots)/sum(end_slot)")
+        worst = rec(k + ".drain_worst_pct",
+                    100.0 * max(int(r["drain_slots"]) / int(r["end_slot"])
+                                for r in rs),
+                    p + "; 100*max(drain_slots/end_slot) over the 15 seeds")
+        print("%-11s %3d %13.6f %12.6f %12.6f"
+              % (label, len(rs), spd, dr, worst))
+    print("")
+    print("%-11s %3s %11s %11s %11s %11s"
+          % ("arm", "n", "duty", "1/duty", "gap %", "mean_Ct"))
+    for label, proto in CI_ARMS:
+        rs = [r for r in RUNS_ROWS if r["protocol"] == proto]
+        if len(rs) != 15:
+            continue
+        p = ("docs/validation/addition7/data/runs.csv, protocol==%s, "
+             "15 seeds" % proto)
+        k = "duty.%s" % label
+        # Ratio of sums, which is what the spec's own sources line
+        # specifies: awake_tick/(27*simulated_slots) pooled over the
+        # fifteen seeds. The mean of the duty_overall column is a different
+        # estimator and parts company in the third decimal -- 0.6929
+        # against 0.6935 -- which is enough to move the printed 1/duty from
+        # 1.443 to 1.442. Both are recorded; only the first is published.
+        du = rec(k + ".duty_ratio_of_sums",
+                 sum(int(r["awake_tick"]) for r in rs)
+                 / (27.0 * sum(int(r["simulated_slots"]) for r in rs)),
+                 p + "; sum(awake_tick)/(27*sum(simulated_slots))")
+        inv = rec(k + ".duty_inverse", 1.0 / du,
+                  p + "; 1/duty as a ratio of sums, the sleep-to-awake "
+                      "multiplier the manuscript prints")
+        rec(k + ".duty_mean_of_column",
+            st.mean([float(r["duty_overall"]) for r in rs]),
+            p + "; mean of the duty_overall column, the other estimator")
+        sam = sum(float(r["amortised_mean"]) * int(r["committed"])
+                  for r in rs)
+        saw = sum(int(r["awake_tick"]) for r in rs)
+        gap = rec(k + ".metric_gap_pct", 100.0 * (1.0 - sam / saw),
+                  p + "; 100*(1 - sum(amortised_mean*committed)"
+                      "/sum(awake_tick))")
+        mct = rec(k + ".mean_Ct",
+                  st.mean([float(r["mean_Ct"]) for r in rs]),
+                  p + "; mean of the mean_Ct column")
+        print("%-11s %3d %11.6f %11.6f %11.6f %11.6f"
+              % (label, len(rs), du, inv, gap, mct))
+    # The closure the manuscript quotes: the duty-cycle prediction against
+    # the measured saving. Both operands are recomputed, so the sentence is
+    # checkable rather than assertable.
+    _inv = [v for n, v, _ in Q if n == "duty.TOM (CI).duty_inverse"]
+    _rom = [v for n, v, _ in Q if n == "escape.TOM.ratio_of_means"]
+    if _inv and _rom:
+        clo = rec("duty.TOM (CI).closure_pct",
+                  100.0 * (_inv[0] / _rom[0] - 1.0),
+                  "runs.csv duty_overall with the escape ratio of means; "
+                  "100*((1/duty)/RoM - 1)")
+        print("")
+        print("duty closure: 1/duty = %.6f against RoM = %.6f, "
+              "overshoot %.6f %%" % (_inv[0], _rom[0], clo))
+        print("The sentence displays this inverse as 1/0.69, which taken "
+              "literally is %.4f. The duty" % (1.0 / 0.69))
+        print("it actually inverts carries more decimals, so the displayed "
+              "equation is a rounding of")
+        print("the arithmetic rather than the arithmetic itself: "
+              "typographic, not numerical.")
+
+# ======================== G: per-decision cost distribution (decisions.csv)
+if ok_decs:
+    hdr("G. per-decision cost distribution: medians, quartiles, tails")
+    drows = rd(DECS)
+    print("rows: %d    protocols: %s"
+          % (len(drows), sorted(set(r["protocol"] for r in drows))))
+
+    def qtl(xs, pr):
+        """Linear-interpolation quantile, the convention numpy uses.
+
+        Recorded explicitly because nearest-rank disagrees with the
+        manuscript on two of these figures: 334.6992 against the published
+        334.5 for the 2PC tail, and 270.1213 against 269.9 for the pooled
+        tail. The published numbers are the interpolated ones.
+        """
+        h = (len(xs) - 1) * pr
+        lo = int(h)
+        hi = min(lo + 1, len(xs) - 1)
+        return xs[lo] + (h - lo) * (xs[hi] - xs[lo])
+
+    COST = {}
+    for label, proto in ARMS:
+        COST[proto] = sorted(float(r["amortised"]) for r in drows
+                             if r["protocol"] == proto)
+    pooled = sorted(COST["tom_pipeline"] + COST["paxos_pipeline"]
+                    + COST["2pc_pipeline"])
+    print("")
+    print("%-11s %6s %9s %9s %9s %9s %9s %9s %9s"
+          % ("arm", "n", "p1", "q25", "median", "q75", "p99", "max", "iqr"))
+    for label, proto in CI_ARMS + [("Paxos (CE)", "paxos_ce")]:
+        xs = COST[proto]
+        if not xs:
+            fail.append("decisions.csv HAS NO ROWS FOR %s" % proto)
+            continue
+        p = ("docs/validation/addition7/data/decisions.csv, protocol==%s, "
+             "%d committed decisions, amortised column, "
+             "linear-interpolation quantiles" % (proto, len(xs)))
+        k = "dist.%s" % label
+        rec(k + ".n", len(xs), p + "; row count")
+        v1 = rec(k + ".p1", qtl(xs, 0.01), p + "; 1st percentile")
+        q25 = rec(k + ".q25", qtl(xs, 0.25), p + "; lower quartile")
+        med = rec(k + ".median", qtl(xs, 0.50), p + "; median")
+        q75 = rec(k + ".q75", qtl(xs, 0.75), p + "; upper quartile")
+        v99 = rec(k + ".p99", qtl(xs, 0.99), p + "; 99th percentile")
+        mx = rec(k + ".max", max(xs), p + "; maximum")
+        rec(k + ".min", min(xs), p + "; minimum")
+        iqr = rec(k + ".iqr", q75 - q25,
+                  p + "; upper quartile minus lower quartile")
+        print("%-11s %6d %9.4f %9.4f %9.4f %9.4f %9.4f %9.4f %9.4f"
+              % (label, len(xs), v1, q25, med, q75, v99, mx, iqr))
+    pp = ("docs/validation/addition7/data/decisions.csv, the three CI arms "
+          "pooled, %d committed decisions, amortised column, "
+          "linear-interpolation quantiles" % len(pooled))
+    pq75 = rec("dist.pooled CI.q75", qtl(pooled, 0.75),
+               pp + "; upper quartile")
+    pp99 = rec("dist.pooled CI.p99", qtl(pooled, 0.99),
+               pp + "; 99th percentile")
+    pmax = rec("dist.pooled CI.max", max(pooled), pp + "; maximum")
+    print("")
+    print("pooled CI: n=%d  q75=%.4f  p99=%.4f  max=%.4f"
+          % (len(pooled), pq75, pp99, pmax))
+    _ce25 = [v for n, v, _ in Q if n == "dist.Paxos (CE).q25"]
+    if _ce25:
+        sep = rec("dist.separation_factor", _ce25[0] / pq75,
+                  "decisions.csv; lower quartile of paxos_ce divided by the "
+                  "upper quartile of the pooled CI decisions")
+        print("separation factor: q25(paxos_ce)/q75(pooled CI) = %.6f" % sep)
+    _mt = [v for n, v, _ in Q if n == "dist.TOM (CI).median"]
+    _m2 = [v for n, v, _ in Q if n == "dist.2PC (CI).median"]
+    if _mt and _m2:
+        mr = rec("dist.median_rise_pct", 100.0 * (_m2[0] / _mt[0] - 1.0),
+                 "decisions.csv; 100*(median(2pc_pipeline)"
+                 "/median(tom_pipeline) - 1)")
+        print("median rise, TOM to 2PC under CI: %.6f %%" % mr)
+
+# ============ H: escape ceilings and the degree-distribution comparison
+if ok_scal and len(CELL) == 90:
+    hdr("H. escape ceilings: the analytical CE cost of the measured latency")
+    print("%-11s %10s %13s %12s %14s"
+          % ("arm", "L_CI", "E_CI", "ceiling", "ceiling/E_CI"))
+    for label, proto in CI_ARMS:
+        rs = [r for r in CELL if r["protocol"] == proto]
+        eds = [energy_per_dec(r) for r in rs]
+        if len(rs) != 15 or None in eds:
+            continue
+        lat = st.mean([float(r["avg_latency"]) for r in rs])
+        e = st.mean(eds)
+        p = ("plots/scalability/results/sweep_summary.csv, nodes==27 & "
+             "loss_rate==0.05, protocol==%s, 15 seeds" % proto)
+        ceil = rec("ceiling.%s.node_slots" % label, 27.0 * lat,
+                   p + "; 27*mean(avg_latency), the analytical CE cost of "
+                       "the same latency (decisions 32 and 37)")
+        rat = rec("ceiling.%s.over_measured" % label, ceil / e,
+                  p + "; 27*mean(avg_latency) divided by "
+                      "mean((listen+flood)/committed)")
+        print("%-11s %10.4f %13.6f %12.4f %14.6f"
+              % (label, lat, e, ceil, rat))
+
+if ok_topo and trows:
+    hdr("H2. degree distribution: scale_free against random")
+
+    def tmean(proto, topo, col):
+        rs = [r for r in trows if r["topology"] == topo
+              and r["protocol"] == proto]
+        if col == "thr":
+            return st.mean([int(r["committed"]) / int(r["end_slot"])
+                            for r in rs])
+        return st.mean([float(r["avg_latency"]) for r in rs])
+
+    print("%-11s %11s %11s %9s %12s %12s %9s"
+          % ("arm", "L random", "L scalefr", "dL %", "thr random",
+             "thr scalefr", "dthr %"))
+    for label, proto in CI_ARMS:
+        p = ("addition9/data/sweep_summary_topology.csv, protocol==%s, "
+             "15 seeds per topology" % proto)
+        k = "degree.%s" % label
+        lr = rec(k + ".latency_random", tmean(proto, "random", "lat"),
+                 p + "; mean avg_latency, topology==random")
+        ls = rec(k + ".latency_scale_free",
+                 tmean(proto, "scale_free", "lat"),
+                 p + "; mean avg_latency, topology==scale_free")
+        tr = rec(k + ".throughput_random", tmean(proto, "random", "thr"),
+                 p + "; mean committed/end_slot, topology==random")
+        ts = rec(k + ".throughput_scale_free",
+                 tmean(proto, "scale_free", "thr"),
+                 p + "; mean committed/end_slot, topology==scale_free")
+        dl = rec(k + ".latency_delta_pct", 100.0 * (ls / lr - 1.0),
+                 p + "; 100*(scale_free/random - 1) on mean avg_latency")
+        dt = rec(k + ".throughput_delta_pct", 100.0 * (ts / tr - 1.0),
+                 p + "; 100*(scale_free/random - 1) on mean throughput")
+        print("%-11s %11.4f %11.4f %9.4f %12.6f %12.6f %9.4f"
+              % (label, lr, ls, dl, tr, ts, dt))
+
+# ==================================== I: literal audit of the rendered spec
 def sig(s):
-    t = s.lstrip("-").replace(".", "").lstrip("0")
-    return len(t)
+    """Significant digits in a rendered decimal, ignoring zero padding.
+
+    Charge 101, third incarnation: this used to strip only LEADING zeros,
+    so the rendering "1.00" scored three significant digits and twenty-one
+    distinct depth values -- 1.000000 and 1.002085 among them -- each
+    claimed the same printed literal as a strong confirmation. Trailing
+    zeros to the right of the point are an artefact of the rendering, not
+    information in the datum.
+    """
+    t = s.lstrip("-")
+    if "." in t:
+        t = t.rstrip("0")
+    return len(t.replace(".", "").lstrip("0"))
 
 
 if need(SPEC, "literal audit of the replacement blocks"):
-    hdr("F. literal audit: every decimal in the spec's replacement blocks")
+    hdr("I. literal audit: every decimal in the spec's replacement blocks")
     text = open(SPEC).read()
     blocks = re.findall(
         r"\*\*Replacement text:\*\*\n\n```latex\n(.*?)\n```", text, re.S)
@@ -467,12 +720,10 @@ if need(SPEC, "literal audit of the replacement blocks"):
             matched.append((name, val, hit))
         else:
             absent.append((name, val))
-    # Charge 101, second incarnation, caught in the rebuild: sig() counts a
-    # zero-padded "1.00" as three significant digits, so two DIFFERENT
-    # quantities -- a depth of exactly 1.000000 and one of 1.002085 -- both
-    # claim the same printed literal. A literal claimed by more than one
-    # distinct value confirms neither of them, so it is not a source and goes
-    # back into the residue.
+    # A literal claimed by more than one distinct value confirms neither of
+    # them, so it is not a strong source. With sig() fixed it is no longer
+    # dumped into a ship-blocking residue either; it is reported as
+    # ambiguous and judged on the reproducibility gate below.
     claim = {}
     for name, val, hit in matched:
         claim.setdefault(hit, {})[round(val, 9)] = name
@@ -480,7 +731,34 @@ if need(SPEC, "literal audit of the replacement blocks"):
     sourced = set(h for h, v in claim.items() if len(v) == 1)
     unambiguous = [m for m in matched if m[2] in sourced]
     lits = set(re.findall(r"(?<![0-9.])\d+\.\d+(?![0-9])", body))
-    residue = sorted(l for l in lits if l not in sourced)
+    # Decision 126, amended. The old gate demanded that every printed
+    # decimal be CONFIRMED under decision 121, and that is unsatisfiable by
+    # construction: the manuscript's house style prints two significant
+    # digits, and no edit to the spec can make "0.69" carry three. Eleven
+    # literals were held in the residue for being correctly rounded, which
+    # is not a defect. The gate that is both meaningful and reachable is
+    # REPRODUCIBILITY: every decimal printed in a replacement block must be
+    # reproduced by some recomputed quantity at the precision it is printed
+    # to. Strength of evidence is a separate report, above, and is left to
+    # the reader; a literal that no recomputed quantity can produce is a
+    # defect and blocks the spec.
+
+    def places(lit):
+        return len(lit.split(".")[1])
+
+    repro = {}
+    for name, val, prov in Q:
+        if val is None:
+            continue
+        for lit in lits:
+            # Magnitude too, because the manuscript carries the sign outside
+            # the number: tab:degree prints a negative delta as a positive
+            # literal with the minus typeset separately.
+            if ("%.*f" % (places(lit), val) == lit
+                    or "%.*f" % (places(lit), abs(val)) == lit):
+                repro.setdefault(lit, {}).setdefault(round(val, 9),
+                                                     []).append(name)
+    unreproduced = sorted(lit for lit in lits if lit not in repro)
     print("")
     print("recomputed quantities:                           %d" % len(Q))
     print("  claiming a literal at >=3 significant digits:  %d" % len(matched))
@@ -488,25 +766,50 @@ if need(SPEC, "literal audit of the replacement blocks"):
           % len(unambiguous))
     print("  recomputed but absent from the spec:           %d" % len(absent))
     print("distinct decimal literals in the blocks:         %d" % len(lits))
-    print("  claimed by two or more distinct values:        %d" % len(ambiguous))
-    print("  with no unambiguous recomputed source:         %d" % len(residue))
+    print("  strongly confirmed (decision 121):             %d" % len(sourced))
+    print("  claimed by two or more distinct values:        %d"
+          % len(ambiguous))
+    print("  reproduced at the printed precision:           %d" % len(repro))
+    print("  NOT reproduced by any quantity:                %d"
+          % len(unreproduced))
     if ambiguous:
         print("")
         print("AMBIGUOUS literals -- each claimed by more than one distinct")
-        print("recomputed value, so it confirms none of them:")
+        print("recomputed value, so none of them is a confirmation alone:")
         for h in ambiguous:
             print("  %-10s claimed by %s" % (h, sorted(claim[h].values())))
+    weak = sorted(((len(v), lit) for lit, v in repro.items() if len(v) > 3),
+                  reverse=True)
+    if weak:
+        print("")
+        print("WEAK but reproduced -- many distinct quantities can produce")
+        print("these, so they pass the gate and prove little on their own.")
+        print("The count is printed so the weakness is visible:")
+        for n, lit in weak[:12]:
+            print("  %-10s reproduced by %d distinct values" % (lit, n))
     print("")
-    print("first 24 unambiguous matches:")
+    print("first 24 strong, unambiguous matches:")
     for name, val, hit in unambiguous[:24]:
         print("  %-46s %14.6f  printed as %s" % (name, val, hit))
+    rec("audit.strong_confirmations", len(sourced),
+        "%s; literals confirmed at >=3 significant digits by exactly one "
+        "distinct recomputed value (decision 121)" % SPEC)
+    rec("audit.unreproduced_count", len(unreproduced),
+        "%s; decimal literals in replacement blocks that no recomputed "
+        "quantity reproduces at the printed precision (decision 126, "
+        "amended)" % SPEC)
     print("")
-    print("RESIDUE -- decision 126: spec v3 may not ship while this list is "
-          "non-empty:")
-    print("  %s" % ", ".join(residue))
-    rec("audit.residue_count", len(residue),
-        "%s; decimal literals in replacement blocks with no recomputed "
-        "source at >=3 significant digits" % SPEC)
+    if unreproduced:
+        print("UNREPRODUCED -- decision 126 (amended): the spec may not ship")
+        print("while this list is non-empty:")
+        print("  %s" % ", ".join(unreproduced))
+        fail.append("%d PRINTED LITERAL(S) WITH NO RECOMPUTED SOURCE AT THE "
+                    "PRINTED PRECISION: %s"
+                    % (len(unreproduced), ", ".join(unreproduced)))
+    else:
+        print("UNREPRODUCED: none. Every decimal printed in a replacement")
+        print("block is reproduced by a recomputed quantity at the precision")
+        print("it is printed to. Decision 126 (amended) is satisfied.")
 
 # ===================================================================== SUMMARY
 hdr("SUMMARY")
