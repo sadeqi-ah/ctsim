@@ -27,6 +27,21 @@ LINES = RAW.decode("utf-8").split("\n")
 # which is not a line. The spec header used len(LINES) and so advertised
 # "2701 lines" for a 2700-line file. Count content lines explicitly.
 N_BASE = len(LINES) - (1 if LINES and LINES[-1] == "" else 0)
+# --------------------------------------------------------------------------
+# SUPERSEDED by make_patch_spec_v3.py. Kept, not deleted (decision
+# 155): it is the generator of record for the v1/v2 spec numbers that
+# earlier rounds already cite. Do not run it to produce a new spec.
+# RETIRED 2026-09-06 (decision 147). This script is PINNED to the
+# pre-patch manuscript: paper/paper.tex, 2700 lines, sha256 039118e9...
+# That file no longer exists on main. Since PR #4 (merge commit
+# 2804f21a) the manuscript is blob f7592bab..., sha256 7eaa4fd9...,
+# 2684 lines, so the base assertion below MUST fail on main and every
+# line anchor in this file is dead. That failure is the designed
+# behaviour, not a bug. To reproduce the patch_spec claims, check out
+# the tag tools-base-039118e9 first. Do not re-anchor this file: the
+# next round of manuscript edits starts from the new base (decision
+# 148). check_patch_spec.py is NOT pinned and still runs on main.
+# --------------------------------------------------------------------------
 BASE_SHA = "039118e9c14c5f7a0f8e324e0957535b87ca9899befa1384547930e1ce694c27"
 
 
