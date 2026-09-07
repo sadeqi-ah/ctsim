@@ -140,10 +140,8 @@ pub fn flood_identical_round(
     // how many nodes hold this round's flooded payload now that delivery is final.
     metrics.flood_rounds += 1;
     metrics.flood_nodes_total += nodes.len() as u64;
-    metrics.flood_nodes_covered += nodes
-        .iter()
-        .filter(|n| n.payload == round_payload)
-        .count() as u64;
+    metrics.flood_nodes_covered +=
+        nodes.iter().filter(|n| n.payload == round_payload).count() as u64;
 
     // If we broke early, `slot` is the first free slot; if we ran to deadline, slot==round_end.
     slot.min(round_end)
