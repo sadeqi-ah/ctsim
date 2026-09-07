@@ -1,0 +1,35 @@
+# Wireless Paxos (EWSN'19) prediction profile — blind, step 2.5.
+#
+# __SEED__, __LOSS__ and __GRAPH__ are substituted by the harness script.
+#
+# listen_timeout = 5 is the published value, deliberately NOT scaled with
+# diameter. Scaling it after seeing a bad latency would be fitting.
+#
+# max_round_slots = 4000 replaces the n=27 value of 300, scaled by node
+# count with headroom (188/27 ~ 7.0). It is a hard cap before a CE round
+# is declared failed, so a value that is too small truncates the latency
+# distribution from above and biases the committed-only mean downwards
+# while also lowering the commit rate.
+#
+# No abort_probability line: Paxos has no abort concept.
+#
+# snapshot_interval is huge on purpose: snapshots are unused here and would
+# produce enormous CSVs at n=188.
+seed = __SEED__
+phy_mode = "ce"
+protocol = "paxos_ce"
+num_proposals = 100
+snapshot_interval = 1000000
+max_slots = 5000000
+quiet = false
+
+[network]
+num_nodes = 188
+# INERT: graph_file wins, see fact 2 (build_graph returns early).
+topology = "random"
+loss_rate = __LOSS__
+graph_file = "__GRAPH__"
+
+[ce]
+listen_timeout = 5
+max_round_slots = 4000
