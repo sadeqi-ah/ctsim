@@ -1,0 +1,128 @@
+# CALIBRATION LOCK -- step 2.4. Frozen 2026-09-07.
+#
+# This file is the pre-registration record for Layer 2. It is data, not
+# configuration: nothing in src/ reads it. The step-2.6 regression tests are
+# required to fail loudly if it is modified.
+#
+# Rule that gives the lock its meaning: if the calibration must change, BOTH
+# blind predictions are re-run afterwards and the report states that this was
+# done and why. Never tune per target. One calibration, two blind predictions.
+
+[calibration]
+# The single calibrated parameter.
+loss_rate = 0.05
+free_parameters = 1
+targets = 1
+# What the number is: an UPPER BOUND on per-reception-attempt link loss that
+# still reproduces BlueFlood's reported end-to-end delivery ratio. It is NOT a
+# point estimate of the testbed's loss rate, and it must never be quoted as
+# one.
+interpretation = "upper bound"
+target_metric = "end-to-end flood coverage over receivers"
+target_value = 0.999
+target_source = "BlueFlood, EWSN 2019, reported end-to-end packet delivery ratio ~99.9 %"
+dropped_target = "radio duty cycle ~0.4 %"
+dropped_reason = "different denominator: measured over wall-clock time including inter-round idle, which the simulator does not model. Dropped before any calibration run."
+
+[provenance]
+# The commit at which the evidence below exists in the tree.
+commit = "c4d86848f52398c65675da53eec1838d73e0423f"
+commit_description = "merge of PR #9, graph/channel decoupling grid (addition 12)"
+profile = "profiles/blueflood_ewsn19.toml"
+graphs = "profiles/graphs/random_n27_seed{2,3,5,7,11,13,17,19,23,29,31,37,41,43,47}.txt"
+
+[evidence]
+# The grid that determined the frozen value: 15 frozen graphs x 15 channel
+# seeds x 6 loss rates = 1350 runs, 200 floods each, N = 27.
+grid_data = "docs/validation/addition12/data/coverage_grid.csv"
+grid_data_blob = "fd2cb58c82b298800459ce4d4373f95508ebc1fb"
+variance_decomposition = "docs/validation/addition12/data/variance_decomposition.csv"
+variance_decomposition_blob = "830f59a2ecfa5277f879e48ee77d2b54fcfbc426"
+graph_provenance = "docs/validation/addition12/data/graph_provenance.csv"
+graph_provenance_blob = "eb50a71e6308b773e9be4a6e007e941656cc4bda"
+# The step-2.3 coverage-vs-loss curve, kept as the shape reference only.
+curve_data = "docs/validation/addition11/data/coverage_curve.csv"
+curve_data_blob = "34c82f57c6d3ad446c87c872dcef9145974235b3"
+
+[estimator]
+# How the interval was formed, and why. The population we generalise to is
+# graphs, not graph-channel pairs, so the channel variance is averaged WITHIN
+# each graph first; pooling all 225 cells would inflate the degrees of freedom.
+procedure = "mean over 15 channel seeds within each graph, then a Student t interval over the 15 graph means"
+t_quantile = 2.1447866879169273
+t_description = "t(0.975, 14)"
+n_graphs = 15
+n_channel_seeds_per_graph = 15
+floods_per_run = 200
+receiver_opportunities_per_run = 5200
+
+[decision_rule]
+# p* is the largest loss rate whose 95 % lower bound still clears the target.
+rule = "largest loss_rate whose 95 % lower confidence bound on mean coverage remains above 0.999"
+p_star = 0.05
+margin_above_target = 0.000066
+margin_note = "66 ppm. p* is marginal and must always be quoted with this margin; a re-run over a different set of 15 graphs could move the threshold."
+
+[measured_at_p_star]
+grand_mean_coverage = 0.999292
+ci_lower_95 = 0.999066
+sd_of_graph_means = 0.000408
+half_width = 0.000226
+graph_range = 0.001192
+channel_range = 0.001526
+ms_ratio_graph_over_channel = 0.92
+f_graph = 1.39
+f_channel = 1.51
+f_critical_14_196 = 1.75
+significance_note = "Neither the graph nor the channel effect is significant at 0.05 loss. The graph effect becomes significant from 0.06 upwards (F = 2.6 to 5.7); the channel effect is never significant, which is a sanity check on the harness rather than a result."
+
+[rejected_next_point]
+loss_rate = 0.06
+grand_mean_coverage = 0.999000
+ci_lower_95 = 0.998589
+reason = "lower bound falls below the 0.999 target"
+
+[caveats]
+# Charge 130. The coverage statistic is not normally distributed at the
+# operating point: the deficit is quantised, and a whole dead flood costs
+# exactly N - 1 = 26 receiver opportunities, i.e. 0.5 % of a run in one jump.
+# About 8.9 % of the 225 cells at 0.05 contain at least one dead flood, so the
+# distribution is a discrete mixture and the t interval above is an
+# approximation. A bootstrap over graph means, or an explicit two-component
+# model, is still owed.
+distribution = "quantised discrete mixture, not Gaussian"
+interval_is_approximate = true
+bootstrap_pending = true
+report_alongside_interval = "worst observed cell and the dead-flood rate"
+# The mechanism of a dead flood is the initiator's own degree: with a minimum
+# degree of 2 in random_topology(n, 2, 5, ..), a low-degree initiator can lose
+# every first-hop link. The predictive covariate is therefore the COUNT OF
+# DEGREE-2 NODES, not the mean degree; seed 37 is the sparsest graph by mean
+# degree yet has no dead flood at 0.05, while seed 17 has three.
+covariate = "count of degree-2 nodes"
+
+[forbidden]
+# Quoting rules. These exist because each one was violated at least once.
+diagonal_figures = "Do not quote the step-2.3 diagonal-design figures at 0.05 (mean 0.999744, half-width 0.000196). That design confounds graph and channel and understates the cell standard deviation by a factor of 3.9. Quote the grid figures instead: 0.999292 and a lower bound of 0.999066."
+bare_p_star = "Do not print p* without its margin."
+calibrated_claim = "Do not write 'calibrated against BlueFlood' without stating, in the same passage, that the calibration has one free parameter and one target and that p* clears the target by 66 ppm."
+link_pdr = "link_pdr reproduces 1 - loss_rate to within sampling noise by construction, because loss is i.i.d. per reception attempt. It is an implementation check on the counters, never a validation result, and it is not a calibration target."
+
+[not_locked]
+# What this file deliberately does not fix.
+t_slot = "T_slot is a paper-side unit conversion, derived analytically in docs/validation/t_slot.md, not a simulator parameter. Latency in slots is exactly invariant to it, energy in node-slots is exactly invariant to it, and every CI/CE ratio is exactly invariant to it."
+t_guard = "The guard band is an implementation parameter with no value in the Bluetooth Core Specification; it is bracketed at 10 to 100 microseconds and both ends are reported."
+flood_repeats = "N_retx remains the one genuinely sweepable Layer-3 axis and is not fixed here."
+
+[step_2_5]
+# Consequence of p* landing exactly on the published operating point: the
+# planned robustness arm of running the blind predictions at both p* and at
+# the published 0.05 degenerates, because they are the same number. The
+# sensitivity arm is therefore replaced by the first REJECTED grid point.
+primary_loss_rate = 0.05
+sensitivity_loss_rate = 0.06
+sensitivity_reason = "p* equals the published operating point, so the two-point check collapses; 0.06 is the first loss rate the decision rule rejects and is used to show how far the prediction moves."
+mean_degree_robustness = "repeat each prediction with the mean degree moved by plus and minus one"
+seeds_per_prediction = 15
+acceptance_band = "relative error within 10 to 20 percent, declared in the manuscript before any run; not to be widened, narrowed, or supplemented with a second criterion"
+report_per_prediction = "commit rate, number of contributing seeds, mean, standard error, relative error, and the count of degree-2 nodes per graph"
