@@ -385,3 +385,49 @@ fn pure_flood_reaches_every_receiver_on_a_lossless_line() {
         report.receiver_opportunities
     );
 }
+
+/// Addition 12: the frozen adjacency files under `profiles/graphs/` must
+/// reproduce the random topologies that `build_graph` generates from each seed.
+///
+/// This guards against DOT-to-adjacency conversion errors (section 4.3 of the
+/// addition-12 prompt). The test is fast: it builds 15 in-memory graphs and
+/// loads 15 small text files, with no simulation runs.
+#[test]
+fn frozen_graph_files_reproduce_the_published_random_topologies() {
+    use std::path::Path;
+
+    for &seed in &SEEDS {
+        let mut rng = ChaCha8Rng::seed_from_u64(seed);
+        let expected = NetworkGraph::random_topology(27, 2, 5, &mut rng);
+
+        let graph_path = format!("profiles/graphs/random_n27_seed{seed}.txt");
+        let loaded = NetworkGraph::from_file(Path::new(&graph_path))
+            .unwrap_or_else(|e| panic!("failed to load {graph_path}: {e}"));
+
+        assert_eq!(
+            expected.num_nodes(),
+            loaded.num_nodes(),
+            "seed {seed}: num_nodes mismatch"
+        );
+        assert_eq!(
+            expected.edge_count(),
+            loaded.edge_count(),
+            "seed {seed}: edge_count mismatch ({} vs {})",
+            expected.edge_count(),
+            loaded.edge_count()
+        );
+        assert_eq!(
+            expected.diameter(),
+            loaded.diameter(),
+            "seed {seed}: diameter mismatch"
+        );
+
+        for i in 0..expected.num_nodes() {
+            assert_eq!(
+                expected.neighbors(i),
+                loaded.neighbors(i),
+                "seed {seed}: neighbors({i}) differ"
+            );
+        }
+    }
+}
