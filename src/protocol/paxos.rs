@@ -149,6 +149,15 @@ impl NodePaxosState {
 }
 
 /// Serialize a PaxosPacket to bytes.
+///
+/// NOT a wire format — identical caveat to the 2PC and TOM serialisers. This JSON
+/// encoding is an internal carrier for protocol state; its byte length feeds no
+/// metric, no energy term and no timing term in this slot-level model. Millisecond
+/// conversions use the specified bit-packed encoding of `docs/validation/t_slot.md`
+/// §5 (`L_wire(N) = ceil(N/8) + 22` octets for the 2PC packet; the Paxos header
+/// differs in fields but is bounded by the same 251-octet LE Data PDU budget), and
+/// the guard test is
+/// `tests/validation.rs::specified_wire_packet_fits_in_one_ll_data_pdu`.
 pub fn serialize_packet(pkt: &PaxosPacket) -> Vec<u8> {
     serde_json::to_vec(pkt).unwrap_or_default()
 }

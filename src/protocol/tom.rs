@@ -100,6 +100,14 @@ impl NodeTomState {
     }
 }
 
+/// Serialize a TomPacket to bytes.
+///
+/// NOT a wire format — identical caveat to the 2PC and Paxos serialisers. The JSON
+/// bytes are an internal carrier; no metric, energy term or timing term in this
+/// slot-level model reads their length. Millisecond conversions use the specified
+/// bit-packed encoding of `docs/validation/t_slot.md` §5, bounded by the 251-octet
+/// LE Data PDU payload budget, and the guard test is
+/// `tests/validation.rs::specified_wire_packet_fits_in_one_ll_data_pdu`.
 pub fn serialize_packet(pkt: &TomPacket) -> Vec<u8> {
     serde_json::to_vec(pkt).unwrap_or_default()
 }

@@ -76,10 +76,17 @@ pub fn flood_identical_round(
                 any_flood = true;
                 let src = nodes[i].id;
                 for nbr in graph.neighbors(src) {
-                    if nodes[nbr].state == NodeState::Listen
-                        && (loss_rate == 0.0 || rng.gen::<f64>() >= loss_rate)
-                    {
-                        received_this_slot[nbr] = true;
+                    // PDR instrumentation (step 2.2). The two counters are write-only:
+                    // nothing below reads them and no branch depends on them. The
+                    // nesting is NOT a behaviour change — the loss draw was already
+                    // short-circuited behind the same Listen test by `&&`, so the RNG
+                    // draw sequence is identical to the pre-patch engine.
+                    if nodes[nbr].state == NodeState::Listen {
+                        metrics.rx_attempts += 1;
+                        if loss_rate == 0.0 || rng.gen::<f64>() >= loss_rate {
+                            metrics.rx_success += 1;
+                            received_this_slot[nbr] = true;
+                        }
                     }
                 }
             }
@@ -128,6 +135,13 @@ pub fn flood_identical_round(
             node.payload = round_payload.clone();
         }
     }
+
+    // End-to-end PDR instrumentation (step 2.2), read by nothing in the engine:
+    // how many nodes hold this round's flooded payload now that delivery is final.
+    metrics.flood_rounds += 1;
+    metrics.flood_nodes_total += nodes.len() as u64;
+    metrics.flood_nodes_covered +=
+        nodes.iter().filter(|n| n.payload == round_payload).count() as u64;
 
     // If we broke early, `slot` is the first free slot; if we ran to deadline, slot==round_end.
     slot.min(round_end)
