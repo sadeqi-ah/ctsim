@@ -6,6 +6,7 @@
 
 pub mod paxos_pipeline;
 pub mod pipeline;
+pub mod pure_flood;
 pub mod tom_pipeline;
 pub mod two_pc_pipeline;
 
