@@ -1,0 +1,54 @@
+# BlueFlood (EWSN 2019) calibration profile -- step 2.4. FROZEN.
+#
+# This is the calibration point of record. `loss_rate` is the ONLY calibrated
+# parameter. The frozen value and the evidence behind it live in
+# profiles/calibration.lock.toml; read that file before changing anything here.
+#
+# The duty-cycle target was DROPPED before any calibration run, not after
+# seeing a bad number: BlueFlood's 0.4 % is measured over wall-clock time
+# including the idle intervals between flooding rounds, whereas this simulator
+# models only active rounds and has no concept of inter-round idle. The two
+# figures have different denominators, so comparing them is a category error
+# rather than a simulator deficiency. That leaves one free parameter and one
+# target, which is a weaker constraint than the original two-and-two design.
+#
+# __SEED__ and __GRAPH__ are literal tokens: substitute them before running,
+# exactly as in profiles/pure_flood_n27_template.toml.
+#
+# Why `graph_file` instead of leaving the topology to be generated: in
+# src/main.rs, build_graph() returns from graph_file BEFORE the topology match
+# and without drawing from the RNG, so `seed` then varies the channel
+# realisation only. With a generated topology the same seed drives both the
+# graph and the channel and the two variance sources are perfectly confounded
+# -- that is charge 129, and it is why the 15-seed spread of the step-2.3
+# curve could not be read as a channel interval. The graph files in
+# profiles/graphs/ are the fifteen published random topologies; the round trip
+# is asserted in tests/validation.rs.
+#
+# `num_proposals` is reused by the pure-flood harness as "number of
+# independent one-shot floods"; see pure_flood_n27_template.toml for why the
+# field is reused rather than added.
+seed = __SEED__
+phy_mode = "ci"
+protocol = "pure_flood"
+num_proposals = 200
+quiet = false
+
+# Chosen so that neither ever binds this run; see pure_flood_n27_template.toml.
+snapshot_interval = 1000000
+max_slots = 100000
+
+[network]
+num_nodes = 27
+# `topology` is inert while `graph_file` is set, because build_graph() returns
+# first. It is kept to record which family the frozen graphs were drawn from.
+topology = "random"
+graph_file = "__GRAPH__"
+# FROZEN. See profiles/calibration.lock.toml. Do not edit this value to make a
+# step-2.5 prediction land inside the pre-declared acceptance band.
+loss_rate = 0.05
+
+[ci]
+# Matches examples/2pc_ci.toml, so the calibration is measured on the same PHY
+# settings as the published CI runs.
+flood_repeats = 1
