@@ -109,7 +109,7 @@ fn every_published_graph_is_connected() {
 
     assert!(
         disconnected.is_empty(),
-        "disconnected graphs feed the published sweeps, so their reported diameter is a \
+        "disconnected graphs feed the published sweeps, so their reported diameter is a \\
          component diameter and their commit rates are affected:\n{}",
         disconnected.join("\n")
     );
@@ -169,7 +169,7 @@ fn snapshot_series_accounts_for_every_ticked_slot() {
             .sum();
         assert_eq!(
             awake_ticks, awake_snaps,
-            "{protocol}: energy counters charged {awake_ticks} awake node-slots but the \
+            "{protocol}: energy counters charged {awake_ticks} awake node-slots but the \\
              snapshot series accounts for {awake_snaps}"
         );
 
@@ -229,10 +229,10 @@ const LL_DATA_PDU_MAX_OCTETS: usize = 251;
 
 /// The wire encoding *specified* in `docs/validation/t_slot.md` §5, in octets.
 ///
-/// 22 fixed octets = transaction_id u32 (4) + nack_tx_id u32 (4)
-/// + piggyback_tx u32 (4) + transaction_data `tx{term}` ASCII (8) + sender u8 (1)
-/// + state, abort_flag and piggyback_state packed into one octet (1); the vote
-/// bitmap adds `ceil(N/8)`.
+/// The 22 fixed octets are transaction_id u32 (4), nack_tx_id u32 (4),
+/// piggyback_tx u32 (4), transaction_data `tx{term}` ASCII (8), sender u8 (1),
+/// and one octet holding state, abort_flag and piggyback_state packed together
+/// (1). The vote bitmap adds `ceil(N/8)` octets on top of those 22.
 #[allow(clippy::manual_div_ceil)]
 fn wire_payload_len(num_nodes: usize) -> usize {
     (num_nodes + 7) / 8 + 22
@@ -274,7 +274,7 @@ fn specified_wire_packet_fits_in_one_ll_data_pdu() {
         let len = wire_payload_len(n);
         assert!(
             len <= LL_DATA_PDU_MAX_OCTETS,
-            "L_wire({n}) = {len} octets exceeds the {LL_DATA_PDU_MAX_OCTETS}-octet \
+            "L_wire({n}) = {len} octets exceeds the {LL_DATA_PDU_MAX_OCTETS}-octet \\
              LE Data PDU payload budget, so a flood would need link-layer fragmentation"
         );
     }
