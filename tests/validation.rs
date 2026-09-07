@@ -8,6 +8,7 @@
 use ctsim::config::{CeConfig, NetworkConfig};
 use ctsim::event::NodeId;
 use ctsim::network::NetworkGraph;
+use ctsim::protocol::two_pc_pipeline::{serialize_packet, TwoPcPacket, TwoPcState};
 use ctsim::run::{build_graph, make_sim_config, run_experiment};
 use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
@@ -221,4 +222,108 @@ fn random_builders_are_connected_by_construction_not_by_degree() {
             );
         }
     }
+}
+
+/// Maximum payload of one BLE LE Data PDU (Core Spec, LL Data PDU payload field).
+const LL_DATA_PDU_MAX_OCTETS: usize = 251;
+
+/// The wire encoding *specified* in `docs/validation/t_slot.md` §5, in octets.
+///
+/// 22 fixed octets = transaction_id u32 (4) + nack_tx_id u32 (4)
+/// + piggyback_tx u32 (4) + transaction_data `tx{term}` ASCII (8) + sender u8 (1)
+/// + state, abort_flag and piggyback_state packed into one octet (1); the vote
+/// bitmap adds `ceil(N/8)`.
+#[allow(clippy::manual_div_ceil)]
+fn wire_payload_len(num_nodes: usize) -> usize {
+    (num_nodes + 7) / 8 + 22
+}
+
+/// Length of the *internal* JSON carrier for a 2PC packet at N nodes, measured
+/// through the real serialiser rather than modelled.
+fn json_packet_len(num_nodes: usize) -> usize {
+    let pkt = TwoPcPacket {
+        transaction_id: 0,
+        state: TwoPcState::Prepare,
+        flags_bitmap: vec![false; num_nodes],
+        abort_flag: false,
+        nack_tx_id: 0,
+        transaction_data: b"tx0".to_vec(),
+        sender: 0,
+        piggyback_tx: None,
+        piggyback_state: None,
+    };
+    serialize_packet(&pkt).len()
+}
+
+/// Decision 158, part 2 — the packet-length guard.
+///
+/// `docs/validation/t_slot.md` §5 maps slot counts to wall-clock time through an
+/// air-time term `T_air(L) = 44.0 + 4.0 * L` microseconds, which presupposes that
+/// one flood packet fits in one LE Data PDU: otherwise the link layer fragments and
+/// "one flood occupies one slot" is false. This test pins exactly that
+/// presupposition over the whole simulated range, together with the anchor values
+/// quoted in the document.
+///
+/// What it does NOT do: it does not check that the simulator emits this encoding.
+/// It cannot, because the simulator emits JSON and consumes no packet length at all
+/// (there is no `payload.len()` in the crate). `L_wire` is a specification attached
+/// to the time mapping, and this test is a consistency check on that specification.
+#[test]
+fn specified_wire_packet_fits_in_one_ll_data_pdu() {
+    for n in 1..=255usize {
+        let len = wire_payload_len(n);
+        assert!(
+            len <= LL_DATA_PDU_MAX_OCTETS,
+            "L_wire({n}) = {len} octets exceeds the {LL_DATA_PDU_MAX_OCTETS}-octet \
+             LE Data PDU payload budget, so a flood would need link-layer fragmentation"
+        );
+    }
+
+    // Anchors quoted in docs/validation/t_slot.md §5.
+    assert_eq!(wire_payload_len(2), 23);
+    assert_eq!(wire_payload_len(27), 26);
+    assert_eq!(wire_payload_len(180), 45);
+    assert_eq!(wire_payload_len(188), 46);
+    assert_eq!(wire_payload_len(255), 54);
+}
+
+/// The companion half of decision 158: the JSON encoding is an artefact, and it is
+/// an artefact that would *not* fit the budget above. That is precisely why the
+/// manuscript states the wire encoding as a specification instead of reporting
+/// `serialize_packet(..).len()` as a packet size.
+///
+/// Deliberately asserted as inequalities and orderings, never as exact byte counts:
+/// this test must fail if the encoding stops being an over-budget artefact, not
+/// merely because a serde version renders a field differently.
+#[test]
+fn json_carrier_is_an_artefact_not_a_wire_format() {
+    let probes = [2usize, 16, 27, 188];
+    let lens: Vec<usize> = probes.iter().map(|&n| json_packet_len(n)).collect();
+    for (n, len) in probes.iter().zip(&lens) {
+        println!("N={n:<4} L_json={len:<6} L_wire={}", wire_payload_len(*n));
+    }
+
+    // Grows with N, because the bitmap is rendered as one JSON literal per node.
+    for w in lens.windows(2) {
+        assert!(
+            w[1] > w[0],
+            "JSON length is expected to grow with the node count: {lens:?}"
+        );
+    }
+
+    // Already over the one-PDU budget well inside the simulated range.
+    assert!(
+        lens[1] > LL_DATA_PDU_MAX_OCTETS,
+        "expected the JSON carrier to exceed {LL_DATA_PDU_MAX_OCTETS} octets by N=16, got {}",
+        lens[1]
+    );
+
+    // And the specified encoding is smaller by an order of magnitude at the sizes
+    // the study publishes, which is the whole content of the artefact claim.
+    assert!(
+        wire_payload_len(188) * 4 < lens[3],
+        "expected L_wire(188) = {} to be far below L_json(188) = {}",
+        wire_payload_len(188),
+        lens[3]
+    );
 }

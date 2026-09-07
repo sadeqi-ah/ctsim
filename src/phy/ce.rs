@@ -118,9 +118,16 @@ pub fn run_ce_round(
             }
 
             for &src in &flooding_nbrs {
+                // PDR instrumentation (step 2.2), write-only. NOTE the denominator:
+                // this loop `break`s after the first transmission that survives the
+                // loss draw, so `rx_attempts` counts only the transmissions actually
+                // examined under capture — not every concurrent neighbour, which is
+                // what `phy/ci.rs` counts. The two are different quantities.
+                metrics.rx_attempts += 1;
                 if loss_rate > 0.0 && rng.gen::<f64>() < loss_rate {
                     continue;
                 }
+                metrics.rx_success += 1;
 
                 let src_payload = transmissions
                     .iter()

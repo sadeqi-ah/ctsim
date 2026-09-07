@@ -128,6 +128,15 @@ impl NodeTwoPcState {
 }
 
 /// Serialize a TwoPcPacket to bytes.
+///
+/// NOT a wire format. This JSON encoding is an internal carrier for protocol
+/// state: the simulator is a slot-level model, and the byte length produced here
+/// is consumed by no metric, no energy term and no timing term (there is no
+/// `payload.len()` anywhere in the crate). The packet length behind every
+/// millisecond conversion is instead a *specified* bit-packed encoding,
+/// `L_wire(N) = ceil(N/8) + 22` octets — see `docs/validation/t_slot.md` §5 and
+/// the guard `tests/validation.rs::specified_wire_packet_fits_in_one_ll_data_pdu`.
+/// Do not quote `serialize_packet(..).len()` as a packet size in the manuscript.
 pub fn serialize_packet(pkt: &TwoPcPacket) -> Vec<u8> {
     serde_json::to_vec(pkt).unwrap_or_default()
 }

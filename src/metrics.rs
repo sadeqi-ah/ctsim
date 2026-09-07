@@ -38,11 +38,64 @@ pub struct MetricsCollector {
     pub total_listen: u64,
     pub total_flood: u64,
     pub total_sleep: u64,
+
+    // ── PDR instrumentation (step 2.2) ──────────────────────────────────────
+    //
+    // WRITE-ONLY by construction: no engine reads these, no control flow branches
+    // on them, and they consume no RNG draw. Every published sweep must therefore
+    // stay byte-identical after this patch; that is a measured gate, not a claim.
+    //
+    // The two PHY engines count DIFFERENT denominators, so their link PDRs must
+    // never be pooled:
+    //   * CI (`phy/ci.rs`): one reception opportunity per (transmitter, Listen
+    //     neighbour) pair per slot — every concurrent transmission is counted.
+    //   * CE (`phy/ce.rs`): opportunities are enumerated per Listen target in
+    //     capture order and the loop STOPS at the first surviving transmission,
+    //     so the denominator is truncated by design (capture semantics).
+    /// Reception opportunities offered to Listen nodes.
+    pub rx_attempts: u64,
+    /// Opportunities the loss draw did not drop.
+    pub rx_success: u64,
+    /// Completed CI flood rounds. Stays 0 on the CE path, which has no flood round.
+    pub flood_rounds: u64,
+    /// Sum of N over completed CI flood rounds (the coverage denominator).
+    pub flood_nodes_total: u64,
+    /// Sum over completed CI flood rounds of the number of nodes holding the
+    /// round's flooded payload when the round ended.
+    pub flood_nodes_covered: u64,
 }
 
 impl MetricsCollector {
     pub fn new() -> Self {
         Self::default()
+    }
+
+    /// Link-level packet delivery ratio: successful receptions over reception
+    /// opportunities. `None` when no opportunity was recorded.
+    ///
+    /// See the field comments: the CI and CE denominators are not comparable.
+    pub fn link_pdr(&self) -> Option<f64> {
+        if self.rx_attempts == 0 {
+            None
+        } else {
+            Some(self.rx_success as f64 / self.rx_attempts as f64)
+        }
+    }
+
+    /// End-to-end flood coverage: fraction of node-rounds in which a node held the
+    /// flooded payload when the CI round ended. `None` on the CE path.
+    ///
+    /// CAVEAT: coverage is measured by comparing each node's payload against the
+    /// round payload, so a round whose payload is empty counts every
+    /// empty-payload node as covered. That case does not arise in the pipelines
+    /// (the initiator always floods a non-empty protocol packet), but a future
+    /// caller that floods nothing would read 1.0 here.
+    pub fn flood_coverage(&self) -> Option<f64> {
+        if self.flood_nodes_total == 0 {
+            None
+        } else {
+            Some(self.flood_nodes_covered as f64 / self.flood_nodes_total as f64)
+        }
     }
 
     /// Take a snapshot from current node states.
@@ -121,6 +174,20 @@ impl MetricsCollector {
             "Recovery Events: NACKs={} Piggybacks={} CE_Timeouts={}",
             self.nacks_sent, self.piggybacks_sent, self.ce_timeouts
         );
+        // stdout only — the sweeps run with `quiet` and export no PDR column, which
+        // is what keeps their CSV output byte-identical.
+        if let Some(pdr) = self.link_pdr() {
+            println!(
+                "Link PDR: {:.6} ({}/{} reception opportunities; CI and CE denominators differ)",
+                pdr, self.rx_success, self.rx_attempts
+            );
+        }
+        if let Some(coverage) = self.flood_coverage() {
+            println!(
+                "Flood coverage: {:.6} ({}/{} node-rounds over {} CI flood rounds)",
+                coverage, self.flood_nodes_covered, self.flood_nodes_total, self.flood_rounds
+            );
+        }
     }
 
     /// Export proposal records to CSV.
