@@ -51,7 +51,9 @@ pub struct NetworkConfig {
 pub struct CiConfig {
     /// Number of times a node re-floods after first reception.
     pub flood_repeats: u32,
-    /// Total slots in one CI round. If None, auto-calculated as (diameter + 1) * flood_repeats.
+    /// Total slots in one CI round. If None, auto-calculated as
+    /// `max(3, (diameter + 2) * flood_repeats)` by `phy::ci::flood_identical_round`,
+    /// which is authoritative for this value.
     pub round_slots: Option<u64>,
 }
 
