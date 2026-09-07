@@ -5,11 +5,12 @@
 //! existing simulation entry point beyond the public graph builders, so a
 //! failure here means a graph builder changed, not that a protocol regressed.
 
-use ctsim::config::{CeConfig, NetworkConfig};
+use ctsim::config::{CeConfig, CiConfig, NetworkConfig, SimConfig};
 use ctsim::event::NodeId;
 use ctsim::network::NetworkGraph;
 use ctsim::protocol::two_pc_pipeline::{serialize_packet, TwoPcPacket, TwoPcState};
 use ctsim::run::{build_graph, make_sim_config, run_experiment};
+use ctsim::sim::pure_flood::PureFloodSim;
 use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
 
@@ -325,5 +326,62 @@ fn json_carrier_is_an_artefact_not_a_wire_format() {
         "expected L_wire(188) = {} to be far below L_json(188) = {}",
         wire_payload_len(188),
         lens[3]
+    );
+}
+
+/// Step 2.3 — the pure-flood harness must be sound before its curve is read.
+///
+/// A lossless connected graph has to give total coverage: every non-initiator
+/// node is reachable, no transmission is dropped, and the round bound is derived
+/// from the diameter, so the flood wave cannot be cut short. A failure here is
+/// therefore a bug in the harness (payload provenance, initiator exclusion, round
+/// bookkeeping) and not a property of the loss model. No reading of the
+/// coverage-vs-loss curve is meaningful until this test is green.
+///
+/// A `line` graph is used because it is the deterministic worst case for the
+/// round bound (diameter `n - 1`) and needs no RNG to construct, so the assertion
+/// is exact rather than seed-dependent.
+#[test]
+fn pure_flood_reaches_every_receiver_on_a_lossless_line() {
+    let num_nodes = 27;
+    let floods = 5;
+    let config = SimConfig {
+        seed: 1,
+        phy_mode: "ci".to_string(),
+        network: NetworkConfig {
+            num_nodes,
+            topology: "line".to_string(),
+            loss_rate: 0.0,
+            graph_file: None,
+        },
+        ci: Some(CiConfig {
+            flood_repeats: 1,
+            round_slots: None,
+        }),
+        ce: None,
+        protocol: "pure_flood".to_string(),
+        num_proposals: floods,
+        snapshot_interval: 1_000_000,
+        max_slots: 100_000,
+        abort_probability: 0.0,
+        quiet: true,
+    };
+
+    let graph = NetworkGraph::line(num_nodes);
+    let mut sim = PureFloodSim::new(config, graph);
+    let report = sim.run();
+
+    assert_eq!(
+        report.receiver_opportunities,
+        floods * (num_nodes - 1),
+        "expected {floods} floods x {} receivers",
+        num_nodes - 1
+    );
+    assert_eq!(
+        report.coverage,
+        1.0,
+        "lossless line left {} of {} receivers uncovered",
+        report.receiver_opportunities - report.receivers_covered,
+        report.receiver_opportunities
     );
 }

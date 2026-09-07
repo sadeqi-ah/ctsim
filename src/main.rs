@@ -107,6 +107,10 @@ fn main() {
                 "results/snapshots_tom.csv",
             );
         }
+        "pure_flood" => {
+            let mut sim = ctsim::sim::pure_flood::PureFloodSim::new(config, graph);
+            sim.run();
+        }
         "paxos_ce" => {
             let mut protocol = Box::new(ctsim::protocol::paxos_ce::PaxosCE::new());
             let mut sim = ctsim::sim::Simulator::new(config, graph);
@@ -141,7 +145,7 @@ fn main() {
             );
         }
         other => panic!(
-            "Unknown protocol: {other}. Available: paxos_pipeline, 2pc_pipeline, tom_pipeline, paxos_ce, 2pc_ce, tom_ce"
+            "Unknown protocol: {other}. Available: paxos_pipeline, 2pc_pipeline, tom_pipeline, paxos_ce, 2pc_ce, tom_ce, pure_flood"
         ),
     }
 }
