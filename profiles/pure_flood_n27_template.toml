@@ -1,0 +1,35 @@
+# Pure-flood calibration template (step 2.3).
+#
+# __SEED__ and __LOSS__ below are literal tokens: substitute
+# them before running. See docs/validation/addition11/scripts/coverage_curve.sh.
+#
+# NOTE on `num_proposals`: the pure-flood harness has no proposals and no
+# consensus middleware. It reuses this field as "number of independent one-shot
+# floods to run". The field name is misleading in this context; it is reused
+# rather than added so `SimConfig` stays untouched.
+seed = __SEED__
+phy_mode = "ci"
+protocol = "pure_flood"
+num_proposals = 200
+quiet = false
+
+# `snapshot_interval` and `max_slots` are chosen so neither ever binds this run.
+# One flood costs at most the auto round length max(3, (diameter + 2) *
+# flood_repeats) slots; a random n=27 graph here has diameter <= 10, so 200
+# floods cost well under 2500 slots. max_slots = 100000 leaves ~40x headroom, so
+# the harness always completes all 200 floods instead of breaking early.
+# snapshot_interval = 1000000 exceeds the whole run, so after the unavoidable
+# slot-0 sample no further snapshot is taken and the snapshot vector never grows.
+# This harness exports no CSV and reads no snapshot, so the sampling is inert.
+snapshot_interval = 1000000
+max_slots = 100000
+
+[network]
+num_nodes = 27
+topology = "random"
+# flood_repeats matches examples/2pc_ci.toml, so the calibration curve is
+# measured on the same PHY settings as the published CI runs.
+loss_rate = __LOSS__
+
+[ci]
+flood_repeats = 1
