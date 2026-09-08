@@ -619,15 +619,19 @@ fn blind_prediction_failure_is_recorded_not_repaired() {
     for spec in &cells {
         // Collect primary cell: arm=base, loss_rate == primary_loss (numeric comparison)
         let mut latencies: Vec<f64> = Vec::new();
-        for line in &lines[1..] {
+        for (data_row, line) in lines[1..].iter().enumerate() {
+            let file_line = data_row + 2; // 1-indexed, skip header
             let fields: Vec<&str> = line.split(',').collect();
             if fields[i_system] != spec.system || fields[i_arm] != "base" {
                 continue;
             }
-            let row_loss: f64 = match fields[i_loss].parse() {
-                Ok(v) => v,
-                Err(_) => continue, // skip unparseable rows (e.g. blank or NA)
-            };
+            let row_loss: f64 = fields[i_loss].parse().unwrap_or_else(|_| {
+                panic!(
+                    "{csv_path} line {file_line}: loss_rate '{}' is not a valid float; \
+                     a corrupted row must be investigated, not skipped",
+                    fields[i_loss],
+                )
+            });
             if (row_loss - primary_loss).abs() < 1e-12 {
                 let committed: u64 = fields[i_committed].parse().unwrap();
                 let total: u64 = fields[i_total].parse().unwrap();
@@ -849,10 +853,10 @@ fn published_slot_lengths_match_their_primary_sources() {
     }
 }
 
-/// The blind-prediction harness substitutes loss rates from the command line,
-/// not from the calibration lock. This test closes the gap: the set of loss
-/// rates in the harness script's `for loss in ...` line must match exactly the
-/// set { primary_loss_rate, sensitivity_loss_rate } from the lock.
+/// The blind-prediction harness injects loss rates into simulation runs at four
+/// distinct call sites (two variable-fed from `for loss in …` loops, two with
+/// numeric literals). This test quantifies over every injection site and asserts
+/// that every reachable loss rate traces back to the calibration lock.
 #[test]
 fn harness_loss_rates_come_from_the_calibration_lock() {
     let lock = read_toml("profiles/calibration.lock.toml");
@@ -863,77 +867,132 @@ fn harness_loss_rates_come_from_the_calibration_lock() {
         .as_float()
         .expect("profiles/calibration.lock.toml: step_2_5.sensitivity_loss_rate missing");
 
-    let script_path = "docs/validation/addition13/scripts/blind_predictions.sh";
-    let script = std::fs::read_to_string(script_path)
-        .unwrap_or_else(|e| panic!("cannot read {script_path}: {e}"));
-
-    let loss_lines: Vec<&str> = script
-        .lines()
-        .filter(|l| l.trim_start().starts_with("for loss in"))
-        .collect();
-
-    assert_eq!(
-        loss_lines.len(),
-        2,
-        "{script_path}: found {} 'for loss in' lines, expected exactly 2 (one per system block); \
-         if the harness gains or loses a system block this count must be updated deliberately",
-        loss_lines.len(),
-    );
-
-    // Helper: parse "for loss in 0.05 0.06; do" → sorted, deduped Vec<f64>
-    let parse_rates = |line: &str| -> Vec<f64> {
-        let after_in = line
-            .split(" in ")
-            .nth(1)
-            .unwrap_or_else(|| panic!("{script_path}: 'for loss in' line has no ' in ' delimiter"));
-        let tokens_part = after_in.split(';').next().unwrap_or(after_in);
-        let mut rates: Vec<f64> = tokens_part
-            .split_whitespace()
-            .map(|t| {
-                t.parse::<f64>()
-                    .unwrap_or_else(|e| panic!("{script_path}: cannot parse '{t}' as f64: {e}"))
-            })
-            .collect();
-        rates.sort_by(|a, b| a.partial_cmp(b).unwrap());
-        rates.dedup();
-        rates
-    };
-
-    let first_rates = parse_rates(loss_lines[0]);
-
-    // Assert all occurrences have identical rate sets.
-    for (i, line) in loss_lines.iter().enumerate() {
-        let rates = parse_rates(line);
-        assert_eq!(
-            rates, first_rates,
-            "{script_path}: 'for loss in' line {i} has rates {rates:?} but line 0 has \
-             {first_rates:?}; all system blocks must use the same loss-rate set",
-        );
-    }
-
-    // D2: sort and dedup the lock side too.
-    // NOTE: dedup uses exact float equality while the final comparison uses
-    // 1e-12 tolerance, so the two are not perfectly consistent; not solved here.
     let mut lock_rates = vec![primary, sensitivity];
     lock_rates.sort_by(|a, b| a.partial_cmp(b).unwrap());
     lock_rates.dedup();
 
+    let script_path = "docs/validation/addition13/scripts/blind_predictions.sh";
+    let script = std::fs::read_to_string(script_path)
+        .unwrap_or_else(|e| panic!("cannot read {script_path}: {e}"));
+
+    let script_lines: Vec<&str> = script.lines().collect();
+
+    // Collect every `run_one` call site with its 1-indexed file line number.
+    let call_sites: Vec<(usize, &str)> = script_lines
+        .iter()
+        .enumerate()
+        .filter(|(_, l)| l.trim().starts_with("run_one "))
+        .map(|(idx, l)| (idx + 1, *l)) // 1-indexed line number
+        .collect();
+
+    // A1: exactly 4 call sites.
     assert_eq!(
-        first_rates.len(),
-        lock_rates.len(),
-        "{script_path}: harness has {} loss rates {first_rates:?} but the lock defines {} \
-         rates {lock_rates:?}; they must be the same set",
-        first_rates.len(),
-        lock_rates.len(),
+        call_sites.len(),
+        4,
+        "{script_path}: found {} run_one call sites, expected exactly 4; \
+         if the harness gains or loses a run this count must be updated deliberately",
+        call_sites.len(),
     );
 
-    for (s, l) in first_rates.iter().zip(lock_rates.iter()) {
+    // The loss rate is the 5th whitespace-delimited token after `run_one`
+    // (positional arg $5 in the function signature).
+    // run_one <system> <protocol> <nn> <arm> <loss> <gseed>
+    //   0        1        2        3     4     5      6
+    let mut all_reachable: std::collections::BTreeSet<String> = std::collections::BTreeSet::new();
+
+    for &(file_line, line) in &call_sites {
+        let tokens: Vec<&str> = line.split_whitespace().collect();
         assert!(
-            (s - l).abs() < 1e-12,
-            "{script_path}: harness loss rate {s} does not match lock rate {l} (tol 1e-12); \
-             the harness rates {first_rates:?} must equal the lock rates {lock_rates:?}",
+            tokens.len() >= 6,
+            "{script_path} line {file_line}: run_one call has {} tokens, expected at least 6 \
+             (run_one system protocol nn arm loss gseed)",
+            tokens.len(),
         );
+        let loss_arg = tokens[5]; // 0-indexed: run_one=0, system=1, ..., loss=5
+
+        if loss_arg.starts_with('"') && loss_arg.contains('$') || loss_arg.starts_with('$') {
+            // Variable reference (e.g. "$loss"). Resolve by finding the enclosing
+            // `for loss in …` loop. Walk backwards from this line to the nearest
+            // `for loss in` and parse its values.
+            let enclosing = script_lines[..file_line] // 0-indexed lines 0..file_line-1
+                .iter()
+                .enumerate()
+                .rev()
+                .find(|(_, l)| l.trim_start().starts_with("for loss in"));
+
+            let (loop_line_idx, &loop_line) = enclosing.unwrap_or_else(|| {
+                panic!(
+                    "{script_path} line {file_line}: run_one uses variable {loss_arg} \
+                     but no enclosing 'for loss in' loop was found above it"
+                )
+            });
+            let loop_file_line = loop_line_idx + 1;
+
+            let after_in = loop_line.split(" in ").nth(1).unwrap_or_else(|| {
+                panic!("{script_path} line {loop_file_line}: 'for loss in' has no ' in ' delimiter")
+            });
+            let tokens_part = after_in.split(';').next().unwrap_or(after_in);
+            let loop_rates: Vec<f64> = tokens_part
+                .split_whitespace()
+                .map(|t| {
+                    t.parse::<f64>().unwrap_or_else(|e| {
+                        panic!(
+                            "{script_path} line {loop_file_line}: cannot parse '{t}' as f64: {e}"
+                        )
+                    })
+                })
+                .collect();
+
+            // The variable-fed rate set must equal the lock rate set.
+            let mut sorted_loop = loop_rates.clone();
+            sorted_loop.sort_by(|a, b| a.partial_cmp(b).unwrap());
+            sorted_loop.dedup();
+
+            assert_eq!(
+                sorted_loop.len(),
+                lock_rates.len(),
+                "{script_path} line {file_line}: variable-fed call site resolves to \
+                 {sorted_loop:?} (from loop at line {loop_file_line}) but the lock defines \
+                 {lock_rates:?}; they must be the same set",
+            );
+            for (s, l) in sorted_loop.iter().zip(lock_rates.iter()) {
+                assert!(
+                    (s - l).abs() < 1e-12,
+                    "{script_path} line {file_line}: loop rate {s} (from line {loop_file_line}) \
+                     does not match lock rate {l} (tol 1e-12)",
+                );
+            }
+
+            for r in &loop_rates {
+                all_reachable.insert(format!("{r}"));
+            }
+        } else {
+            // Numeric literal — must equal primary_loss_rate.
+            let literal: f64 = loss_arg.parse().unwrap_or_else(|e| {
+                panic!(
+                    "{script_path} line {file_line}: loss argument '{loss_arg}' is neither \
+                     a numeric literal nor a shell variable reference: {e}"
+                )
+            });
+
+            assert!(
+                (literal - primary).abs() < 1e-12,
+                "{script_path} line {file_line}: numeric literal {literal} does not equal \
+                 step_2_5.primary_loss_rate ({primary}) from the calibration lock (tol 1e-12)",
+            );
+
+            all_reachable.insert(format!("{literal}"));
+        }
     }
+
+    // The union of all reachable loss rates must be exactly the lock set.
+    let lock_strs: std::collections::BTreeSet<String> =
+        lock_rates.iter().map(|r| format!("{r}")).collect();
+    assert_eq!(
+        all_reachable, lock_strs,
+        "{script_path}: the union of all reachable loss rates is {all_reachable:?} \
+         but the lock defines {lock_strs:?}; they must be identical",
+    );
 }
 
 /// Compute the git blob object ID: SHA-1("blob <len>\0" + content).
@@ -984,7 +1043,12 @@ fn calibration_lock_evidence_blobs_match_their_files() {
         });
 
         // Derive the sibling path key: "foo_blob" → "foo"
-        let path_key = blob_key.trim_end_matches("_blob");
+        let path_key = blob_key.strip_suffix("_blob").unwrap_or_else(|| {
+            panic!(
+                "profiles/calibration.lock.toml: key '{blob_key}' ends_with '_blob' \
+                 but strip_suffix failed — this should be unreachable"
+            )
+        });
         let rel_path = evidence[path_key].as_str().unwrap_or_else(|| {
             panic!("profiles/calibration.lock.toml: sibling key '{path_key}' for '{blob_key}' missing or not a string")
         });
@@ -1007,5 +1071,51 @@ fn calibration_lock_evidence_blobs_match_their_files() {
              the evidence file has changed since the calibration was frozen; do \
              not update the lock - re-run the affected step or report the change",
         );
+    }
+}
+
+/// Every profile template consumed by the blind-prediction harness must contain
+/// all three placeholders (__SEED__, __LOSS__, __GRAPH__). If a template ever
+/// loses a placeholder, `sed` silently leaves whatever value is baked into the
+/// template, causing the output CSV to report a loss rate that was never executed.
+/// The list of templates is derived from the harness itself, not hard-coded.
+#[test]
+fn harness_templates_contain_all_placeholders() {
+    let script_path = "docs/validation/addition13/scripts/blind_predictions.sh";
+    let script = std::fs::read_to_string(script_path)
+        .unwrap_or_else(|e| panic!("cannot read {script_path}: {e}"));
+
+    // Discover systems from run_one call sites (first arg after `run_one`).
+    let mut systems: std::collections::BTreeSet<String> = std::collections::BTreeSet::new();
+    for line in script.lines() {
+        let trimmed = line.trim();
+        if trimmed.starts_with("run_one ") {
+            let tokens: Vec<&str> = trimmed.split_whitespace().collect();
+            if tokens.len() >= 2 {
+                systems.insert(tokens[1].to_string());
+            }
+        }
+    }
+
+    assert!(
+        !systems.is_empty(),
+        "{script_path}: no run_one call sites found; cannot discover templates",
+    );
+
+    // The harness constructs templates as profiles/${system}.toml (line 34).
+    let placeholders = ["__SEED__", "__LOSS__", "__GRAPH__"];
+    for system in &systems {
+        let template_path = format!("profiles/{system}.toml");
+        let text = std::fs::read_to_string(&template_path)
+            .unwrap_or_else(|e| panic!("cannot read template '{template_path}': {e}"));
+
+        for ph in &placeholders {
+            assert!(
+                text.contains(ph),
+                "{template_path}: missing placeholder {ph}; if the template loses this \
+                 placeholder, sed substitution is silently skipped and the run executes \
+                 with whatever value is baked into the template",
+            );
+        }
     }
 }
