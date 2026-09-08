@@ -621,13 +621,14 @@ fn blind_prediction_failure_is_recorded_not_repaired() {
         let mut latencies: Vec<f64> = Vec::new();
         for line in &lines[1..] {
             let fields: Vec<&str> = line.split(',').collect();
-            let row_loss: f64 = fields[i_loss]
-                .parse()
-                .unwrap_or_else(|e| panic!("{csv_path}: bad loss_rate '{}': {e}", fields[i_loss]));
-            if fields[i_system] == spec.system
-                && fields[i_arm] == "base"
-                && (row_loss - primary_loss).abs() < 1e-12
-            {
+            if fields[i_system] != spec.system || fields[i_arm] != "base" {
+                continue;
+            }
+            let row_loss: f64 = match fields[i_loss].parse() {
+                Ok(v) => v,
+                Err(_) => continue, // skip unparseable rows (e.g. blank or NA)
+            };
+            if (row_loss - primary_loss).abs() < 1e-12 {
                 let committed: u64 = fields[i_committed].parse().unwrap();
                 let total: u64 = fields[i_total].parse().unwrap();
                 assert_eq!(
@@ -866,49 +867,145 @@ fn harness_loss_rates_come_from_the_calibration_lock() {
     let script = std::fs::read_to_string(script_path)
         .unwrap_or_else(|e| panic!("cannot read {script_path}: {e}"));
 
-    let loss_line = script
+    let loss_lines: Vec<&str> = script
         .lines()
-        .find(|l| l.trim_start().starts_with("for loss in"))
-        .unwrap_or_else(|| {
-            panic!(
-                "{script_path}: no line beginning with 'for loss in' found; \
-                 expected the harness to iterate over loss rates on such a line"
-            )
-        });
-
-    // Parse "for loss in 0.05 0.06; do" → [0.05, 0.06]
-    let after_in = loss_line
-        .split(" in ")
-        .nth(1)
-        .unwrap_or_else(|| panic!("{script_path}: 'for loss in' line has no ' in ' delimiter"));
-    let tokens_part = after_in.split(';').next().unwrap_or(after_in);
-    let mut script_rates: Vec<f64> = tokens_part
-        .split_whitespace()
-        .map(|t| {
-            t.parse::<f64>()
-                .unwrap_or_else(|e| panic!("{script_path}: cannot parse '{t}' as f64: {e}"))
-        })
+        .filter(|l| l.trim_start().starts_with("for loss in"))
         .collect();
-    script_rates.sort_by(|a, b| a.partial_cmp(b).unwrap());
-    script_rates.dedup();
-
-    let mut lock_rates = vec![primary, sensitivity];
-    lock_rates.sort_by(|a, b| a.partial_cmp(b).unwrap());
 
     assert_eq!(
-        script_rates.len(),
+        loss_lines.len(),
+        2,
+        "{script_path}: found {} 'for loss in' lines, expected exactly 2 (one per system block); \
+         if the harness gains or loses a system block this count must be updated deliberately",
+        loss_lines.len(),
+    );
+
+    // Helper: parse "for loss in 0.05 0.06; do" → sorted, deduped Vec<f64>
+    let parse_rates = |line: &str| -> Vec<f64> {
+        let after_in = line
+            .split(" in ")
+            .nth(1)
+            .unwrap_or_else(|| panic!("{script_path}: 'for loss in' line has no ' in ' delimiter"));
+        let tokens_part = after_in.split(';').next().unwrap_or(after_in);
+        let mut rates: Vec<f64> = tokens_part
+            .split_whitespace()
+            .map(|t| {
+                t.parse::<f64>()
+                    .unwrap_or_else(|e| panic!("{script_path}: cannot parse '{t}' as f64: {e}"))
+            })
+            .collect();
+        rates.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        rates.dedup();
+        rates
+    };
+
+    let first_rates = parse_rates(loss_lines[0]);
+
+    // Assert all occurrences have identical rate sets.
+    for (i, line) in loss_lines.iter().enumerate() {
+        let rates = parse_rates(line);
+        assert_eq!(
+            rates, first_rates,
+            "{script_path}: 'for loss in' line {i} has rates {rates:?} but line 0 has \
+             {first_rates:?}; all system blocks must use the same loss-rate set",
+        );
+    }
+
+    // D2: sort and dedup the lock side too.
+    // NOTE: dedup uses exact float equality while the final comparison uses
+    // 1e-12 tolerance, so the two are not perfectly consistent; not solved here.
+    let mut lock_rates = vec![primary, sensitivity];
+    lock_rates.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    lock_rates.dedup();
+
+    assert_eq!(
+        first_rates.len(),
         lock_rates.len(),
-        "{script_path}: harness has {} loss rates {script_rates:?} but the lock defines {} \
+        "{script_path}: harness has {} loss rates {first_rates:?} but the lock defines {} \
          rates {lock_rates:?}; they must be the same set",
-        script_rates.len(),
+        first_rates.len(),
         lock_rates.len(),
     );
 
-    for (s, l) in script_rates.iter().zip(lock_rates.iter()) {
+    for (s, l) in first_rates.iter().zip(lock_rates.iter()) {
         assert!(
             (s - l).abs() < 1e-12,
             "{script_path}: harness loss rate {s} does not match lock rate {l} (tol 1e-12); \
-             the harness rates {script_rates:?} must equal the lock rates {lock_rates:?}",
+             the harness rates {first_rates:?} must equal the lock rates {lock_rates:?}",
+        );
+    }
+}
+
+/// Compute the git blob object ID: SHA-1("blob <len>\0" + content).
+fn git_blob_sha1(bytes: &[u8]) -> String {
+    let mut hasher = sha1_smol::Sha1::new();
+    hasher.update(format!("blob {}\0", bytes.len()).as_bytes());
+    hasher.update(bytes);
+    format!("{}", hasher.digest())
+}
+
+/// Verify that every `*_blob` evidence hash in the calibration lock matches
+/// the current content of the file it describes. The hashes are git blob
+/// object IDs, not plain file SHA-1s.
+#[test]
+fn calibration_lock_evidence_blobs_match_their_files() {
+    // Sanity-check the helper: the git blob hash of the empty byte string is
+    // a well-known constant.
+    assert_eq!(
+        git_blob_sha1(b""),
+        "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+        "git_blob_sha1 helper is broken: wrong hash for empty input",
+    );
+
+    let lock = read_toml("profiles/calibration.lock.toml");
+    let evidence = lock["evidence"]
+        .as_table()
+        .expect("profiles/calibration.lock.toml: [evidence] section missing or not a table");
+
+    // Collect all *_blob keys and their sibling path keys.
+    let blob_keys: Vec<(&String, &toml::Value)> = evidence
+        .iter()
+        .filter(|(k, _)| k.ends_with("_blob"))
+        .collect();
+
+    assert_eq!(
+        blob_keys.len(),
+        4,
+        "profiles/calibration.lock.toml [evidence]: expected exactly 4 *_blob keys, found {}; \
+         if a fifth evidence blob is added, this count must be updated deliberately",
+        blob_keys.len(),
+    );
+
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
+
+    for (blob_key, blob_val) in &blob_keys {
+        let recorded_hash = blob_val.as_str().unwrap_or_else(|| {
+            panic!("profiles/calibration.lock.toml: {blob_key} is not a string")
+        });
+
+        // Derive the sibling path key: "foo_blob" → "foo"
+        let path_key = blob_key.trim_end_matches("_blob");
+        let rel_path = evidence[path_key].as_str().unwrap_or_else(|| {
+            panic!("profiles/calibration.lock.toml: sibling key '{path_key}' for '{blob_key}' missing or not a string")
+        });
+
+        let full_path = root.join(rel_path);
+        assert!(
+            full_path.exists(),
+            "profiles/calibration.lock.toml: {blob_key} references '{rel_path}' \
+             (via key '{path_key}') but that file does not exist",
+        );
+
+        let bytes = std::fs::read(&full_path)
+            .unwrap_or_else(|e| panic!("cannot read '{}': {e}", full_path.display()));
+        let computed = git_blob_sha1(&bytes);
+
+        assert_eq!(
+            computed, recorded_hash,
+            "profiles/calibration.lock.toml: {blob_key} for '{rel_path}': \
+             recorded {recorded_hash}, computed {computed}; \
+             the evidence file has changed since the calibration was frozen; do \
+             not update the lock - re-run the affected step or report the change",
         );
     }
 }

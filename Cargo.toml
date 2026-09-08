@@ -22,3 +22,6 @@ toml = "0.8"
 [profile.release]
 # Figure scripts run thousands of sweep cells; this is the profile the paper used.
 opt-level = 3
+
+[dev-dependencies]
+sha1_smol = "1.0"
