@@ -1,0 +1,7 @@
+constant,protocol,slot_ms_nominal,ticks_at_32768,slot_ms_realised,repo,git_ref,path,blob_sha
+TWO_PC_SLOT_LEN,2pc,4.75,152,4.6387,iot-chalmers/a2-synchrotron,1224860ff62db2e91af5ed0c6ab2da7ee66295d8,a2-synchrotron-contiki/core/net/mac/chaos/lib/2pc/2pc.h,304a24ccb588276c2ae9709a87a89cda24e09b64
+THREE_PC_SLOT_LEN,3pc,4.75,152,4.6387,iot-chalmers/a2-synchrotron,1224860ff62db2e91af5ed0c6ab2da7ee66295d8,a2-synchrotron-contiki/core/net/mac/chaos/lib/3pc/3pc.h,7cdec10cd686c215a9e3a961967448b896840b68
+PAXOS_SLOT_LEN,wireless_paxos,5.00,160,4.8828,iot-chalmers/wireless-paxos,cb753d37adddafa7f5a97fd407b1e67ec28d73b8,core/net/mac/chaos/lib/paxos/paxos.h,46a7b51da96fc7b5c95cd1136797aa4510ac56cf
+MAX_SLOT_LEN,max,4.00,128,3.9062,iot-chalmers/a2-synchrotron,1224860ff62db2e91af5ed0c6ab2da7ee66295d8,a2-synchrotron-contiki/core/net/mac/chaos/lib/max/max.h,515e83301bf32bca450b38c9f096da69570f169e
+CHAOS_GLOSSY_SLOT_LEN,glossy,4.00,128,3.9062,iot-chalmers/a2-synchrotron,1224860ff62db2e91af5ed0c6ab2da7ee66295d8,a2-synchrotron-contiki/core/net/mac/chaos/lib/glossy/glossy.h,71fb54fd8f877cc9de5f4edda0348e37b5dd9850
+ASSOCIATION_SLOT_LEN,join,7.00,224,6.8359,iot-chalmers/a2-synchrotron,1224860ff62db2e91af5ed0c6ab2da7ee66295d8,a2-synchrotron-contiki/core/net/mac/chaos/chaos-config.h,0122c69fb6da7113c68271090b36f1fe58937776
