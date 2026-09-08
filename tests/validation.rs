@@ -574,6 +574,12 @@ fn blind_prediction_failure_is_recorded_not_repaired() {
     let lines: Vec<&str> = text.lines().collect();
     assert!(lines.len() >= 2, "{csv_path}: expected header + data rows",);
 
+    // Read the primary loss rate from the calibration lock — no hard-coded "0.05".
+    let lock = read_toml("profiles/calibration.lock.toml");
+    let primary_loss: f64 = lock["step_2_5"]["primary_loss_rate"].as_float().expect(
+        "profiles/calibration.lock.toml: step_2_5.primary_loss_rate missing or not a float",
+    );
+
     // Parse header for column indices.
     let header: Vec<&str> = lines[0].split(',').collect();
     let col = |name: &str| -> usize {
@@ -611,13 +617,16 @@ fn blind_prediction_failure_is_recorded_not_repaired() {
     ];
 
     for spec in &cells {
-        // Collect primary cell: arm=base, loss_rate=0.05
+        // Collect primary cell: arm=base, loss_rate == primary_loss (numeric comparison)
         let mut latencies: Vec<f64> = Vec::new();
         for line in &lines[1..] {
             let fields: Vec<&str> = line.split(',').collect();
+            let row_loss: f64 = fields[i_loss]
+                .parse()
+                .unwrap_or_else(|e| panic!("{csv_path}: bad loss_rate '{}': {e}", fields[i_loss]));
             if fields[i_system] == spec.system
                 && fields[i_arm] == "base"
-                && fields[i_loss] == "0.05"
+                && (row_loss - primary_loss).abs() < 1e-12
             {
                 let committed: u64 = fields[i_committed].parse().unwrap();
                 let total: u64 = fields[i_total].parse().unwrap();
@@ -631,11 +640,19 @@ fn blind_prediction_failure_is_recorded_not_repaired() {
             }
         }
 
-        // (a) exactly 15 rows
+        // (a) Distinguish zero-match (lock changed) from wrong-count (data changed).
+        assert!(
+            !latencies.is_empty(),
+            "{csv_path}: {}: the loss rate in profiles/calibration.lock.toml \
+             (step_2_5.primary_loss_rate = {primary_loss}) selects no rows in \
+             blind_predictions.csv; the calibration has been changed without \
+             re-running both blind predictions",
+            spec.system,
+        );
         assert_eq!(
             latencies.len(),
             15,
-            "{csv_path}: {} base/0.05 cell has {} rows, expected 15",
+            "{csv_path}: {} base/loss={primary_loss} cell has {} rows, expected 15",
             spec.system,
             latencies.len(),
         );
@@ -770,19 +787,36 @@ fn published_slot_lengths_match_their_primary_sources() {
     }
 
     // (d) firmware round caps — each published measurement is strictly below its cap,
-    // so it is a measurement and not a timeout. The values are read from the conversion
-    // table above to avoid clippy::assertions_on_constants.
+    // so it is a measurement and not a timeout. The caps are read from the CSV's
+    // round_max_slots column; rows with "NA" are skipped.
+    let i_round_max = col("round_max_slots");
     let a2_slots = conversions[0].2; // 100.0
     let paxos_slots = conversions[2].2; // 126.6
-    let two_pc_round_max: f64 = 350.0;
-    let paxos_round_max: f64 = 255.0;
+
+    // TWO_PC cap
+    let two_pc_cap_str = rows["TWO_PC_SLOT_LEN"][i_round_max];
+    assert_ne!(
+        two_pc_cap_str, "NA",
+        "{csv_path}: TWO_PC_SLOT_LEN round_max_slots is NA — cannot check cap",
+    );
+    let two_pc_round_max: f64 = two_pc_cap_str.parse().unwrap();
     assert!(
         a2_slots < two_pc_round_max,
-        "TWO_PC: {a2_slots} slots must be below TWO_PC_ROUND_MAX_SLOTS ({two_pc_round_max})",
+        "TWO_PC: {a2_slots} slots must be below TWO_PC_ROUND_MAX_SLOTS ({two_pc_round_max}); \
+         the published figure is a measurement and not a timeout",
     );
+
+    // PAXOS cap
+    let paxos_cap_str = rows["PAXOS_SLOT_LEN"][i_round_max];
+    assert_ne!(
+        paxos_cap_str, "NA",
+        "{csv_path}: PAXOS_SLOT_LEN round_max_slots is NA — cannot check cap",
+    );
+    let paxos_round_max: f64 = paxos_cap_str.parse().unwrap();
     assert!(
         paxos_slots < paxos_round_max,
-        "PAXOS: {paxos_slots} slots must be below PAXOS_ROUND_MAX_SLOTS ({paxos_round_max})",
+        "PAXOS: {paxos_slots} slots must be below PAXOS_ROUND_MAX_SLOTS ({paxos_round_max}); \
+         the published figure is a measurement and not a timeout",
     );
 
     // (e) every row has non-empty provenance and a valid 40-char hex blob_sha
@@ -810,6 +844,71 @@ fn published_slot_lengths_match_their_primary_sources() {
         assert!(
             sha.chars().all(|c| c.is_ascii_hexdigit()),
             "{csv_path}: {name}: blob_sha '{sha}' is not valid hex",
+        );
+    }
+}
+
+/// The blind-prediction harness substitutes loss rates from the command line,
+/// not from the calibration lock. This test closes the gap: the set of loss
+/// rates in the harness script's `for loss in ...` line must match exactly the
+/// set { primary_loss_rate, sensitivity_loss_rate } from the lock.
+#[test]
+fn harness_loss_rates_come_from_the_calibration_lock() {
+    let lock = read_toml("profiles/calibration.lock.toml");
+    let primary: f64 = lock["step_2_5"]["primary_loss_rate"]
+        .as_float()
+        .expect("profiles/calibration.lock.toml: step_2_5.primary_loss_rate missing");
+    let sensitivity: f64 = lock["step_2_5"]["sensitivity_loss_rate"]
+        .as_float()
+        .expect("profiles/calibration.lock.toml: step_2_5.sensitivity_loss_rate missing");
+
+    let script_path = "docs/validation/addition13/scripts/blind_predictions.sh";
+    let script = std::fs::read_to_string(script_path)
+        .unwrap_or_else(|e| panic!("cannot read {script_path}: {e}"));
+
+    let loss_line = script
+        .lines()
+        .find(|l| l.trim_start().starts_with("for loss in"))
+        .unwrap_or_else(|| {
+            panic!(
+                "{script_path}: no line beginning with 'for loss in' found; \
+                 expected the harness to iterate over loss rates on such a line"
+            )
+        });
+
+    // Parse "for loss in 0.05 0.06; do" → [0.05, 0.06]
+    let after_in = loss_line
+        .split(" in ")
+        .nth(1)
+        .unwrap_or_else(|| panic!("{script_path}: 'for loss in' line has no ' in ' delimiter"));
+    let tokens_part = after_in.split(';').next().unwrap_or(after_in);
+    let mut script_rates: Vec<f64> = tokens_part
+        .split_whitespace()
+        .map(|t| {
+            t.parse::<f64>()
+                .unwrap_or_else(|e| panic!("{script_path}: cannot parse '{t}' as f64: {e}"))
+        })
+        .collect();
+    script_rates.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    script_rates.dedup();
+
+    let mut lock_rates = vec![primary, sensitivity];
+    lock_rates.sort_by(|a, b| a.partial_cmp(b).unwrap());
+
+    assert_eq!(
+        script_rates.len(),
+        lock_rates.len(),
+        "{script_path}: harness has {} loss rates {script_rates:?} but the lock defines {} \
+         rates {lock_rates:?}; they must be the same set",
+        script_rates.len(),
+        lock_rates.len(),
+    );
+
+    for (s, l) in script_rates.iter().zip(lock_rates.iter()) {
+        assert!(
+            (s - l).abs() < 1e-12,
+            "{script_path}: harness loss rate {s} does not match lock rate {l} (tol 1e-12); \
+             the harness rates {script_rates:?} must equal the lock rates {lock_rates:?}",
         );
     }
 }

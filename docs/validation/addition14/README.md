@@ -38,3 +38,7 @@ section 6.5 was run at 3.75 ms.
 | 289 ms / 5.00 ms = 57.8 slots | Wireless Paxos majority, N=188 |
 | 633 ms / 5.00 ms = 126.6 slots | Wireless Paxos full completion |
 | 959 ms / 7.00 ms = 137.0 slots | A2 Join, Euratech |
+
+The `round_max_slots` column records the firmware's per-round slot
+ceiling for the same blob, so that "the published figure is below the
+cap" is a claim with a source rather than a number typed into a test.
