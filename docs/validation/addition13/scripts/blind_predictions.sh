@@ -53,6 +53,13 @@ run_one() {
     local cfg="/tmp/blind_pred_cfg.toml"
     sed -e "s/__SEED__/$cseed/g" -e "s/__LOSS__/$loss/g" -e "s|__GRAPH__|$gf|g" "$template" > "$cfg"
 
+    # Fail loudly if any placeholder survived substitution.
+    if grep -qE '__SEED__|__LOSS__|__GRAPH__' "$cfg"; then
+        echo "ERROR: $cfg still contains an unsubstituted placeholder after sed:" >&2
+        grep -nE '__SEED__|__LOSS__|__GRAPH__' "$cfg" >&2
+        exit 1
+    fi
+
     local out
     out=$("$BIN" "$cfg" 2>&1)
 
@@ -148,9 +155,13 @@ run_one() {
         degree2_count="NA"
     fi
 
-    # graph sha
+    # graph sha (portable: sha256sum on Linux, shasum -a 256 on macOS)
     local graph_sha
-    graph_sha=$(shasum -a 256 "$gf" | cut -d' ' -f1)
+    if command -v sha256sum &>/dev/null; then
+        graph_sha=$(sha256sum "$gf" | cut -d' ' -f1)
+    else
+        graph_sha=$(shasum -a 256 "$gf" | cut -d' ' -f1)
+    fi
 
     # Report
     if [[ "$timed_out" -gt 0 ]]; then

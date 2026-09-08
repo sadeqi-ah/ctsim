@@ -134,10 +134,13 @@ fn degree_stats(graph: &NetworkGraph) -> (usize, usize, Vec<(usize, usize)>) {
 }
 
 fn sha256_file(path: &str) -> String {
-    let output = Command::new("shasum")
-        .args(["-a", "256", path])
+    // Try sha256sum (Linux) first, then shasum -a 256 (macOS).
+    let output = Command::new("sha256sum")
+        .arg(path)
         .output()
-        .expect("failed to run shasum");
+        .or_else(|_| Command::new("shasum").args(["-a", "256", path]).output())
+        .expect("failed to run sha256sum or shasum -a 256");
+    assert!(output.status.success(), "sha256 command failed for {path}");
     let stdout = String::from_utf8(output.stdout).unwrap();
     stdout.split_whitespace().next().unwrap().to_string()
 }
