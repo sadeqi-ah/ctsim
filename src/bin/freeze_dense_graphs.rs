@@ -19,6 +19,35 @@ use std::process::Command;
 
 const SEEDS: [u64; 15] = [2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47];
 const NODE_COUNTS: [usize; 2] = [180, 188];
+const MAX_GENERATION_ATTEMPTS: usize = 100;
+
+fn calibrated_degree_window(n: usize) -> (usize, usize) {
+    match n {
+        180 => (74, 78),
+        188 => (76, 80),
+        _ => panic!("no calibrated dense window for n={n}"),
+    }
+}
+
+fn generate_dense_graph(n: usize, seed: u64) -> NetworkGraph {
+    let (min_deg, max_deg) = calibrated_degree_window(n);
+    let expected_mean = 0.5 * n as f64;
+    let tolerance = 0.05 * expected_mean;
+
+    let mut rng = ChaCha8Rng::seed_from_u64(seed);
+    for _attempt in 1..=MAX_GENERATION_ATTEMPTS {
+        let graph = NetworkGraph::random_topology(n, min_deg, max_deg, &mut rng);
+        let mean_degree = 2.0 * graph.edge_count() as f64 / n as f64;
+        if (mean_degree - expected_mean).abs() <= tolerance && graph.diameter() == 2 {
+            return graph;
+        }
+    }
+
+    panic!(
+        "dense graph generation failed after {MAX_GENERATION_ATTEMPTS} attempts for seed={seed}, n={n}: \
+         could not satisfy mean degree within 5% of 0.5*n and diameter == 2"
+    );
+}
 
 fn graph_file_name(n: usize, seed: u64) -> String {
     format!("profiles/graphs/random_n{n}_dense_seed{seed}.txt")
@@ -139,19 +168,10 @@ fn main() {
         //   n=180: center=76 (min=74, max=78) → output mean ≈ 91.0 ≈ 0.506*n ✓
         //   n=188: center=78 (min=76, max=80) → output mean ≈ 93.2 ≈ 0.496*n ✓
         // Both are within the 5% tolerance band around 0.5*n.
-        let (min_deg, max_deg) = match n {
-            180 => (74, 78),
-            188 => (76, 80),
-            _ => {
-                // For any future n, use the same empirical ratio: input center ≈ 0.42*n
-                let center = (0.42 * n as f64).round() as usize;
-                (center.saturating_sub(2), center + 2)
-            }
-        };
+        calibrated_degree_window(n);
 
         for &seed in &SEEDS {
-            let mut rng = ChaCha8Rng::seed_from_u64(seed);
-            let graph = NetworkGraph::random_topology(n, min_deg, max_deg, &mut rng);
+            let graph = generate_dense_graph(n, seed);
 
             let path = graph_file_name(n, seed);
             write_graph(&graph, &path);

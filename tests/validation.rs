@@ -1119,3 +1119,94 @@ fn harness_templates_contain_all_placeholders() {
         }
     }
 }
+
+#[test]
+fn high_loss_2pc_exercises_non_committed_outcomes() {
+    let config = make_sim_config(
+        2,
+        "ce",
+        "2pc_ce",
+        6,
+        "line",
+        0.20,
+        1,
+        &CeConfig {
+            listen_timeout: 5,
+            max_round_slots: 100,
+        },
+        10,
+        1_000_000,
+        100_000,
+        0.0,
+    );
+    let result = run_experiment(config);
+    assert!(
+        result.summary.aborted + result.summary.timed_out > 0,
+        "high-loss outcome classifier stayed all-committed: committed={} aborted={} timed_out={}",
+        result.summary.committed,
+        result.summary.aborted,
+        result.summary.timed_out,
+    );
+}
+
+#[test]
+fn committed_per_proposal_evidence_reproduces_stratified_aggregate() {
+    let proposal_path =
+        "docs/validation/addition14/data/per_proposal/a2_sensys17_dense_loss0.05_gs2_cs2.csv";
+    let aggregate_path = "docs/validation/addition14/data/stratified_predictions.csv";
+    let proposals = std::fs::read_to_string(proposal_path)
+        .unwrap_or_else(|e| panic!("cannot read {proposal_path}: {e}"));
+    let mut latencies = Vec::new();
+    for (index, line) in proposals.lines().enumerate().skip(1) {
+        let fields: Vec<&str> = line.split(',').collect();
+        assert_eq!(
+            fields.len(),
+            5,
+            "{proposal_path} line {}: expected 5 fields",
+            index + 1
+        );
+        if fields[4] == "committed" {
+            latencies.push(fields[3].parse::<f64>().unwrap_or_else(|e| {
+                panic!(
+                    "{proposal_path} line {}: invalid latency '{}': {e}",
+                    index + 1,
+                    fields[3]
+                )
+            }));
+        }
+    }
+    assert!(!latencies.is_empty(), "{proposal_path}: no committed rows");
+    let mean = latencies.iter().sum::<f64>() / latencies.len() as f64;
+    let sd = (latencies.iter().map(|x| (x - mean).powi(2)).sum::<f64>()
+        / (latencies.len() - 1) as f64)
+        .sqrt();
+
+    let aggregate = std::fs::read_to_string(aggregate_path)
+        .unwrap_or_else(|e| panic!("cannot read {aggregate_path}: {e}"));
+    let row = aggregate
+        .lines()
+        .skip(1)
+        .find(|line| {
+            let f: Vec<&str> = line.split(',').collect();
+            f.len() == 20
+                && f[0] == "a2_sensys17"
+                && f[3] == "dense"
+                && f[4] == "2"
+                && f[5] == "0.05"
+                && f[6] == "2"
+        })
+        .unwrap_or_else(|| panic!("{aggregate_path}: matching aggregate row not found"));
+    let fields: Vec<&str> = row.split(',').collect();
+    let recorded_mean: f64 = fields[13].parse().unwrap();
+    let recorded_sd: f64 = fields[14].parse().unwrap();
+    assert_eq!(
+        format!("{mean:.6}"),
+        format!("{recorded_mean:.6}"),
+        "{proposal_path}: committed mean {mean:.6} != {aggregate_path} mean {recorded_mean:.6}"
+    );
+    assert_eq!(
+        format!("{sd:.6}"),
+        format!("{recorded_sd:.6}"),
+        "{proposal_path}: committed sample SD {sd:.6} != {aggregate_path} SD {recorded_sd:.6}"
+    );
+}

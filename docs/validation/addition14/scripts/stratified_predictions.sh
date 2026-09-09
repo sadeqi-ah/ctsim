@@ -19,6 +19,7 @@ LOCK="profiles/calibration.lock.toml"
 SLOT_SOURCE="docs/validation/addition14/data/published_slot_lengths.csv"
 OUT_CSV="docs/validation/addition14/data/stratified_predictions.csv"
 RUN_DIR="/tmp/stratified_pred_runs"
+PER_PROPOSAL_DIR="docs/validation/addition14/data/per_proposal"
 TIMING_FILE="/tmp/stratified_prediction_timings.txt"
 SEEDS=(2 3 5 7 11 13 17 19 23 29 31 37 41 43 47)
 EXPECTED_ROWS=100
@@ -75,9 +76,7 @@ printf 'Parsed loss rates: primary=%s sensitivity=%s\n' "$PRIMARY_LOSS" "$SENSIT
 printf 'Parsed slot lengths from %s: TWO_PC_SLOT_LEN.slot_ms_nominal=%s PAXOS_SLOT_LEN.slot_ms_nominal=%s\n' \
     "$SLOT_SOURCE" "$TWO_PC_SLOT_MS" "$PAXOS_SLOT_MS"
 
-mkdir -p "$(dirname "$OUT_CSV")" "$RUN_DIR"
-printf '%s\n' 'system,protocol,n,arm,graph_seed,loss_rate,channel_seed,rounds,n_committed,n_aborted,n_timed_out,total_slots_all,mean_round_slots_all,mean_round_slots_committed,sd_round_slots_committed,max_round_slots_observed,slot_len_ms,total_ms_all,completed,cap_hit' > "$OUT_CSV"
-: > "$TIMING_FILE"
+mkdir -p "$(dirname "$OUT_CSV")" "$RUN_DIR" "$PER_PROPOSAL_DIR"
 
 now_ns() {
     python3 -c 'import time; print(time.monotonic_ns())'
@@ -134,7 +133,9 @@ run_one() {
     esac
     saved_csv="$RUN_DIR/${system}_${arm}_loss${loss}_gs${gseed}_cs${cseed}.csv"
     cp "$results_csv" "$saved_csv"
-
+    if [[ "$gseed" -eq 2 ]]; then
+        cp "$saved_csv" "$PER_PROPOSAL_DIR/${system}_${arm}_loss${loss}_gs${gseed}_cs${cseed}.csv"
+    fi
     local nrows
     nrows=$(awk 'END { print NR - 1 }' "$saved_csv")
     [[ "$nrows" -eq "$EXPECTED_ROWS" ]] || {
@@ -198,6 +199,48 @@ run_one() {
     printf '  %-16s arm=%-13s loss=%s gs=%2d cs=%2d C/A/T=%d/%d/%d mean_all=%7.3f mean_C=%7.3f\n' \
         "$system" "$arm" "$loss" "$gseed" "$cseed" "$n_committed" "$n_aborted" "$n_timed_out" "$mean_all" "$mean_committed"
 }
+
+SUBSET_ONLY=${SUBSET_ONLY:-0}
+if [[ "$SUBSET_ONLY" == 1 ]]; then
+    existing_csv="$OUT_CSV"
+    [[ -f "$existing_csv" ]] || { echo "ERROR: $existing_csv not found" >&2; exit 1; }
+    comparison_csv="$RUN_DIR/subset_rows.csv"
+    printf '%s\n' 'system,protocol,n,arm,graph_seed,loss_rate,channel_seed,rounds,n_committed,n_aborted,n_timed_out,total_slots_all,mean_round_slots_all,mean_round_slots_committed,sd_round_slots_committed,max_round_slots_observed,slot_len_ms,total_ms_all,completed,cap_hit' > "$comparison_csv"
+    OUT_CSV="$comparison_csv"
+    subset_start=$(now_ns)
+    for system_spec in "a2_sensys17 2pc_ce 180" "wpaxos_ewsn19 paxos_ce 188"; do
+        read -r system protocol nn <<< "$system_spec"
+        for arm in dense base; do
+            for loss in "$PRIMARY_LOSS" "$SENSITIVITY_LOSS"; do
+                run_one "$system" "$protocol" "$nn" "$arm" "$loss" 2 2
+            done
+        done
+    done
+    for cseed in "${SEEDS[@]}"; do
+        run_one a2_sensys17 2pc_ce 180 dense_chanctl "$PRIMARY_LOSS" 2 "$cseed"
+    done
+    record_elapsed subset "$subset_start"
+    actual_sorted="$RUN_DIR/subset_actual.sorted"
+    expected_sorted="$RUN_DIR/subset_expected.sorted"
+    tail -n +2 "$comparison_csv" | LC_ALL=C sort > "$actual_sorted"
+    awk -F, 'NR > 1 && $5 == 2' "$existing_csv" | LC_ALL=C sort > "$expected_sorted"
+    cmp "$expected_sorted" "$actual_sorted" || {
+        echo "ERROR: subset aggregate rows differ from $existing_csv" >&2
+        diff -u "$expected_sorted" "$actual_sorted" >&2 || true
+        exit 1
+    }
+    subset_count=$(awk 'END { print NR - 1 }' "$comparison_csv")
+    file_count=$(find "$PER_PROPOSAL_DIR" -type f -name '*.csv' | wc -l | tr -d ' ')
+    [[ "$subset_count" -eq 23 && "$file_count" -eq 23 ]] || {
+        echo "ERROR: expected 23 subset rows/files, got rows=$subset_count files=$file_count" >&2
+        exit 1
+    }
+    echo "SUBSET COMPARISON PASSED: 23/23 rerun aggregate rows reproduce stratified_predictions.csv byte-for-byte"
+    exit 0
+fi
+
+printf '%s\n' 'system,protocol,n,arm,graph_seed,loss_rate,channel_seed,rounds,n_committed,n_aborted,n_timed_out,total_slots_all,mean_round_slots_all,mean_round_slots_committed,sd_round_slots_committed,max_round_slots_observed,slot_len_ms,total_ms_all,completed,cap_hit' > "$OUT_CSV"
+: > "$TIMING_FILE"
 
 total=0
 dense_start=$(now_ns)
