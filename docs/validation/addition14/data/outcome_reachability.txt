@@ -12,7 +12,7 @@ Loss = 0.40 | C/A/T: 20/0/0 | Mean round: 35.80 slots | Max round: 43 slots
 Loss = 0.45 | C/A/T: 20/0/0 | Mean round: 37.35 slots | Max round: 43 slots
 Loss = 0.50 | C/A/T: 20/0/0 | Mean round: 38.20 slots | Max round: 46 slots
 
-=== Diagnostic Arm (max_round_slots=200) - NOT part of validation configuration ===
+=== Diagnostic Arm: third outcome class reachability (max_round_slots=40) - NOT part of validation configuration ===
 Loss = 0.05 | C/A/T: 20/0/0 | Mean round: 28.75 slots | Max round: 34 slots
 Loss = 0.10 | C/A/T: 20/0/0 | Mean round: 28.45 slots | Max round: 31 slots
 Loss = 0.15 | C/A/T: 20/0/0 | Mean round: 28.15 slots | Max round: 31 slots
@@ -20,6 +20,45 @@ Loss = 0.20 | C/A/T: 20/0/0 | Mean round: 29.65 slots | Max round: 36 slots
 Loss = 0.25 | C/A/T: 20/0/0 | Mean round: 29.50 slots | Max round: 34 slots
 Loss = 0.30 | C/A/T: 20/0/0 | Mean round: 31.30 slots | Max round: 38 slots
 Loss = 0.35 | C/A/T: 20/0/0 | Mean round: 32.35 slots | Max round: 39 slots
-Loss = 0.40 | C/A/T: 20/0/0 | Mean round: 35.80 slots | Max round: 43 slots
-Loss = 0.45 | C/A/T: 20/0/0 | Mean round: 37.35 slots | Max round: 43 slots
-Loss = 0.50 | C/A/T: 20/0/0 | Mean round: 38.20 slots | Max round: 46 slots
+Loss = 0.40 | C/A/T: 19/1/0 | Mean round: 33.80 slots | Max round: 40 slots
+Loss = 0.45 | C/A/T: 18/2/0 | Mean round: 35.40 slots | Max round: 40 slots
+Loss = 0.50 | C/A/T: 15/5/0 | Mean round: 37.90 slots | Max round: 40 slots
+Summary: The 'aborted' outcome class was reached at loss values: 0.40, 0.45, 0.50
+
+=== Diagnostic Arm: third outcome class reachability (max_round_slots=30) - NOT part of validation configuration ===
+Loss = 0.05 | C/A/T: 17/3/0 | Mean round: 28.05 slots | Max round: 30 slots
+Loss = 0.10 | C/A/T: 20/0/0 | Mean round: 28.25 slots | Max round: 30 slots
+Loss = 0.15 | C/A/T: 20/0/0 | Mean round: 28.00 slots | Max round: 30 slots
+Loss = 0.20 | C/A/T: 18/2/0 | Mean round: 28.35 slots | Max round: 30 slots
+Loss = 0.25 | C/A/T: 15/5/0 | Mean round: 28.40 slots | Max round: 30 slots
+Loss = 0.30 | C/A/T: 12/8/0 | Mean round: 29.40 slots | Max round: 30 slots
+Loss = 0.35 | C/A/T: 6/14/0 | Mean round: 29.80 slots | Max round: 30 slots
+Loss = 0.40 | C/A/T: 8/12/0 | Mean round: 29.95 slots | Max round: 30 slots
+Loss = 0.45 | C/A/T: 3/17/0 | Mean round: 30.00 slots | Max round: 30 slots
+Loss = 0.50 | C/A/T: 0/20/0 | Mean round: 30.00 slots | Max round: 30 slots
+Summary: The 'aborted' outcome class was reached at loss values: 0.05, 0.20, 0.25, 0.30, 0.35, 0.40, 0.45, 0.50
+
+=== Diagnostic Arm: third outcome class reachability (max_round_slots=20) - NOT part of validation configuration ===
+Loss = 0.05 | C/A/T: 0/20/0 | Mean round: 20.00 slots | Max round: 20 slots
+Loss = 0.10 | C/A/T: 0/20/0 | Mean round: 20.00 slots | Max round: 20 slots
+Loss = 0.15 | C/A/T: 0/20/0 | Mean round: 20.00 slots | Max round: 20 slots
+Loss = 0.20 | C/A/T: 0/20/0 | Mean round: 20.00 slots | Max round: 20 slots
+Loss = 0.25 | C/A/T: 0/20/0 | Mean round: 20.00 slots | Max round: 20 slots
+Loss = 0.30 | C/A/T: 0/20/0 | Mean round: 20.00 slots | Max round: 20 slots
+Loss = 0.35 | C/A/T: 0/20/0 | Mean round: 20.00 slots | Max round: 20 slots
+Loss = 0.40 | C/A/T: 0/20/0 | Mean round: 20.00 slots | Max round: 20 slots
+Loss = 0.45 | C/A/T: 0/20/0 | Mean round: 20.00 slots | Max round: 20 slots
+Loss = 0.50 | C/A/T: 0/20/0 | Mean round: 20.00 slots | Max round: 20 slots
+Summary: The 'aborted' outcome class was reached at loss values: 0.05, 0.10, 0.15, 0.20, 0.25, 0.30, 0.35, 0.40, 0.45, 0.50
+
+=== Diagnostic Arm: timed_out is reachable only through global budget exhaustion and not through round length (max_slots=500) - NOT part of validation configuration ===
+Loss = 0.05 | C/A/T: 18/0/2 | Mean round: 25.85 slots | Max round: 34 slots
+Loss = 0.10 | C/A/T: 18/0/2 | Mean round: 25.80 slots | Max round: 31 slots
+Loss = 0.15 | C/A/T: 18/0/2 | Mean round: 25.50 slots | Max round: 31 slots
+Loss = 0.20 | C/A/T: 18/0/2 | Mean round: 26.40 slots | Max round: 36 slots
+Loss = 0.25 | C/A/T: 17/0/3 | Mean round: 25.05 slots | Max round: 34 slots
+Loss = 0.30 | C/A/T: 17/0/3 | Mean round: 26.40 slots | Max round: 38 slots
+Loss = 0.35 | C/A/T: 16/0/4 | Mean round: 25.75 slots | Max round: 37 slots
+Loss = 0.40 | C/A/T: 14/0/6 | Mean round: 25.85 slots | Max round: 43 slots
+Loss = 0.45 | C/A/T: 14/0/6 | Mean round: 26.30 slots | Max round: 43 slots
+Loss = 0.50 | C/A/T: 14/0/6 | Mean round: 26.00 slots | Max round: 43 slots
