@@ -1551,6 +1551,8 @@ fn per_proposal_latencies_match_aggregate_round_columns() {
         .filter_map(Result::ok)
         .collect();
 
+    let mut file_count = 0;
+
     for entry in entries {
         let path = entry.path();
         if !path.is_file() {
@@ -1561,13 +1563,33 @@ fn per_proposal_latencies_match_aggregate_round_columns() {
             continue;
         }
 
+        file_count += 1;
+
         let stem = file_name.strip_suffix(".csv").unwrap();
         let parts: Vec<&str> = stem.split('_').collect();
-        let cs_str = parts.last().unwrap().strip_prefix("cs").unwrap();
-        let gs_str = parts[parts.len() - 2].strip_prefix("gs").unwrap();
-        let loss_str = parts[parts.len() - 3].strip_prefix("loss").unwrap();
-        let system = format!("{}_{}", parts[0], parts[1]);
-        let arm = parts[2..parts.len() - 3].join("_");
+        if parts.len() < 4 {
+            panic!("{file_name}: file stem must have at least 4 tokens separated by '_'");
+        }
+
+        let cs_str = parts.last().unwrap();
+        if !cs_str.starts_with("cs") {
+            panic!("{file_name}: token {cs_str} does not start with 'cs'");
+        }
+        let cs_val = cs_str.strip_prefix("cs").unwrap();
+
+        let gs_str = parts[parts.len() - 2];
+        if !gs_str.starts_with("gs") {
+            panic!("{file_name}: token {gs_str} does not start with 'gs'");
+        }
+        let gs_val = gs_str.strip_prefix("gs").unwrap();
+
+        let loss_str = parts[parts.len() - 3];
+        if !loss_str.starts_with("loss") {
+            panic!("{file_name}: token {loss_str} does not start with 'loss'");
+        }
+        let loss_val = loss_str.strip_prefix("loss").unwrap();
+
+        let prefix = parts[..parts.len() - 3].join("_");
 
         let content = std::fs::read_to_string(&path)
             .unwrap_or_else(|e| panic!("cannot read {}: {}", path.display(), e));
@@ -1576,8 +1598,15 @@ fn per_proposal_latencies_match_aggregate_round_columns() {
         let mut sum_committed_latency = 0;
         let mut committed_count = 0;
 
-        for line in content.lines().skip(1) {
+        for (i, line) in content.lines().enumerate().skip(1) {
             let fields: Vec<&str> = line.split(',').collect();
+            if fields.len() < 5 {
+                panic!(
+                    "{file_name}: line {}: expected at least 5 fields, found {}",
+                    i + 1,
+                    fields.len()
+                );
+            }
             let latency: u64 = fields[3].parse().unwrap();
             let outcome = fields[4];
 
@@ -1597,33 +1626,41 @@ fn per_proposal_latencies_match_aggregate_round_columns() {
         };
 
         // Find matching aggregate row
-        let mut matched = false;
-        for agg_line in agg_lines.iter().skip(1) {
+        let mut match_count = 0;
+        for (i, agg_line) in agg_lines.iter().enumerate().skip(1) {
             let f: Vec<&str> = agg_line.split(',').collect();
             if f.len() < 20 {
-                continue;
+                panic!(
+                    "stratified_predictions.csv: line {}: expected at least 20 fields, found {}",
+                    i + 1,
+                    f.len()
+                );
             }
-            if f[0] == system && f[3] == arm && f[4] == gs_str && f[5] == loss_str && f[6] == cs_str
-            {
-                matched = true;
+
+            let agg_prefix = format!("{}_{}", f[0], f[3]);
+            if agg_prefix == prefix && f[4] == gs_val && f[5] == loss_val && f[6] == cs_val {
+                match_count += 1;
                 let row_mean: f64 = f[13].parse().unwrap();
                 let row_max: u64 = f[15].parse().unwrap();
 
                 assert_eq!(
                     max_latency, row_max,
-                    "{file_name} (key sys={system} arm={arm} loss={loss_str} gs={gs_str} cs={cs_str}): max latency {max_latency} != max_round_slots_observed {row_max}"
+                    "{file_name} (key sys_arm={prefix} loss={loss_val} gs={gs_val} cs={cs_val}): max latency {max_latency} != max_round_slots_observed {row_max}"
                 );
 
                 assert_eq!(
                     format!("{mean_committed_latency:.6}"), format!("{row_mean:.6}"),
-                    "{file_name} (key sys={system} arm={arm} loss={loss_str} gs={gs_str} cs={cs_str}): mean latency {:.6} != mean_round_slots_committed {:.6}", mean_committed_latency, row_mean
+                    "{file_name} (key sys_arm={prefix} loss={loss_val} gs={gs_val} cs={cs_val}): mean latency {:.6} != mean_round_slots_committed {:.6}", mean_committed_latency, row_mean
                 );
-                break;
             }
         }
 
-        if !matched {
-            panic!("{file_name}: no matching aggregate row found for key sys={system} arm={arm} loss={loss_str} gs={gs_str} cs={cs_str}");
-        }
+        assert_eq!(
+            match_count, 1,
+            "{file_name}: found {} matching rows in aggregate CSV, expected exactly 1",
+            match_count
+        );
     }
+
+    assert!(file_count > 0, "examined 0 .csv files in per_proposal/");
 }
