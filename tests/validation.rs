@@ -1436,3 +1436,85 @@ fn cv_table_values_in_provenance_match_data() {
         );
     }
 }
+
+#[test]
+fn round_boundaries_tile_timeline_and_latency_equals_round_length() {
+    let dir_path = "docs/validation/addition14/data/per_proposal";
+    let entries: Vec<_> = std::fs::read_dir(dir_path)
+        .unwrap_or_else(|e| panic!("cannot read {dir_path}: {e}"))
+        .filter_map(Result::ok)
+        .collect();
+
+    for entry in entries {
+        let path = entry.path();
+        if !path.is_file() {
+            continue;
+        }
+        let file_name = path.file_name().unwrap().to_str().unwrap();
+        if !file_name.ends_with(".csv") {
+            continue;
+        }
+
+        let content = std::fs::read_to_string(&path)
+            .unwrap_or_else(|e| panic!("cannot read {}: {e}", path.display()));
+
+        let lines: Vec<&str> = content.lines().collect();
+        if lines.len() <= 1 {
+            continue;
+        }
+
+        let mut sum_latency = 0;
+        let mut prev_end_slot: Option<u64> = None;
+        let mut last_end_slot = 0;
+
+        for (i, line) in lines.iter().enumerate().skip(1) {
+            let fields: Vec<&str> = line.split(',').collect();
+
+            let file_row = i + 1;
+            assert_eq!(
+                fields.len(),
+                5,
+                "{file_name}: row {file_row} has invalid fields"
+            );
+
+            let start_slot: u64 = fields[1].parse().unwrap();
+            let end_slot: u64 = fields[2].parse().unwrap();
+            let latency: u64 = fields[3].parse().unwrap();
+
+            // (a) latency == end_slot - start_slot
+            assert_eq!(
+                latency,
+                end_slot - start_slot,
+                "{file_name}: row {file_row} failed property (a): latency {latency} != end_slot {end_slot} - start_slot {start_slot}"
+            );
+
+            // (c) first row start_slot == 0
+            if i == 1 {
+                assert_eq!(
+                    start_slot, 0,
+                    "{file_name}: row {file_row} failed property (c): start_slot {start_slot} != 0"
+                );
+            }
+
+            // (b) start_slot[i+1] == end_slot[i]
+            if let Some(prev) = prev_end_slot {
+                assert_eq!(
+                    start_slot, prev,
+                    "{file_name}: row {file_row} failed property (b): start_slot {start_slot} != previous end_slot {prev}"
+                );
+            }
+
+            prev_end_slot = Some(end_slot);
+            sum_latency += latency;
+            last_end_slot = end_slot;
+        }
+
+        // (d) last end_slot == sum of all latency
+        // Note: the prompt says "the last `end_slot` equals the sum of all `latency` values in the file".
+        // Let's use file_name, last row context, property (d).
+        assert_eq!(
+            last_end_slot, sum_latency,
+            "{file_name}: last row failed property (d): last end_slot {last_end_slot} != sum of latency {sum_latency}"
+        );
+    }
+}

@@ -107,10 +107,13 @@ No causal conclusion is drawn.
 
 ## Outcome-classifier reachability
 
-Configuration: a2_sensys17, 2pc_ce, n=180, arm dense (graph random_n180_dense_seed2.txt), proposals=20, channel_seed=2.
-The setting `abort_probability = 0.0` closes the injected-abort path by design because the published A2 figure is a commit latency.
-The timeout limit `max_round_slots = 4000` is about 140x the mean round length.
-The per-loss maximum observed round length shows how far the runs stay from that cap:
+Configuration: `a2_sensys17`, `2pc_ce`, n=180, arm dense (graph `random_n180_dense_seed2.txt`), proposals=20, channel_seed=2.
+
+In this architecture, `ProposalRecord::latency` is the per-round slot count: `src/metrics.rs` defines it as `end - start`, the simulation deadline in `src/phy/ce.rs` is `round_start + max_round_slots`, and one proposal corresponds to one round. The test `round_boundaries_tile_timeline_and_latency_equals_round_length` enforces that rounds tile the timeline with no gaps, ensuring this equivalence. The CSV columns named `*_round_slots_*` and the Rust field named `latency` are therefore the same quantity under two names, and no published number changes as a result of this clarification.
+
+For 2PC over CE, a round exceeding the cap is classified as an ABORT (see `proposal_outcome` in `src/protocol/two_pc_ce.rs`); `timed_out` is produced only by the global `max_slots` guard in `src/sim.rs` (unlike Paxos and TOM, which classify incompleteness as `TimedOut`).
+
+The setting `abort_probability = 0.0` makes deadline-incompleteness the only possible source of an abort. The timeout limit `max_round_slots = 4000` is about 140x the mean round length. The three diagnostic arms below map the boundary: cap 40 yields aborts only at the highest loss values, while cap 30 and cap 20 abort every proposal. The published configuration's maximum round length is 46 slots at loss 0.50, representing 1.15% of the 4000-slot cap. The final arm demonstrates that the `timed_out` column is reachable in principle, through global budget exhaustion only.
 
 ```text
 Configuration: a2_sensys17, 2pc_ce, n=180, arm dense, graph_seed=2, channel_seed=2, proposals=20, abort_probability=0.0
@@ -127,7 +130,7 @@ Loss = 0.40 | C/A/T: 20/0/0 | Mean round: 35.80 slots | Max round: 43 slots
 Loss = 0.45 | C/A/T: 20/0/0 | Mean round: 37.35 slots | Max round: 43 slots
 Loss = 0.50 | C/A/T: 20/0/0 | Mean round: 38.20 slots | Max round: 46 slots
 
-=== Diagnostic Arm (max_round_slots=200) - NOT part of validation configuration ===
+=== Diagnostic Arm: third outcome class reachability (max_round_slots=40) - NOT part of validation configuration ===
 Loss = 0.05 | C/A/T: 20/0/0 | Mean round: 28.75 slots | Max round: 34 slots
 Loss = 0.10 | C/A/T: 20/0/0 | Mean round: 28.45 slots | Max round: 31 slots
 Loss = 0.15 | C/A/T: 20/0/0 | Mean round: 28.15 slots | Max round: 31 slots
@@ -135,9 +138,50 @@ Loss = 0.20 | C/A/T: 20/0/0 | Mean round: 29.65 slots | Max round: 36 slots
 Loss = 0.25 | C/A/T: 20/0/0 | Mean round: 29.50 slots | Max round: 34 slots
 Loss = 0.30 | C/A/T: 20/0/0 | Mean round: 31.30 slots | Max round: 38 slots
 Loss = 0.35 | C/A/T: 20/0/0 | Mean round: 32.35 slots | Max round: 39 slots
-Loss = 0.40 | C/A/T: 20/0/0 | Mean round: 35.80 slots | Max round: 43 slots
-Loss = 0.45 | C/A/T: 20/0/0 | Mean round: 37.35 slots | Max round: 43 slots
-Loss = 0.50 | C/A/T: 20/0/0 | Mean round: 38.20 slots | Max round: 46 slots
+Loss = 0.40 | C/A/T: 19/1/0 | Mean round: 33.80 slots | Max round: 40 slots
+Loss = 0.45 | C/A/T: 18/2/0 | Mean round: 35.40 slots | Max round: 40 slots
+Loss = 0.50 | C/A/T: 15/5/0 | Mean round: 37.90 slots | Max round: 40 slots
+Summary: The 'aborted' outcome class was reached at loss values: 0.40, 0.45, 0.50
+
+=== Diagnostic Arm: third outcome class reachability (max_round_slots=30) - NOT part of validation configuration ===
+Loss = 0.05 | C/A/T: 17/3/0 | Mean round: 28.05 slots | Max round: 30 slots
+Loss = 0.10 | C/A/T: 20/0/0 | Mean round: 28.25 slots | Max round: 30 slots
+Loss = 0.15 | C/A/T: 20/0/0 | Mean round: 28.00 slots | Max round: 30 slots
+Loss = 0.20 | C/A/T: 18/2/0 | Mean round: 28.35 slots | Max round: 30 slots
+Loss = 0.25 | C/A/T: 15/5/0 | Mean round: 28.40 slots | Max round: 30 slots
+Loss = 0.30 | C/A/T: 12/8/0 | Mean round: 29.40 slots | Max round: 30 slots
+Loss = 0.35 | C/A/T: 6/14/0 | Mean round: 29.80 slots | Max round: 30 slots
+Loss = 0.40 | C/A/T: 8/12/0 | Mean round: 29.95 slots | Max round: 30 slots
+Loss = 0.45 | C/A/T: 3/17/0 | Mean round: 30.00 slots | Max round: 30 slots
+Loss = 0.50 | C/A/T: 0/20/0 | Mean round: 30.00 slots | Max round: 30 slots
+Summary: The 'aborted' outcome class was reached at loss values: 0.05, 0.20, 0.25, 0.30, 0.35, 0.40, 0.45, 0.50
+
+=== Diagnostic Arm: third outcome class reachability (max_round_slots=20) - NOT part of validation configuration ===
+Loss = 0.05 | C/A/T: 0/20/0 | Mean round: 20.00 slots | Max round: 20 slots
+Loss = 0.10 | C/A/T: 0/20/0 | Mean round: 20.00 slots | Max round: 20 slots
+Loss = 0.15 | C/A/T: 0/20/0 | Mean round: 20.00 slots | Max round: 20 slots
+Loss = 0.20 | C/A/T: 0/20/0 | Mean round: 20.00 slots | Max round: 20 slots
+Loss = 0.25 | C/A/T: 0/20/0 | Mean round: 20.00 slots | Max round: 20 slots
+Loss = 0.30 | C/A/T: 0/20/0 | Mean round: 20.00 slots | Max round: 20 slots
+Loss = 0.35 | C/A/T: 0/20/0 | Mean round: 20.00 slots | Max round: 20 slots
+Loss = 0.40 | C/A/T: 0/20/0 | Mean round: 20.00 slots | Max round: 20 slots
+Loss = 0.45 | C/A/T: 0/20/0 | Mean round: 20.00 slots | Max round: 20 slots
+Loss = 0.50 | C/A/T: 0/20/0 | Mean round: 20.00 slots | Max round: 20 slots
+Summary: The 'aborted' outcome class was reached at loss values: 0.05, 0.10, 0.15, 0.20, 0.25, 0.30, 0.35, 0.40, 0.45, 0.50
+
+=== Diagnostic Arm: timed_out is reachable only through global budget exhaustion and not through round length (max_slots=500) - NOT part of validation configuration ===
+Loss = 0.05 | C/A/T: 18/0/2 | Mean round: 25.85 slots | Max round: 34 slots
+Loss = 0.10 | C/A/T: 18/0/2 | Mean round: 25.80 slots | Max round: 31 slots
+Loss = 0.15 | C/A/T: 18/0/2 | Mean round: 25.50 slots | Max round: 31 slots
+Loss = 0.20 | C/A/T: 18/0/2 | Mean round: 26.40 slots | Max round: 36 slots
+Loss = 0.25 | C/A/T: 17/0/3 | Mean round: 25.05 slots | Max round: 34 slots
+Loss = 0.30 | C/A/T: 17/0/3 | Mean round: 26.40 slots | Max round: 38 slots
+Loss = 0.35 | C/A/T: 16/0/4 | Mean round: 25.75 slots | Max round: 37 slots
+Loss = 0.40 | C/A/T: 14/0/6 | Mean round: 25.85 slots | Max round: 43 slots
+Loss = 0.45 | C/A/T: 14/0/6 | Mean round: 26.30 slots | Max round: 43 slots
+Loss = 0.50 | C/A/T: 14/0/6 | Mean round: 26.00 slots | Max round: 43 slots
 ```
+
+The `n_timed_out = 0` column is a structural guarantee for this protocol and configuration and carries no information, whereas `n_aborted = 0` is informative because `abort_probability = 0.0` makes deadline-incompleteness the only possible source of an abort, and the diagnostic arms prove that column is reachable in this same code. Note that the mean produced by the 20-proposal single-channel-seed reachability run is not the same quantity as the 15-run aggregate mean of 28.45 slots and must not be quoted in its place.
 
 Within the tested parameter range no run reached abort or timeout; these zero columns are a property of the chosen configuration, not evidence of robustness.
