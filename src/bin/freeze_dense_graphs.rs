@@ -168,6 +168,7 @@ fn main() {
         //   n=180: center=76 (min=74, max=78) → output mean ≈ 91.0 ≈ 0.506*n ✓
         //   n=188: center=78 (min=76, max=80) → output mean ≈ 93.2 ≈ 0.496*n ✓
         // Both are within the 5% tolerance band around 0.5*n.
+        // Intentional call acting purely as an early guard for uncalibrated n.
         calibrated_degree_window(n);
 
         for &seed in &SEEDS {
