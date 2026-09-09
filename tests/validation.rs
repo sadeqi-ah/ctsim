@@ -1250,6 +1250,7 @@ fn committed_per_proposal_evidence_reproduces_stratified_aggregate() {
     }
 }
 
+// The mean-SD and CV definition is duplicated in docs/validation/addition14/scripts/cv_table.py; they must be changed together.
 #[test]
 fn cv_table_values_in_provenance_match_data() {
     let md_path = "docs/validation/addition14/data/run_provenance.md";
@@ -1262,20 +1263,42 @@ fn cv_table_values_in_provenance_match_data() {
         .expect("table heading not found");
     let md_text_after = &md_text[table_start..];
 
+    struct MdRow {
+        sd05: f64,
+        cv05: f64,
+        runs05: usize,
+        sd06: f64,
+        cv06: f64,
+        runs06: usize,
+        sd_pooled: f64,
+        cv_pooled: f64,
+        runs_pooled: usize,
+    }
+
     let mut table_parsed = std::collections::HashMap::new();
     for line in md_text_after.lines() {
         if line.starts_with("| A2") || line.starts_with("| WP") {
             let cols: Vec<&str> = line.split('|').map(|s| s.trim()).collect();
-            // cols: ["", "System", "Arm", "loss=0.05 Mean SD", "loss=0.05 CV", "loss=0.05 Runs", "loss=0.06 Mean SD", "loss=0.06 CV", "loss=0.06 Runs", "Pooled Mean SD", "Pooled CV", "Pooled Runs", ""]
             let system = if cols[1] == "A2/2PC" {
                 "a2_sensys17"
             } else {
                 "wpaxos_ewsn19"
             };
             let arm = cols[2];
-            let cv_05: f64 = cols[4].parse().unwrap();
-            let cv_pooled: f64 = cols[10].parse().unwrap();
-            table_parsed.insert((system.to_string(), arm.to_string()), (cv_05, cv_pooled));
+            table_parsed.insert(
+                (system.to_string(), arm.to_string()),
+                MdRow {
+                    sd05: cols[3].parse().unwrap(),
+                    cv05: cols[4].parse().unwrap(),
+                    runs05: cols[5].parse().unwrap(),
+                    sd06: cols[6].parse().unwrap(),
+                    cv06: cols[7].parse().unwrap(),
+                    runs06: cols[8].parse().unwrap(),
+                    sd_pooled: cols[9].parse().unwrap(),
+                    cv_pooled: cols[10].parse().unwrap(),
+                    runs_pooled: cols[11].parse().unwrap(),
+                },
+            );
         }
     }
     assert_eq!(
@@ -1328,33 +1351,88 @@ fn cv_table_values_in_provenance_match_data() {
         ("wpaxos_ewsn19", "base"),
     ] {
         let k_05 = (sys.to_string(), arm.to_string(), "0.05".to_string());
+        let k_06 = (sys.to_string(), arm.to_string(), "0.06".to_string());
         let k_pooled = (sys.to_string(), arm.to_string(), "pooled".to_string());
 
         let stat_05 = stats.get(&k_05).unwrap();
+        let stat_06 = stats.get(&k_06).unwrap();
         let stat_pooled = stats.get(&k_pooled).unwrap();
 
-        let cv_05 = (stat_05.1 / stat_05.2 as f64) / (stat_05.0 / stat_05.2 as f64);
+        let sd05 = stat_05.1 / stat_05.2 as f64;
+        let cv05 = (stat_05.1 / stat_05.2 as f64) / (stat_05.0 / stat_05.2 as f64);
+        let runs05 = stat_05.2;
+
+        let sd06 = stat_06.1 / stat_06.2 as f64;
+        let cv06 = (stat_06.1 / stat_06.2 as f64) / (stat_06.0 / stat_06.2 as f64);
+        let runs06 = stat_06.2;
+
+        let sd_pooled = stat_pooled.1 / stat_pooled.2 as f64;
         let cv_pooled =
             (stat_pooled.1 / stat_pooled.2 as f64) / (stat_pooled.0 / stat_pooled.2 as f64);
+        let runs_pooled = stat_pooled.2;
 
-        let (md_cv_05, md_cv_pooled) = table_parsed
+        let row = table_parsed
             .get(&(sys.to_string(), arm.to_string()))
             .unwrap();
 
-        // Assert equal up to 5 decimal places
         assert_eq!(
-            format!("{cv_05:.5}"),
-            format!("{md_cv_05:.5}"),
-            "cv_05 mismatch for {}/{}",
+            format!("{sd05:.5}"),
+            format!("{:.5}", row.sd05),
+            "{} {} column loss=0.05 Mean SD mismatch",
+            sys,
+            arm
+        );
+        assert_eq!(
+            format!("{cv05:.5}"),
+            format!("{:.5}", row.cv05),
+            "{} {} column loss=0.05 CV mismatch",
+            sys,
+            arm
+        );
+        assert_eq!(
+            runs05, row.runs05,
+            "{} {} column loss=0.05 Runs mismatch",
+            sys, arm
+        );
+
+        assert_eq!(
+            format!("{sd06:.5}"),
+            format!("{:.5}", row.sd06),
+            "{} {} column loss=0.06 Mean SD mismatch",
+            sys,
+            arm
+        );
+        assert_eq!(
+            format!("{cv06:.5}"),
+            format!("{:.5}", row.cv06),
+            "{} {} column loss=0.06 CV mismatch",
+            sys,
+            arm
+        );
+        assert_eq!(
+            runs06, row.runs06,
+            "{} {} column loss=0.06 Runs mismatch",
+            sys, arm
+        );
+
+        assert_eq!(
+            format!("{sd_pooled:.5}"),
+            format!("{:.5}", row.sd_pooled),
+            "{} {} column Pooled Mean SD mismatch",
             sys,
             arm
         );
         assert_eq!(
             format!("{cv_pooled:.5}"),
-            format!("{md_cv_pooled:.5}"),
-            "cv_pooled mismatch for {}/{}",
+            format!("{:.5}", row.cv_pooled),
+            "{} {} column Pooled CV mismatch",
             sys,
             arm
+        );
+        assert_eq!(
+            runs_pooled, row.runs_pooled,
+            "{} {} column Pooled Runs mismatch",
+            sys, arm
         );
     }
 }
