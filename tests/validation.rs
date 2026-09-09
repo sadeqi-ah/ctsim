@@ -1445,6 +1445,8 @@ fn round_boundaries_tile_timeline_and_latency_equals_round_length() {
         .filter_map(Result::ok)
         .collect();
 
+    let mut file_count = 0;
+
     for entry in entries {
         let path = entry.path();
         if !path.is_file() {
@@ -1455,21 +1457,23 @@ fn round_boundaries_tile_timeline_and_latency_equals_round_length() {
             continue;
         }
 
+        file_count += 1;
+
         let content = std::fs::read_to_string(&path)
             .unwrap_or_else(|e| panic!("cannot read {}: {e}", path.display()));
 
         let lines: Vec<&str> = content.lines().collect();
         if lines.len() <= 1 {
-            continue;
+            panic!("{file_name}: file has only a header or is empty");
         }
 
         let mut sum_latency = 0;
         let mut prev_end_slot: Option<u64> = None;
         let mut last_end_slot = 0;
+        let mut data_row_count = 0;
 
         for (i, line) in lines.iter().enumerate().skip(1) {
             let fields: Vec<&str> = line.split(',').collect();
-
             let file_row = i + 1;
             assert_eq!(
                 fields.len(),
@@ -1477,9 +1481,21 @@ fn round_boundaries_tile_timeline_and_latency_equals_round_length() {
                 "{file_name}: row {file_row} has invalid fields"
             );
 
+            let id: usize = fields[0].parse().unwrap();
             let start_slot: u64 = fields[1].parse().unwrap();
             let end_slot: u64 = fields[2].parse().unwrap();
             let latency: u64 = fields[3].parse().unwrap();
+
+            data_row_count += 1;
+
+            let expected_proposal_id = i - 1;
+
+            // This is what makes checking (b) in file order equivalent to checking it in proposal_id order.
+            assert_eq!(
+                id, expected_proposal_id,
+                "{file_name}: row {file_row} failed: proposal_id {} != expected {}",
+                id, expected_proposal_id
+            );
 
             // (a) latency == end_slot - start_slot
             assert_eq!(
@@ -1509,12 +1525,105 @@ fn round_boundaries_tile_timeline_and_latency_equals_round_length() {
             last_end_slot = end_slot;
         }
 
-        // (d) last end_slot == sum of all latency
-        // Note: the prompt says "the last `end_slot` equals the sum of all `latency` values in the file".
-        // Let's use file_name, last row context, property (d).
+        assert!(data_row_count > 0, "{file_name}: examined 0 data rows");
+
+        // Property (d) is implied by (a), (b) and (c) via the telescoping sum and is therefore a consistency guard, not an independent property.
         assert_eq!(
             last_end_slot, sum_latency,
             "{file_name}: last row failed property (d): last end_slot {last_end_slot} != sum of latency {sum_latency}"
         );
+    }
+
+    assert!(file_count > 0, "examined 0 .csv files in per_proposal/");
+}
+
+#[test]
+fn per_proposal_latencies_match_aggregate_round_columns() {
+    let dir_path = "docs/validation/addition14/data/per_proposal";
+    let agg_path = "docs/validation/addition14/data/stratified_predictions.csv";
+
+    let agg_content = std::fs::read_to_string(agg_path)
+        .unwrap_or_else(|e| panic!("cannot read {}: {}", agg_path, e));
+    let agg_lines: Vec<&str> = agg_content.lines().collect();
+
+    let entries: Vec<_> = std::fs::read_dir(dir_path)
+        .unwrap_or_else(|e| panic!("cannot read {dir_path}: {e}"))
+        .filter_map(Result::ok)
+        .collect();
+
+    for entry in entries {
+        let path = entry.path();
+        if !path.is_file() {
+            continue;
+        }
+        let file_name = path.file_name().unwrap().to_str().unwrap();
+        if !file_name.ends_with(".csv") {
+            continue;
+        }
+
+        let stem = file_name.strip_suffix(".csv").unwrap();
+        let parts: Vec<&str> = stem.split('_').collect();
+        let cs_str = parts.last().unwrap().strip_prefix("cs").unwrap();
+        let gs_str = parts[parts.len() - 2].strip_prefix("gs").unwrap();
+        let loss_str = parts[parts.len() - 3].strip_prefix("loss").unwrap();
+        let system = format!("{}_{}", parts[0], parts[1]);
+        let arm = parts[2..parts.len() - 3].join("_");
+
+        let content = std::fs::read_to_string(&path)
+            .unwrap_or_else(|e| panic!("cannot read {}: {}", path.display(), e));
+
+        let mut max_latency = 0;
+        let mut sum_committed_latency = 0;
+        let mut committed_count = 0;
+
+        for line in content.lines().skip(1) {
+            let fields: Vec<&str> = line.split(',').collect();
+            let latency: u64 = fields[3].parse().unwrap();
+            let outcome = fields[4];
+
+            if latency > max_latency {
+                max_latency = latency;
+            }
+            if outcome == "committed" {
+                sum_committed_latency += latency;
+                committed_count += 1;
+            }
+        }
+
+        let mean_committed_latency = if committed_count > 0 {
+            sum_committed_latency as f64 / committed_count as f64
+        } else {
+            0.0
+        };
+
+        // Find matching aggregate row
+        let mut matched = false;
+        for agg_line in agg_lines.iter().skip(1) {
+            let f: Vec<&str> = agg_line.split(',').collect();
+            if f.len() < 20 {
+                continue;
+            }
+            if f[0] == system && f[3] == arm && f[4] == gs_str && f[5] == loss_str && f[6] == cs_str
+            {
+                matched = true;
+                let row_mean: f64 = f[13].parse().unwrap();
+                let row_max: u64 = f[15].parse().unwrap();
+
+                assert_eq!(
+                    max_latency, row_max,
+                    "{file_name} (key sys={system} arm={arm} loss={loss_str} gs={gs_str} cs={cs_str}): max latency {max_latency} != max_round_slots_observed {row_max}"
+                );
+
+                assert_eq!(
+                    format!("{mean_committed_latency:.6}"), format!("{row_mean:.6}"),
+                    "{file_name} (key sys={system} arm={arm} loss={loss_str} gs={gs_str} cs={cs_str}): mean latency {:.6} != mean_round_slots_committed {:.6}", mean_committed_latency, row_mean
+                );
+                break;
+            }
+        }
+
+        if !matched {
+            panic!("{file_name}: no matching aggregate row found for key sys={system} arm={arm} loss={loss_str} gs={gs_str} cs={cs_str}");
+        }
     }
 }
