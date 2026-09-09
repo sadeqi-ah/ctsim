@@ -80,6 +80,23 @@
 - `profiles/graphs/random_n188_seed43.txt`: `8897a733974da7225b3d6c4830e5e35663315eef`
 - `profiles/graphs/random_n188_seed47.txt`: `b6a9007be6f9c0454e71847ab201151bed21a66a`
 
+## Within-run committed-latency dispersion
+
+These values summarize the 30 runs per system and arm (15 graph seeds at each of two loss rates). `mean SD` is the arithmetic mean of `sd_round_slots_committed`; CV is that mean SD divided by the arithmetic mean of `mean_round_slots_committed`.
+
+| System | Arm | Mean SD | CV |
+|---|---|---:|---:|
+| A2/2PC | dense | 2.12120 | 0.07474 |
+| A2/2PC | base | 3.11519 | 0.07343 |
+| WPaxos | dense | 0.45883 | 0.03000 |
+| WPaxos | base | 1.01791 | 0.04130 |
+
+No causal conclusion is drawn.
+
+## Slot-length convention
+
+`published_slot_lengths.csv` records both `slot_ms_nominal` and `slot_ms_realised`. The harness uses nominal values. The published targets were themselves derived from nominal values (`100 × 4.75 = 475 ms`; `57.8 × 5.00 = 289 ms`), so this convention leaves the residual unchanged. The realised values are 2.34% below nominal for both protocols because of 32768 Hz timer quantisation. Any comparison against a hardware-measured millisecond figure therefore carries that systematic bias.
+
 ## Previously reused addition13 aggregate
 
 - File: `docs/validation/addition13/data/blind_predictions.csv`
