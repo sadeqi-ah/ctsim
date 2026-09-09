@@ -594,6 +594,11 @@ fn blind_prediction_failure_is_recorded_not_repaired() {
     let i_committed = col("committed");
     let i_total = col("total_recorded");
     let i_mean_lat = col("mean_latency_slots");
+    let required_fields = [i_system, i_arm, i_loss, i_committed, i_total, i_mean_lat]
+        .into_iter()
+        .max()
+        .unwrap()
+        + 1;
 
     struct CellSpec {
         system: &'static str,
@@ -622,6 +627,11 @@ fn blind_prediction_failure_is_recorded_not_repaired() {
         for (data_row, line) in lines[1..].iter().enumerate() {
             let file_line = data_row + 2; // 1-indexed, skip header
             let fields: Vec<&str> = line.split(',').collect();
+            assert!(
+                fields.len() >= required_fields,
+                "{csv_path} line {file_line}: expected at least {required_fields} fields, found {}",
+                fields.len(),
+            );
             if fields[i_system] != spec.system || fields[i_arm] != "base" {
                 continue;
             }
@@ -859,6 +869,8 @@ fn published_slot_lengths_match_their_primary_sources() {
 /// that every reachable loss rate traces back to the calibration lock.
 #[test]
 fn harness_loss_rates_come_from_the_calibration_lock() {
+    const TOLERANCE: f64 = 1e-12;
+
     let lock = read_toml("profiles/calibration.lock.toml");
     let primary: f64 = lock["step_2_5"]["primary_loss_rate"]
         .as_float()
@@ -869,7 +881,7 @@ fn harness_loss_rates_come_from_the_calibration_lock() {
 
     let mut lock_rates = vec![primary, sensitivity];
     lock_rates.sort_by(|a, b| a.partial_cmp(b).unwrap());
-    lock_rates.dedup();
+    lock_rates.dedup_by(|a, b| (*a - *b).abs() < TOLERANCE);
 
     let script_path = "docs/validation/addition13/scripts/blind_predictions.sh";
     let script = std::fs::read_to_string(script_path)
@@ -877,30 +889,55 @@ fn harness_loss_rates_come_from_the_calibration_lock() {
 
     let script_lines: Vec<&str> = script.lines().collect();
 
-    // Collect every `run_one` call site with its 1-indexed file line number.
-    let call_sites: Vec<(usize, &str)> = script_lines
-        .iter()
-        .enumerate()
-        .filter(|(_, l)| l.trim().starts_with("run_one "))
-        .map(|(idx, l)| (idx + 1, *l)) // 1-indexed line number
-        .collect();
-
-    // A1: exactly 4 call sites.
-    assert_eq!(
-        call_sites.len(),
-        4,
-        "{script_path}: found {} run_one call sites, expected exactly 4; \
-         if the harness gains or loses a run this count must be updated deliberately",
-        call_sites.len(),
-    );
-
     // The loss rate is the 5th whitespace-delimited token after `run_one`
     // (positional arg $5 in the function signature).
     // run_one <system> <protocol> <nn> <arm> <loss> <gseed>
     //   0        1        2        3     4     5      6
-    let mut all_reachable: std::collections::BTreeSet<String> = std::collections::BTreeSet::new();
+    let mut all_reachable: Vec<f64> = Vec::new();
+    let mut block_stack: Vec<Option<(usize, Vec<f64>)>> = Vec::new();
+    let mut call_site_count = 0;
 
-    for &(file_line, line) in &call_sites {
+    for (line_idx, line) in script_lines.iter().enumerate() {
+        let file_line = line_idx + 1;
+        let trimmed = line.trim();
+
+        if trimmed == "done" {
+            block_stack.pop().unwrap_or_else(|| {
+                panic!("{script_path} line {file_line}: 'done' has no matching open block")
+            });
+            continue;
+        }
+
+        if ["for ", "while ", "until "]
+            .iter()
+            .any(|prefix| trimmed.starts_with(prefix))
+            && trimmed.split_whitespace().any(|token| token == "do")
+        {
+            let loss_loop = if trimmed.starts_with("for loss in ") {
+                let after_in = trimmed.strip_prefix("for loss in ").unwrap();
+                let tokens_part = after_in.split(';').next().unwrap_or(after_in);
+                let loop_rates = tokens_part
+                    .split_whitespace()
+                    .map(|token| {
+                        token.parse::<f64>().unwrap_or_else(|e| {
+                            panic!(
+                                "{script_path} line {file_line}: cannot parse '{token}' as f64: {e}"
+                            )
+                        })
+                    })
+                    .collect();
+                Some((file_line, loop_rates))
+            } else {
+                None
+            };
+            block_stack.push(loss_loop);
+        }
+
+        if !trimmed.starts_with("run_one ") {
+            continue;
+        }
+        call_site_count += 1;
+
         let tokens: Vec<&str> = line.split_whitespace().collect();
         assert!(
             tokens.len() >= 6,
@@ -908,45 +945,32 @@ fn harness_loss_rates_come_from_the_calibration_lock() {
              (run_one system protocol nn arm loss gseed)",
             tokens.len(),
         );
-        let loss_arg = tokens[5]; // 0-indexed: run_one=0, system=1, ..., loss=5
+        let raw_loss_arg = tokens[5]; // 0-indexed: run_one=0, system=1, ..., loss=5
+        let loss_arg = if raw_loss_arg.len() >= 2
+            && ((raw_loss_arg.starts_with('"') && raw_loss_arg.ends_with('"'))
+                || (raw_loss_arg.starts_with('\'') && raw_loss_arg.ends_with('\'')))
+        {
+            &raw_loss_arg[1..raw_loss_arg.len() - 1]
+        } else {
+            raw_loss_arg
+        };
 
-        if loss_arg.starts_with('"') && loss_arg.contains('$') || loss_arg.starts_with('$') {
-            // Variable reference (e.g. "$loss"). Resolve by finding the enclosing
-            // `for loss in …` loop. Walk backwards from this line to the nearest
-            // `for loss in` and parse its values.
-            let enclosing = script_lines[..file_line] // 0-indexed lines 0..file_line-1
+        if loss_arg.starts_with('$') {
+            let (loop_file_line, loop_rates) = block_stack
                 .iter()
-                .enumerate()
                 .rev()
-                .find(|(_, l)| l.trim_start().starts_with("for loss in"));
-
-            let (loop_line_idx, &loop_line) = enclosing.unwrap_or_else(|| {
-                panic!(
-                    "{script_path} line {file_line}: run_one uses variable {loss_arg} \
-                     but no enclosing 'for loss in' loop was found above it"
-                )
-            });
-            let loop_file_line = loop_line_idx + 1;
-
-            let after_in = loop_line.split(" in ").nth(1).unwrap_or_else(|| {
-                panic!("{script_path} line {loop_file_line}: 'for loss in' has no ' in ' delimiter")
-            });
-            let tokens_part = after_in.split(';').next().unwrap_or(after_in);
-            let loop_rates: Vec<f64> = tokens_part
-                .split_whitespace()
-                .map(|t| {
-                    t.parse::<f64>().unwrap_or_else(|e| {
-                        panic!(
-                            "{script_path} line {loop_file_line}: cannot parse '{t}' as f64: {e}"
-                        )
-                    })
-                })
-                .collect();
+                .find_map(Option::as_ref)
+                .unwrap_or_else(|| {
+                    panic!(
+                        "{script_path} line {file_line}: run_one uses variable {loss_arg} \
+                     but is not enclosed by a 'for loss in' loop"
+                    )
+                });
 
             // The variable-fed rate set must equal the lock rate set.
             let mut sorted_loop = loop_rates.clone();
             sorted_loop.sort_by(|a, b| a.partial_cmp(b).unwrap());
-            sorted_loop.dedup();
+            sorted_loop.dedup_by(|a, b| (*a - *b).abs() < TOLERANCE);
 
             assert_eq!(
                 sorted_loop.len(),
@@ -957,14 +981,19 @@ fn harness_loss_rates_come_from_the_calibration_lock() {
             );
             for (s, l) in sorted_loop.iter().zip(lock_rates.iter()) {
                 assert!(
-                    (s - l).abs() < 1e-12,
+                    (s - l).abs() < TOLERANCE,
                     "{script_path} line {file_line}: loop rate {s} (from line {loop_file_line}) \
-                     does not match lock rate {l} (tol 1e-12)",
+                     does not match lock rate {l} (tol {TOLERANCE})",
                 );
             }
 
-            for r in &loop_rates {
-                all_reachable.insert(format!("{r}"));
+            for r in loop_rates {
+                if !all_reachable
+                    .iter()
+                    .any(|reachable| (reachable - r).abs() < TOLERANCE)
+                {
+                    all_reachable.push(*r);
+                }
             }
         } else {
             // Numeric literal — must equal primary_loss_rate.
@@ -976,23 +1005,54 @@ fn harness_loss_rates_come_from_the_calibration_lock() {
             });
 
             assert!(
-                (literal - primary).abs() < 1e-12,
+                (literal - primary).abs() < TOLERANCE,
                 "{script_path} line {file_line}: numeric literal {literal} does not equal \
-                 step_2_5.primary_loss_rate ({primary}) from the calibration lock (tol 1e-12)",
+                 step_2_5.primary_loss_rate ({primary}) from the calibration lock (tol {TOLERANCE})",
             );
 
-            all_reachable.insert(format!("{literal}"));
+            if !all_reachable
+                .iter()
+                .any(|reachable| (reachable - literal).abs() < TOLERANCE)
+            {
+                all_reachable.push(literal);
+            }
         }
     }
 
-    // The union of all reachable loss rates must be exactly the lock set.
-    let lock_strs: std::collections::BTreeSet<String> =
-        lock_rates.iter().map(|r| format!("{r}")).collect();
     assert_eq!(
-        all_reachable, lock_strs,
-        "{script_path}: the union of all reachable loss rates is {all_reachable:?} \
-         but the lock defines {lock_strs:?}; they must be identical",
+        call_site_count, 4,
+        "{script_path}: found {call_site_count} run_one call sites, expected exactly 4; \
+         if the harness gains or loses a run this count must be updated deliberately",
     );
+
+    all_reachable.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    assert_eq!(
+        all_reachable.len(),
+        lock_rates.len(),
+        "{script_path}: found {} unique reachable rates {all_reachable:?}, but the lock defines {} {lock_rates:?}",
+        all_reachable.len(),
+        lock_rates.len(),
+    );
+    for lock_rate in &lock_rates {
+        let matches = all_reachable
+            .iter()
+            .filter(|reachable| (*reachable - lock_rate).abs() < TOLERANCE)
+            .count();
+        assert_eq!(
+            matches, 1,
+            "{script_path}: lock rate {lock_rate} has {matches} reachable matches within tolerance {TOLERANCE}; reachable rates: {all_reachable:?}",
+        );
+    }
+    for reachable in &all_reachable {
+        let matches = lock_rates
+            .iter()
+            .filter(|lock_rate| (*lock_rate - reachable).abs() < TOLERANCE)
+            .count();
+        assert_eq!(
+            matches, 1,
+            "{script_path}: reachable rate {reachable} has {matches} lock matches within tolerance {TOLERANCE}; lock rates: {lock_rates:?}",
+        );
+    }
 }
 
 /// Compute the git blob object ID: SHA-1("blob <len>\0" + content).
