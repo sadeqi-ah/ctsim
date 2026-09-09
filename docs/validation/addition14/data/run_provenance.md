@@ -113,7 +113,7 @@ In this architecture, `ProposalRecord::latency` is the per-round slot count: `sr
 
 For 2PC over CE, a round exceeding the cap is classified as an ABORT (see `proposal_outcome` in `src/protocol/two_pc_ce.rs`); `timed_out` is produced only by the global `max_slots` guard in `src/sim.rs` (unlike Paxos and TOM, which classify incompleteness as `TimedOut`).
 
-The setting `abort_probability = 0.0` makes deadline-incompleteness the only possible source of an abort. The timeout limit `max_round_slots = 4000` is about 140x the mean round length. The three diagnostic arms below map the boundary: cap 40 yields aborts only at the highest loss values, while cap 30 and cap 20 abort every proposal. The published configuration's maximum round length is 46 slots at loss 0.50, representing 1.15% of the 4000-slot cap. The final arm demonstrates that the `timed_out` column is reachable in principle, through global budget exhaustion only.
+The setting `abort_probability = 0.0` makes deadline-incompleteness the only possible source of an abort. The round deadline `max_round_slots = 4000` is about 140x the mean round length. The three diagnostic arms below map the boundary: cap 40 yields aborts only at the highest loss values, while cap 30 and cap 20 abort every proposal. The published configuration's maximum round length is 46 slots at loss 0.50, representing 1.15% of the 4000-slot cap. The final arm demonstrates that the `timed_out` column is reachable in principle, through global budget exhaustion only.
 
 ```text
 Configuration: a2_sensys17, 2pc_ce, n=180, arm dense, graph_seed=2, channel_seed=2, proposals=20, abort_probability=0.0
@@ -182,6 +182,10 @@ Loss = 0.45 | C/A/T: 14/0/6 | Mean round: 26.30 slots | Max round: 43 slots
 Loss = 0.50 | C/A/T: 14/0/6 | Mean round: 26.00 slots | Max round: 43 slots
 ```
 
+The mean round lengths printed by the diagnostic arms are NOT comparable with the validation arm, for two distinct reasons: in the capped arms the aborted rounds are truncated at the cap, which is why the mean at loss 0.40 falls from 35.80 to 33.80 under a cap of 40; and in the `max_slots = 500` arm the timed-out proposals are recorded by `src/sim.rs` with identical start and end slots, hence latency 0, which deflates that arm's mean. Only the validation arm's means are quotable.
+
+The mapped boundary comes from a single channel seed and 20 proposals per point, so the abort counts fluctuate non-monotonically - for example 3 aborts at loss 0.05 but none at 0.10 and 0.15 under a cap of 30. Only the ordering of magnitudes across caps is meaningful, not the individual counts.
+
 The `n_timed_out = 0` column is a structural guarantee for this protocol and configuration and carries no information, whereas `n_aborted = 0` is informative because `abort_probability = 0.0` makes deadline-incompleteness the only possible source of an abort, and the diagnostic arms prove that column is reachable in this same code. Note that the mean produced by the 20-proposal single-channel-seed reachability run is not the same quantity as the 15-run aggregate mean of 28.45 slots and must not be quoted in its place.
 
-Within the tested parameter range no run reached abort or timeout; these zero columns are a property of the chosen configuration, not evidence of robustness.
+In the validation configuration (max_round_slots = 4000), within the tested parameter range no run reached abort or timeout; these zero columns are a property of the chosen configuration, not evidence of robustness.
