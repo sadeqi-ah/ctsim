@@ -1151,62 +1151,210 @@ fn high_loss_2pc_exercises_non_committed_outcomes() {
 
 #[test]
 fn committed_per_proposal_evidence_reproduces_stratified_aggregate() {
-    let proposal_path =
-        "docs/validation/addition14/data/per_proposal/a2_sensys17_dense_loss0.05_gs2_cs2.csv";
+    let dir_path = "docs/validation/addition14/data/per_proposal";
     let aggregate_path = "docs/validation/addition14/data/stratified_predictions.csv";
-    let proposals = std::fs::read_to_string(proposal_path)
-        .unwrap_or_else(|e| panic!("cannot read {proposal_path}: {e}"));
-    let mut latencies = Vec::new();
-    for (index, line) in proposals.lines().enumerate().skip(1) {
-        let fields: Vec<&str> = line.split(',').collect();
-        assert_eq!(
-            fields.len(),
-            5,
-            "{proposal_path} line {}: expected 5 fields",
-            index + 1
-        );
-        if fields[4] == "committed" {
-            latencies.push(fields[3].parse::<f64>().unwrap_or_else(|e| {
-                panic!(
-                    "{proposal_path} line {}: invalid latency '{}': {e}",
-                    index + 1,
-                    fields[3]
-                )
-            }));
-        }
-    }
-    assert!(!latencies.is_empty(), "{proposal_path}: no committed rows");
-    let mean = latencies.iter().sum::<f64>() / latencies.len() as f64;
-    let sd = (latencies.iter().map(|x| (x - mean).powi(2)).sum::<f64>()
-        / (latencies.len() - 1) as f64)
-        .sqrt();
-
     let aggregate = std::fs::read_to_string(aggregate_path)
         .unwrap_or_else(|e| panic!("cannot read {aggregate_path}: {e}"));
-    let row = aggregate
-        .lines()
-        .skip(1)
-        .find(|line| {
-            let f: Vec<&str> = line.split(',').collect();
-            f.len() == 20
-                && f[0] == "a2_sensys17"
-                && f[3] == "dense"
-                && f[4] == "2"
-                && f[5] == "0.05"
-                && f[6] == "2"
-        })
-        .unwrap_or_else(|| panic!("{aggregate_path}: matching aggregate row not found"));
-    let fields: Vec<&str> = row.split(',').collect();
-    let recorded_mean: f64 = fields[13].parse().unwrap();
-    let recorded_sd: f64 = fields[14].parse().unwrap();
+
+    let entries: Vec<_> = std::fs::read_dir(dir_path)
+        .unwrap_or_else(|e| panic!("cannot read {dir_path}: {e}"))
+        .filter_map(Result::ok)
+        .collect();
+
     assert_eq!(
-        format!("{mean:.6}"),
-        format!("{recorded_mean:.6}"),
-        "{proposal_path}: committed mean {mean:.6} != {aggregate_path} mean {recorded_mean:.6}"
+        entries.len(),
+        23,
+        "expected exactly 23 files in per_proposal directory"
     );
+
+    for entry in entries {
+        let path = entry.path();
+        if !path.is_file() {
+            continue;
+        }
+        let file_name = path.file_name().unwrap().to_str().unwrap();
+        if !file_name.ends_with(".csv") {
+            continue;
+        }
+
+        let stem = file_name.strip_suffix(".csv").unwrap();
+        let parts: Vec<&str> = stem.split('_').collect();
+        let cs_str = parts.last().unwrap().strip_prefix("cs").unwrap();
+        let gs_str = parts[parts.len() - 2].strip_prefix("gs").unwrap();
+        let loss_str = parts[parts.len() - 3].strip_prefix("loss").unwrap();
+        let system = format!("{}_{}", parts[0], parts[1]);
+        let arm = parts[2..parts.len() - 3].join("_");
+
+        let proposals = std::fs::read_to_string(&path)
+            .unwrap_or_else(|e| panic!("cannot read {}: {e}", path.display()));
+        let mut latencies = Vec::new();
+        for (index, line) in proposals.lines().enumerate().skip(1) {
+            let fields: Vec<&str> = line.split(',').collect();
+            assert_eq!(
+                fields.len(),
+                5,
+                "{} line {}: expected 5 fields",
+                path.display(),
+                index + 1
+            );
+            if fields[4] == "committed" {
+                latencies.push(fields[3].parse::<f64>().unwrap_or_else(|e| {
+                    panic!(
+                        "{} line {}: invalid latency '{}': {e}",
+                        path.display(),
+                        index + 1,
+                        fields[3]
+                    )
+                }));
+            }
+        }
+        assert!(
+            !latencies.is_empty(),
+            "{}: no committed rows",
+            path.display()
+        );
+        let mean = latencies.iter().sum::<f64>() / latencies.len() as f64;
+        let sd = (latencies.iter().map(|x| (x - mean).powi(2)).sum::<f64>()
+            / (latencies.len() - 1) as f64)
+            .sqrt();
+
+        let row = aggregate
+            .lines()
+            .skip(1)
+            .find(|line| {
+                let f: Vec<&str> = line.split(',').collect();
+                f.len() == 20
+                    && f[0] == system
+                    && f[3] == arm
+                    && f[4] == gs_str
+                    && f[5] == loss_str
+                    && f[6] == cs_str
+            })
+            .unwrap_or_else(|| panic!("{}: matching aggregate row not found", file_name));
+
+        let fields: Vec<&str> = row.split(',').collect();
+        let recorded_mean: f64 = fields[13].parse().unwrap();
+        let recorded_sd: f64 = fields[14].parse().unwrap();
+        assert_eq!(
+            format!("{mean:.6}"),
+            format!("{recorded_mean:.6}"),
+            "{}: committed mean {mean:.6} != {aggregate_path} mean {recorded_mean:.6}",
+            file_name
+        );
+        assert_eq!(
+            format!("{sd:.6}"),
+            format!("{recorded_sd:.6}"),
+            "{}: committed sample SD {sd:.6} != {aggregate_path} SD {recorded_sd:.6}",
+            file_name
+        );
+    }
+}
+
+#[test]
+fn cv_table_values_in_provenance_match_data() {
+    let md_path = "docs/validation/addition14/data/run_provenance.md";
+    let md_text =
+        std::fs::read_to_string(md_path).unwrap_or_else(|e| panic!("cannot read {md_path}: {e}"));
+
+    // Parse the Markdown table. We look for the table after "## Within-run committed-latency dispersion"
+    let table_start = md_text
+        .find("## Within-run committed-latency dispersion")
+        .expect("table heading not found");
+    let md_text_after = &md_text[table_start..];
+
+    let mut table_parsed = std::collections::HashMap::new();
+    for line in md_text_after.lines() {
+        if line.starts_with("| A2") || line.starts_with("| WP") {
+            let cols: Vec<&str> = line.split('|').map(|s| s.trim()).collect();
+            // cols: ["", "System", "Arm", "loss=0.05 Mean SD", "loss=0.05 CV", "loss=0.05 Runs", "loss=0.06 Mean SD", "loss=0.06 CV", "loss=0.06 Runs", "Pooled Mean SD", "Pooled CV", "Pooled Runs", ""]
+            let system = if cols[1] == "A2/2PC" {
+                "a2_sensys17"
+            } else {
+                "wpaxos_ewsn19"
+            };
+            let arm = cols[2];
+            let cv_05: f64 = cols[4].parse().unwrap();
+            let cv_pooled: f64 = cols[10].parse().unwrap();
+            table_parsed.insert((system.to_string(), arm.to_string()), (cv_05, cv_pooled));
+        }
+    }
     assert_eq!(
-        format!("{sd:.6}"),
-        format!("{recorded_sd:.6}"),
-        "{proposal_path}: committed sample SD {sd:.6} != {aggregate_path} SD {recorded_sd:.6}"
+        table_parsed.len(),
+        4,
+        "expected to parse 4 rows from the Markdown table"
     );
+
+    let csv_path = "docs/validation/addition14/data/stratified_predictions.csv";
+    let csv =
+        std::fs::read_to_string(csv_path).unwrap_or_else(|e| panic!("cannot read {csv_path}: {e}"));
+
+    // Key: (system, arm, loss), Value: (sum_mean, sum_sd, count)
+    let mut stats = std::collections::HashMap::new();
+
+    for line in csv.lines().skip(1) {
+        let f: Vec<&str> = line.split(',').collect();
+        if f.len() < 20 {
+            continue;
+        }
+        let sys = f[0].to_string();
+        let arm = f[3].to_string();
+        let loss = f[5].to_string();
+        if arm != "dense" && arm != "base" {
+            continue;
+        }
+
+        let mean: f64 = f[13].parse().unwrap();
+        let sd: f64 = f[14].parse().unwrap();
+
+        let entry = stats
+            .entry((sys.clone(), arm.clone(), loss))
+            .or_insert((0.0, 0.0, 0usize));
+        entry.0 += mean;
+        entry.1 += sd;
+        entry.2 += 1;
+
+        let entry_pooled = stats
+            .entry((sys, arm, "pooled".to_string()))
+            .or_insert((0.0, 0.0, 0usize));
+        entry_pooled.0 += mean;
+        entry_pooled.1 += sd;
+        entry_pooled.2 += 1;
+    }
+
+    for (sys, arm) in [
+        ("a2_sensys17", "dense"),
+        ("a2_sensys17", "base"),
+        ("wpaxos_ewsn19", "dense"),
+        ("wpaxos_ewsn19", "base"),
+    ] {
+        let k_05 = (sys.to_string(), arm.to_string(), "0.05".to_string());
+        let k_pooled = (sys.to_string(), arm.to_string(), "pooled".to_string());
+
+        let stat_05 = stats.get(&k_05).unwrap();
+        let stat_pooled = stats.get(&k_pooled).unwrap();
+
+        let cv_05 = (stat_05.1 / stat_05.2 as f64) / (stat_05.0 / stat_05.2 as f64);
+        let cv_pooled =
+            (stat_pooled.1 / stat_pooled.2 as f64) / (stat_pooled.0 / stat_pooled.2 as f64);
+
+        let (md_cv_05, md_cv_pooled) = table_parsed
+            .get(&(sys.to_string(), arm.to_string()))
+            .unwrap();
+
+        // Assert equal up to 5 decimal places
+        assert_eq!(
+            format!("{cv_05:.5}"),
+            format!("{md_cv_05:.5}"),
+            "cv_05 mismatch for {}/{}",
+            sys,
+            arm
+        );
+        assert_eq!(
+            format!("{cv_pooled:.5}"),
+            format!("{md_cv_pooled:.5}"),
+            "cv_pooled mismatch for {}/{}",
+            sys,
+            arm
+        );
+    }
 }

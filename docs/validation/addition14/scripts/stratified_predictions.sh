@@ -207,6 +207,7 @@ if [[ "$SUBSET_ONLY" == 1 ]]; then
     comparison_csv="$RUN_DIR/subset_rows.csv"
     printf '%s\n' 'system,protocol,n,arm,graph_seed,loss_rate,channel_seed,rounds,n_committed,n_aborted,n_timed_out,total_slots_all,mean_round_slots_all,mean_round_slots_committed,sd_round_slots_committed,max_round_slots_observed,slot_len_ms,total_ms_all,completed,cap_hit' > "$comparison_csv"
     OUT_CSV="$comparison_csv"
+    : > "$TIMING_FILE"
     subset_start=$(now_ns)
     for system_spec in "a2_sensys17 2pc_ce 180" "wpaxos_ewsn19 paxos_ce 188"; do
         read -r system protocol nn <<< "$system_spec"

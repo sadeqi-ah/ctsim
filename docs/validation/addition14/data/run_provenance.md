@@ -84,12 +84,14 @@
 
 These values summarize the 30 runs per system and arm (15 graph seeds at each of two loss rates). `mean SD` is the arithmetic mean of `sd_round_slots_committed`; CV is that mean SD divided by the arithmetic mean of `mean_round_slots_committed`.
 
-| System | Arm | Mean SD | CV |
-|---|---|---:|---:|
-| A2/2PC | dense | 2.12120 | 0.07474 |
-| A2/2PC | base | 3.11519 | 0.07343 |
-| WPaxos | dense | 0.45883 | 0.03000 |
-| WPaxos | base | 1.01791 | 0.04130 |
+| System | Arm | loss=0.05 Mean SD | loss=0.05 CV | loss=0.05 Runs | loss=0.06 Mean SD | loss=0.06 CV | loss=0.06 Runs | Pooled Mean SD | Pooled CV | Pooled Runs |
+|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| A2/2PC | dense | 2.12894 | 0.07501 | 15 | 2.11347 | 0.07447 | 15 | 2.12120 | 0.07474 | 30 |
+| A2/2PC | base | 3.19254 | 0.07522 | 15 | 3.03784 | 0.07163 | 15 | 3.11519 | 0.07343 | 30 |
+| WPaxos | dense | 0.46155 | 0.03017 | 15 | 0.45610 | 0.02983 | 15 | 0.45883 | 0.03000 | 30 |
+| WPaxos | base | 1.03461 | 0.04203 | 15 | 1.00121 | 0.04057 | 15 | 1.01791 | 0.04130 | 30 |
+
+The reference figure is the loss=0.05 row.
 
 No causal conclusion is drawn.
 
@@ -102,3 +104,8 @@ No causal conclusion is drawn.
 - File: `docs/validation/addition13/data/blind_predictions.csv`
 - Current blob: `d0707627a6ecdc3ed2c686dd19305aecd46d4474`
 - Commit that last touched it: `c16bf856d0b3473c4b756244efec708fcbd5fcda`
+
+## Outcome-classifier reachability
+
+Configuration: `a2_sensys17`, `2pc_ce`, n=180, arm dense (graph `random_n180_dense_seed2.txt`), proposals=20, channel_seed=2.
+Result: Swept loss rate from 0.05 to 0.50 in steps of 0.05. No non-committed outcome appeared up to 0.50.
