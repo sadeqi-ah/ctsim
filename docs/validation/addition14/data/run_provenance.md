@@ -82,7 +82,7 @@
 
 ## Within-run committed-latency dispersion
 
-These values summarize the 30 runs per system and arm (15 graph seeds at each of two loss rates). `mean SD` is the arithmetic mean of `sd_round_slots_committed`; CV is that mean SD divided by the arithmetic mean of `mean_round_slots_committed`.
+These values summarize three aggregation levels per system and arm (loss=0.05 only, loss=0.06 only, and pooled 30 runs). `mean SD` is the arithmetic mean of `sd_round_slots_committed`; CV is that mean SD divided by the arithmetic mean of `mean_round_slots_committed`.
 
 | System | Arm | loss=0.05 Mean SD | loss=0.05 CV | loss=0.05 Runs | loss=0.06 Mean SD | loss=0.06 CV | loss=0.06 Runs | Pooled Mean SD | Pooled CV | Pooled Runs |
 |---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
@@ -107,5 +107,37 @@ No causal conclusion is drawn.
 
 ## Outcome-classifier reachability
 
-Configuration: `a2_sensys17`, `2pc_ce`, n=180, arm dense (graph `random_n180_dense_seed2.txt`), proposals=20, channel_seed=2.
-Result: Swept loss rate from 0.05 to 0.50 in steps of 0.05. No non-committed outcome appeared up to 0.50.
+Configuration: a2_sensys17, 2pc_ce, n=180, arm dense (graph random_n180_dense_seed2.txt), proposals=20, channel_seed=2.
+The setting `abort_probability = 0.0` closes the injected-abort path by design because the published A2 figure is a commit latency.
+The timeout limit `max_round_slots = 4000` is about 140x the mean round length.
+The per-loss maximum observed round length shows how far the runs stay from that cap:
+
+```text
+Configuration: a2_sensys17, 2pc_ce, n=180, arm dense, graph_seed=2, channel_seed=2, proposals=20, abort_probability=0.0
+
+=== Validation Configuration (max_round_slots=4000) ===
+Loss = 0.05 | C/A/T: 20/0/0 | Mean round: 28.75 slots | Max round: 34 slots
+Loss = 0.10 | C/A/T: 20/0/0 | Mean round: 28.45 slots | Max round: 31 slots
+Loss = 0.15 | C/A/T: 20/0/0 | Mean round: 28.15 slots | Max round: 31 slots
+Loss = 0.20 | C/A/T: 20/0/0 | Mean round: 29.65 slots | Max round: 36 slots
+Loss = 0.25 | C/A/T: 20/0/0 | Mean round: 29.50 slots | Max round: 34 slots
+Loss = 0.30 | C/A/T: 20/0/0 | Mean round: 31.30 slots | Max round: 38 slots
+Loss = 0.35 | C/A/T: 20/0/0 | Mean round: 32.35 slots | Max round: 39 slots
+Loss = 0.40 | C/A/T: 20/0/0 | Mean round: 35.80 slots | Max round: 43 slots
+Loss = 0.45 | C/A/T: 20/0/0 | Mean round: 37.35 slots | Max round: 43 slots
+Loss = 0.50 | C/A/T: 20/0/0 | Mean round: 38.20 slots | Max round: 46 slots
+
+=== Diagnostic Arm (max_round_slots=200) - NOT part of validation configuration ===
+Loss = 0.05 | C/A/T: 20/0/0 | Mean round: 28.75 slots | Max round: 34 slots
+Loss = 0.10 | C/A/T: 20/0/0 | Mean round: 28.45 slots | Max round: 31 slots
+Loss = 0.15 | C/A/T: 20/0/0 | Mean round: 28.15 slots | Max round: 31 slots
+Loss = 0.20 | C/A/T: 20/0/0 | Mean round: 29.65 slots | Max round: 36 slots
+Loss = 0.25 | C/A/T: 20/0/0 | Mean round: 29.50 slots | Max round: 34 slots
+Loss = 0.30 | C/A/T: 20/0/0 | Mean round: 31.30 slots | Max round: 38 slots
+Loss = 0.35 | C/A/T: 20/0/0 | Mean round: 32.35 slots | Max round: 39 slots
+Loss = 0.40 | C/A/T: 20/0/0 | Mean round: 35.80 slots | Max round: 43 slots
+Loss = 0.45 | C/A/T: 20/0/0 | Mean round: 37.35 slots | Max round: 43 slots
+Loss = 0.50 | C/A/T: 20/0/0 | Mean round: 38.20 slots | Max round: 46 slots
+```
+
+Within the tested parameter range no run reached abort or timeout; these zero columns are a property of the chosen configuration, not evidence of robustness.

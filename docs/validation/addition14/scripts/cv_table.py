@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# The mean-SD and CV definition is duplicated in tests/validation.rs; they must be changed together.
 import sys, os, csv
 
 repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../.."))
