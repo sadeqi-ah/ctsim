@@ -166,7 +166,7 @@ ERROR: README.md does not match generated content. Hand-edited numbers detected.
 --- committed README.md
 +++ generated README.md
 @@ -69,7 +69,7 @@
- 
+
  ### 2PC over CE
  *   **log(round_length) vs log(N) (Primary):**
 -    *   Linear model: Slope = `0.13734` (95% CI: `[0.13101, 0.14365]`), AIC = 4.8, R² = 0.998
@@ -288,3 +288,332 @@ $ shasum -a 256 plots/topology/results/sweep_summary.csv plots/scalability/resul
 b982afa37606312737811bd985fcabf7d841d5bd3f6f782f5a424d8e8c3758e7  plots/scalability/results/sweep_summary.csv
 $ git status --porcelain
 ```
+
+
+## NC-D2
+
+Perturbed declared topology-sweep input: removed seed `2` from `sweep_topology.toml`.
+
+````text
+$ git diff -- sweep_topology.toml
+diff --git a/sweep_topology.toml b/sweep_topology.toml
+index d5a6a4d..916dd2d 100644
+--- a/sweep_topology.toml
++++ b/sweep_topology.toml
+@@ -2,7 +2,7 @@
+ # Fixed N and loss; vary graph structure.
+ output_dir = "plots/topology/results"
+
+-seeds = [2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47]  # Multiple seeds for error bands
++seeds = [3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47]  # Multiple seeds for error bands
+ num_nodes = [27]
+ topologies = ["line", "partial_mesh", "random", "scale_free", "full_mesh"]
+ loss_rates = [0.05]
+$ cargo run --release --bin ctsim -- sweep_topology.toml && cargo run --release --bin ctsim -- sweep_scalability.toml
+    Finished `release` profile [optimized] target(s) in 0.24s
+     Running `target/release/ctsim sweep_topology.toml`
+Starting sweep of 420 experiments...
+Sweep complete. Ran 420 experiments.
+Summary written to: plots/topology/results/sweep_summary.csv
+    Finished `release` profile [optimized] target(s) in 0.06s
+     Running `target/release/ctsim sweep_scalability.toml`
+Starting sweep of 1800 experiments...
+Sweep complete. Ran 1800 experiments.
+Summary written to: plots/scalability/results/sweep_summary.csv
+$ shasum -a 256 plots/topology/results/sweep_summary.csv plots/scalability/results/sweep_summary.csv
+fea33f5db3356e4a71381a9a0265434959bfeb682d6947300786c34a8b9960e7  plots/topology/results/sweep_summary.csv
+b982afa37606312737811bd985fcabf7d841d5bd3f6f782f5a424d8e8c3758e7  plots/scalability/results/sweep_summary.csv
+$ grep -E '^(topology|scalability)[[:space:]]' docs/validation/addition13/README.md
+topology     1e596a3f480539972e21aa6a8f1186fc9f60f4bca6d08e125108c51a1dea0329
+scalability  b982afa37606312737811bd985fcabf7d841d5bd3f6f782f5a424d8e8c3758e7
+$ git checkout -- sweep_topology.toml
+$ cargo run --release --bin ctsim -- sweep_topology.toml && cargo run --release --bin ctsim -- sweep_scalability.toml
+    Finished `release` profile [optimized] target(s) in 0.14s
+     Running `target/release/ctsim sweep_topology.toml`
+Starting sweep of 450 experiments...
+Sweep complete. Ran 450 experiments.
+Summary written to: plots/topology/results/sweep_summary.csv
+    Finished `release` profile [optimized] target(s) in 0.06s
+     Running `target/release/ctsim sweep_scalability.toml`
+Starting sweep of 1800 experiments...
+Sweep complete. Ran 1800 experiments.
+Summary written to: plots/scalability/results/sweep_summary.csv
+$ shasum -a 256 plots/topology/results/sweep_summary.csv plots/scalability/results/sweep_summary.csv
+1e596a3f480539972e21aa6a8f1186fc9f60f4bca6d08e125108c51a1dea0329  plots/topology/results/sweep_summary.csv
+b982afa37606312737811bd985fcabf7d841d5bd3f6f782f5a424d8e8c3758e7  plots/scalability/results/sweep_summary.csv
+$ grep -E '^(topology|scalability)[[:space:]]' docs/validation/addition13/README.md
+topology     1e596a3f480539972e21aa6a8f1186fc9f60f4bca6d08e125108c51a1dea0329
+scalability  b982afa37606312737811bd985fcabf7d841d5bd3f6f782f5a424d8e8c3758e7
+$ git status --porcelain
+````
+
+## NC-F
+
+Perturbed one byte in `profiles/graphs/random_n27_seed2.txt`: changed the edge line `0 1` to `0 2`.
+
+````text
+$ nl -ba tests/validation.rs | sed -n '389,431p'
+   389	/// Addition 12: the frozen adjacency files under `profiles/graphs/` must
+   390	/// reproduce the random topologies that `build_graph` generates from each seed.
+   391	///
+   392	/// This guards against DOT-to-adjacency conversion errors (section 4.3 of the
+   393	/// addition-12 prompt). The test is fast: it builds 15 in-memory graphs and
+   394	/// loads 15 small text files, with no simulation runs.
+   395	#[test]
+   396	fn frozen_graph_files_reproduce_the_published_random_topologies() {
+   397	    use std::path::Path;
+   398
+   399	    for &seed in &SEEDS {
+   400	        let mut rng = ChaCha8Rng::seed_from_u64(seed);
+   401	        let expected = NetworkGraph::random_topology(27, 2, 5, &mut rng);
+   402
+   403	        let graph_path = format!("profiles/graphs/random_n27_seed{seed}.txt");
+   404	        let loaded = NetworkGraph::from_file(Path::new(&graph_path))
+   405	            .unwrap_or_else(|e| panic!("failed to load {graph_path}: {e}"));
+   406
+   407	        assert_eq!(
+   408	            expected.num_nodes(),
+   409	            loaded.num_nodes(),
+   410	            "seed {seed}: num_nodes mismatch"
+   411	        );
+   412	        assert_eq!(
+   413	            expected.edge_count(),
+   414	            loaded.edge_count(),
+   415	            "seed {seed}: edge_count mismatch ({} vs {})",
+   416	            expected.edge_count(),
+   417	            loaded.edge_count()
+   418	        );
+   419	        assert_eq!(
+   420	            expected.diameter(),
+   421	            loaded.diameter(),
+   422	            "seed {seed}: diameter mismatch"
+   423	        );
+   424
+   425	        for i in 0..expected.num_nodes() {
+   426	            assert_eq!(
+   427	                expected.neighbors(i),
+   428	                loaded.neighbors(i),
+   429	                "seed {seed}: neighbors({i}) differ"
+   430	            );
+   431	        }
+$ git diff -- profiles/graphs/random_n27_seed2.txt
+diff --git a/profiles/graphs/random_n27_seed2.txt b/profiles/graphs/random_n27_seed2.txt
+index af672f5..8ae8602 100644
+--- a/profiles/graphs/random_n27_seed2.txt
++++ b/profiles/graphs/random_n27_seed2.txt
+@@ -1,5 +1,5 @@
+ 27
+-0 1
++0 2
+ 0 3
+ 0 4
+ 0 6
+$ cargo test --all
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.16s
+     Running unittests src/lib.rs (target/debug/deps/ctsim-104f91eef602156c)
+
+running 9 tests
+test network::tests::line_diameter_is_n_minus_one ... ok
+test node::tests::new_node_starts_listening ... ok
+test network::tests::star_diameter_is_two ... ok
+test network::tests::grid_3x3_diameter_is_four ... ok
+test network::tests::to_dot_contains_edges ... ok
+test network::tests::full_mesh_diameter_is_one ... ok
+test node::tests::tick_increments_correct_counter ... ok
+test network::tests::seeded_partial_mesh_is_deterministic ... ok
+test network::tests::scale_free_is_deterministic_for_a_fixed_seed ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/main.rs (target/debug/deps/ctsim-55866f5fe6d40ec9)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/bin/freeze_dense_graphs.rs (target/debug/deps/freeze_dense_graphs-77b119eb7c8d7e55)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/bin/freeze_graphs.rs (target/debug/deps/freeze_graphs-a18fc06e541dbfbf)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/bin/n_sweep.rs (target/debug/deps/n_sweep-e94f94cc6e2daf6d)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/bin/outcome_classifier_reachability.rs (target/debug/deps/outcome_classifier_reachability-938211f9e42c3238)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/bin/search_density.rs (target/debug/deps/search_density-31e5082369b712a5)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/bin/search_w.rs (target/debug/deps/search_w-cdb2c9a2fbe24f30)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/reproducibility.rs (target/debug/deps/reproducibility-8712ee831ad5cf0d)
+
+running 3 tests
+test a_different_seed_changes_the_run_under_loss ... ok
+test every_example_makes_progress ... ok
+test same_seed_reproduces_every_example_exactly ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.46s
+
+     Running tests/validation.rs (target/debug/deps/validation-7e50d66c20114816)
+
+running 18 tests
+test cv_table_values_in_provenance_match_data ... ok
+test harness_templates_contain_all_placeholders ... ok
+test frozen_graph_files_reproduce_the_published_random_topologies ... FAILED
+test json_carrier_is_an_artefact_not_a_wire_format ... ok
+test harness_loss_rates_come_from_the_calibration_lock ... ok
+test calibration_lock_pins_the_single_free_parameter ... ok
+test blind_prediction_failure_is_recorded_not_repaired ... ok
+test published_slot_lengths_match_their_primary_sources ... ok
+test pure_flood_reaches_every_receiver_on_a_lossless_line ... ok
+test calibration_lock_evidence_blobs_match_their_files ... ok
+test specified_wire_packet_fits_in_one_ll_data_pdu ... ok
+test round_boundaries_tile_timeline_and_latency_equals_round_length ... ok
+test committed_per_proposal_evidence_reproduces_stratified_aggregate ... ok
+test per_proposal_latencies_match_aggregate_round_columns ... ok
+test high_loss_2pc_exercises_non_committed_outcomes ... ok
+test random_builders_are_connected_by_construction_not_by_degree ... ok
+test every_published_graph_is_connected ... ok
+test snapshot_series_accounts_for_every_ticked_slot ... ok
+
+failures:
+
+---- frozen_graph_files_reproduce_the_published_random_topologies stdout ----
+
+thread 'frozen_graph_files_reproduce_the_published_random_topologies' (7624049) panicked at tests/validation.rs:426:13:
+assertion `left == right` failed: seed 2: neighbors(0) differ
+  left: [1, 3, 4, 6, 7, 9, 12, 19]
+ right: [2, 3, 4, 6, 7, 9, 12, 19]
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    frozen_graph_files_reproduce_the_published_random_topologies
+
+test result: FAILED. 17 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.08s
+
+error: test failed, to rerun pass `--test validation`
+exit code: 101
+$ git checkout -- profiles/graphs/random_n27_seed2.txt
+$ cargo test --all
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.12s
+     Running unittests src/lib.rs (target/debug/deps/ctsim-104f91eef602156c)
+
+running 9 tests
+test node::tests::new_node_starts_listening ... ok
+test network::tests::to_dot_contains_edges ... ok
+test network::tests::line_diameter_is_n_minus_one ... ok
+test network::tests::grid_3x3_diameter_is_four ... ok
+test node::tests::tick_increments_correct_counter ... ok
+test network::tests::star_diameter_is_two ... ok
+test network::tests::full_mesh_diameter_is_one ... ok
+test network::tests::seeded_partial_mesh_is_deterministic ... ok
+test network::tests::scale_free_is_deterministic_for_a_fixed_seed ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/main.rs (target/debug/deps/ctsim-55866f5fe6d40ec9)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/bin/freeze_dense_graphs.rs (target/debug/deps/freeze_dense_graphs-77b119eb7c8d7e55)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/bin/freeze_graphs.rs (target/debug/deps/freeze_graphs-a18fc06e541dbfbf)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/bin/n_sweep.rs (target/debug/deps/n_sweep-e94f94cc6e2daf6d)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/bin/outcome_classifier_reachability.rs (target/debug/deps/outcome_classifier_reachability-938211f9e42c3238)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/bin/search_density.rs (target/debug/deps/search_density-31e5082369b712a5)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/bin/search_w.rs (target/debug/deps/search_w-cdb2c9a2fbe24f30)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/reproducibility.rs (target/debug/deps/reproducibility-8712ee831ad5cf0d)
+
+running 3 tests
+test a_different_seed_changes_the_run_under_loss ... ok
+test every_example_makes_progress ... ok
+test same_seed_reproduces_every_example_exactly ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.46s
+
+     Running tests/validation.rs (target/debug/deps/validation-7e50d66c20114816)
+
+running 18 tests
+test cv_table_values_in_provenance_match_data ... ok
+test harness_templates_contain_all_placeholders ... ok
+test blind_prediction_failure_is_recorded_not_repaired ... ok
+test calibration_lock_pins_the_single_free_parameter ... ok
+test json_carrier_is_an_artefact_not_a_wire_format ... ok
+test harness_loss_rates_come_from_the_calibration_lock ... ok
+test published_slot_lengths_match_their_primary_sources ... ok
+test calibration_lock_evidence_blobs_match_their_files ... ok
+test pure_flood_reaches_every_receiver_on_a_lossless_line ... ok
+test round_boundaries_tile_timeline_and_latency_equals_round_length ... ok
+test specified_wire_packet_fits_in_one_ll_data_pdu ... ok
+test committed_per_proposal_evidence_reproduces_stratified_aggregate ... ok
+test frozen_graph_files_reproduce_the_published_random_topologies ... ok
+test per_proposal_latencies_match_aggregate_round_columns ... ok
+test high_loss_2pc_exercises_non_committed_outcomes ... ok
+test random_builders_are_connected_by_construction_not_by_degree ... ok
+test every_published_graph_is_connected ... ok
+test snapshot_series_accounts_for_every_ticked_slot ... ok
+
+test result: ok. 18 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.07s
+
+   Doc-tests ctsim
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+$ git status --porcelain
+````
