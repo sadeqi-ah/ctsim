@@ -208,8 +208,8 @@ for arm, name in [("2pc_ce", "2PC over CE"), ("paxos_ce", "Paxos over CE")]:
         readme += f"*   **{label}:**\n"
         linear = fits[(arm, qty)]["linear"]
         constant = fits[(arm, qty)]["constant"]
-        readme += f"    *   Linear model: Slope = `{linear['slope']:.5f}` (95% CI: `[{linear['lo']:.5f}, {linear['hi']:.5f}]`), AIC = {linear['aic']:.1f}, R² = {linear['r2']:.3f}\n"
-        readme += f"    *   Constant model: AIC = {constant['aic']:.1f}, R² = {constant['r2']:.3f}\n"
+        readme += f"    *   Linear model: Slope = `{linear['slope']:.5f}` (95% CI: `[{linear['lo']:.5f}, {linear['hi']:.5f}]`), AIC = {linear['aic']:.1f}, R² = {0.0 if abs(linear['r2']) < 0.0005 else linear['r2']:.3f}\n"
+        readme += f"    *   Constant model: AIC = {constant['aic']:.1f}, R² = {0.0 if abs(constant['r2']) < 0.0005 else constant['r2']:.3f}\n"
 
 alpha_2pc = fits[("2pc_ce", "log_round_length")]["linear"]
 alpha_paxos = fits[("paxos_ce", "log_round_length")]["linear"]

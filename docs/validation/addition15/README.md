@@ -93,7 +93,7 @@ Fits are precision-weighted (1/SE²).
     *   Constant model: AIC = 75.1, R² = 0.000
 *   **constant gap vs N (reciprocal of round length; carries no independent information):**
     *   Linear model: Slope = `-0.00324` (95% CI: `[-0.00397, -0.00251]`), AIC = 34.6, R² = 0.950
-    *   Constant model: AIC = 50.6, R² = -0.000
+    *   Constant model: AIC = 50.6, R² = 0.000
 
 ## Verdict
 
