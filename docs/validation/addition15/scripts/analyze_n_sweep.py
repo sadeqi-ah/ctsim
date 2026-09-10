@@ -138,7 +138,7 @@ with (DATA / "fits.csv").open("w", newline="") as out:
             writer.writerow([arm, quantity, model, f"{fit['slope']:.9f}", f"{fit['lo']:.9f}", f"{fit['hi']:.9f}", f"{fit['aic']:.6f}", f"{fit['r2']:.6f}"])
 
 # Generate README.md
-readme = """# Addition 15: Does the residual scale with N? (Pre-registration and Results)
+readme = f"""# Addition 15: Does the residual scale with N? (Pre-registration and Results)
 
 ## Pre-Registered Predictions
 
@@ -232,23 +232,69 @@ if "--check" in sys.argv:
         print("README does not exist for checking.")
         sys.exit(1)
     existing = readme_path.read_text()
-    # Assert row provenance: every row in README tables must correspond to data in CSV
+    
     import re
+    text_no_code = re.sub(r'```.*?```', '', existing, flags=re.DOTALL)
+    text_no_code = re.sub(r'`[^`]*`', '', text_no_code)
+    if '{' in text_no_code or '}' in text_no_code:
+        print("ERROR: Unrendered placeholder { or } found outside code blocks.")
+        sys.exit(1)
+        
+    # Assert row provenance: harden check
+    summary_dict = {(r["n"], r["arm"]): r for r in summary}
+    current_arm = None
     for line in existing.splitlines():
-        if line.startswith("|") and not "---" in line and not "Historical" in line:
+        if "### 2PC over CE" in line: current_arm = "2pc_ce"
+        elif "### Paxos over CE" in line: current_arm = "paxos_ce"
+        
+        if line.startswith("|") and not "---" in line and not "Historical" in line and "Density Error (%)" not in line and current_arm:
             cols = [c.strip() for c in line.split("|")[1:-1]]
             if not cols: continue
             try:
                 parsed_n = int(cols[0])
-                # Determine arm based on context or table structure if possible.
-                # We can just check if parsed_n is in ns_unique.
-                assert parsed_n in ns_unique, f"Row provenance assertion failed: N={parsed_n} found in README but not in n_sweep.csv!"
+                assert (parsed_n, current_arm) in summary_dict, f"Row provenance assertion failed: N={parsed_n}, arm={current_arm} found in README but not in n_sweep_summary.csv! Row: {line}"
+                r = summary_dict[(parsed_n, current_arm)]
+                # Check values
+                assert f"{r['mean_degree']:.2f}" == cols[1], f"Mismatch in mean_degree: expected {r['mean_degree']:.2f}, got {cols[1]} in row {line}"
+                assert f"{r['mean_diameter']:.1f}" == cols[2], f"Mismatch in mean_diameter: expected {r['mean_diameter']:.1f}, got {cols[2]} in row {line}"
+                if not math.isnan(r['mean_round_slots']):
+                    assert f"{r['mean_round_slots']:.2f}" == cols[3], f"Mismatch in mean_round_slots: expected {r['mean_round_slots']:.2f}, got {cols[3]} in row {line}"
+                if not math.isnan(r['round_slots_se']):
+                    assert f"{r['round_slots_se']:.2f}" == cols[4], f"Mismatch in round_slots_se: expected {r['round_slots_se']:.2f}, got {cols[4]} in row {line}"
+                assert f"{r['constant_gap']:.3f}" == cols[5], f"Mismatch in constant_gap: expected {r['constant_gap']:.3f}, got {cols[5]} in row {line}"
+                assert f"{r['modelled_gap']:.3f}" == cols[6], f"Mismatch in modelled_gap: expected {r['modelled_gap']:.3f}, got {cols[6]} in row {line}"
             except ValueError:
                 pass
+        
+        if line.startswith("|") and "Density Error (%)" not in line and "Historical" not in line and not current_arm:
+            cols = [c.strip() for c in line.split("|")[1:-1]]
+            if len(cols) == 3:
+                # Density error table
+                try:
+                    parsed_n = int(cols[0])
+                    assert parsed_n in density_errors_by_n, f"Row provenance failed: N={parsed_n} not in density errors"
+                    err = density_errors_by_n[parsed_n] * 100
+                    assert f"{err:.2f}" == cols[2], f"Mismatch in density error: expected {err:.2f}, got {cols[2]} in row {line}"
+                except ValueError:
+                    pass
+            elif len(cols) == 5:
+                # Anchor Comparison
+                try:
+                    parsed_n = int(cols[0])
+                except ValueError:
+                    continue
+                arm = "2pc_ce" if "2PC" in line else "paxos_ce"
+                if (parsed_n, arm) not in summary_dict:
+                    print(f"Row provenance assertion failed: Anchor N={parsed_n} found in README but not in n_sweep_summary.csv!")
+                    sys.exit(1)
+                cg = summary_dict[(parsed_n, arm)]['constant_gap']
+                assert f"{cg:.3f}" == cols[3], f"Mismatch in Anchor constant_gap: expected {cg:.3f}, got {cols[3]} in row {line}"
+
     if existing != readme:
         print("ERROR: README.md does not match generated content. Hand-edited numbers detected.")
         sys.exit(1)
     print("README check passed.")
+    sys.exit(0)
 else:
     readme_path.write_text(readme)
 
