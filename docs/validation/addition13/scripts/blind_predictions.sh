@@ -159,8 +159,11 @@ run_one() {
     local graph_sha
     if command -v sha256sum &>/dev/null; then
         graph_sha=$(sha256sum "$gf" | cut -d' ' -f1)
-    else
+    elif command -v shasum &>/dev/null; then
         graph_sha=$(shasum -a 256 "$gf" | cut -d' ' -f1)
+    else
+        echo "ERROR: neither sha256sum nor shasum -a 256 is available" >&2
+        exit 1
     fi
 
     # Report

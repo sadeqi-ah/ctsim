@@ -134,12 +134,22 @@ fn degree_stats(graph: &NetworkGraph) -> (usize, usize, Vec<(usize, usize)>) {
 }
 
 fn sha256_file(path: &str) -> String {
-    // Try sha256sum (Linux) first, then shasum -a 256 (macOS).
-    let output = Command::new("sha256sum")
-        .arg(path)
-        .output()
-        .or_else(|_| Command::new("shasum").args(["-a", "256", path]).output())
-        .expect("failed to run sha256sum or shasum -a 256");
+    // Cargo.lock has no SHA-256 crate; prefer Linux sha256sum, then macOS shasum.
+    let output = match Command::new("sha256sum").arg(path).output() {
+        Ok(output) => output,
+        Err(sha256sum_error) if sha256sum_error.kind() == std::io::ErrorKind::NotFound => {
+            Command::new("shasum")
+                .args(["-a", "256", path])
+                .output()
+                .unwrap_or_else(|shasum_error| {
+                    panic!(
+                        "neither sha256sum nor shasum -a 256 is available: \
+                         sha256sum: {sha256sum_error}; shasum: {shasum_error}"
+                    )
+                })
+        }
+        Err(error) => panic!("failed to run sha256sum for {path}: {error}"),
+    };
     assert!(output.status.success(), "sha256 command failed for {path}");
     let stdout = String::from_utf8(output.stdout).unwrap();
     stdout.split_whitespace().next().unwrap().to_string()

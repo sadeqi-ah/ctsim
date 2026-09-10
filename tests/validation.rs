@@ -870,6 +870,7 @@ fn published_slot_lengths_match_their_primary_sources() {
 #[test]
 fn harness_loss_rates_come_from_the_calibration_lock() {
     const TOLERANCE: f64 = 1e-12;
+    type LossLoop = Option<(usize, Vec<String>)>;
 
     let lock = read_toml("profiles/calibration.lock.toml");
     let primary: f64 = lock["step_2_5"]["primary_loss_rate"]
@@ -893,15 +894,14 @@ fn harness_loss_rates_come_from_the_calibration_lock() {
     // (positional arg $5 in the function signature).
     // run_one <system> <protocol> <nn> <arm> <loss> <gseed>
     //   0        1        2        3     4     5      6
-    let mut all_reachable: Vec<f64> = Vec::new();
-    let mut block_stack: Vec<Option<(usize, Vec<f64>)>> = Vec::new();
-    let mut call_site_count = 0;
+    let mut block_stack: Vec<LossLoop> = Vec::new();
+    let mut call_sites: Vec<(usize, String, LossLoop)> = Vec::new();
 
     for (line_idx, line) in script_lines.iter().enumerate() {
         let file_line = line_idx + 1;
         let trimmed = line.trim();
 
-        if trimmed == "done" {
+        if trimmed.split_whitespace().next() == Some("done") {
             block_stack.pop().unwrap_or_else(|| {
                 panic!("{script_path} line {file_line}: 'done' has no matching open block")
             });
@@ -911,21 +911,12 @@ fn harness_loss_rates_come_from_the_calibration_lock() {
         if ["for ", "while ", "until "]
             .iter()
             .any(|prefix| trimmed.starts_with(prefix))
-            && trimmed.split_whitespace().any(|token| token == "do")
+            && !trimmed.starts_with("for (")
         {
             let loss_loop = if trimmed.starts_with("for loss in ") {
                 let after_in = trimmed.strip_prefix("for loss in ").unwrap();
                 let tokens_part = after_in.split(';').next().unwrap_or(after_in);
-                let loop_rates = tokens_part
-                    .split_whitespace()
-                    .map(|token| {
-                        token.parse::<f64>().unwrap_or_else(|e| {
-                            panic!(
-                                "{script_path} line {file_line}: cannot parse '{token}' as f64: {e}"
-                            )
-                        })
-                    })
-                    .collect();
+                let loop_rates = tokens_part.split_whitespace().map(str::to_owned).collect();
                 Some((file_line, loop_rates))
             } else {
                 None
@@ -933,10 +924,17 @@ fn harness_loss_rates_come_from_the_calibration_lock() {
             block_stack.push(loss_loop);
         }
 
+        for command in trimmed.split(';').skip(1) {
+            if command.split_whitespace().next() == Some("done") {
+                block_stack.pop().unwrap_or_else(|| {
+                    panic!("{script_path} line {file_line}: 'done' has no matching open block")
+                });
+            }
+        }
+
         if !trimmed.starts_with("run_one ") {
             continue;
         }
-        call_site_count += 1;
 
         let tokens: Vec<&str> = line.split_whitespace().collect();
         assert!(
@@ -955,17 +953,52 @@ fn harness_loss_rates_come_from_the_calibration_lock() {
             raw_loss_arg
         };
 
-        if loss_arg.starts_with('$') {
-            let (loop_file_line, loop_rates) = block_stack
-                .iter()
-                .rev()
-                .find_map(Option::as_ref)
-                .unwrap_or_else(|| {
-                    panic!(
-                        "{script_path} line {file_line}: run_one uses variable {loss_arg} \
+        let enclosing_loss_loop = if loss_arg.starts_with('$') {
+            Some(
+                block_stack
+                    .iter()
+                    .rev()
+                    .find_map(Option::as_ref)
+                    .unwrap_or_else(|| {
+                        panic!(
+                            "{script_path} line {file_line}: run_one uses variable {loss_arg} \
                      but is not enclosed by a 'for loss in' loop"
-                    )
-                });
+                        )
+                    })
+                    .clone(),
+            )
+        } else {
+            None
+        };
+        call_sites.push((file_line, loss_arg.to_owned(), enclosing_loss_loop));
+    }
+
+    assert_eq!(
+        call_sites.len(),
+        4,
+        "{script_path}: found {} run_one call sites, expected exactly 4; \
+         if the harness gains or loses a run this count must be updated deliberately",
+        call_sites.len(),
+    );
+    assert!(
+        block_stack.is_empty(),
+        "{script_path}: structural scan ended with {} unclosed loop blocks",
+        block_stack.len(),
+    );
+
+    let mut all_reachable: Vec<f64> = Vec::new();
+    for (file_line, loss_arg, enclosing_loss_loop) in call_sites {
+        if let Some((loop_file_line, loop_rate_tokens)) = enclosing_loss_loop {
+            let loop_rates: Vec<f64> = loop_rate_tokens
+                .iter()
+                .map(|token| {
+                    token.parse::<f64>().unwrap_or_else(|e| {
+                        panic!(
+                            "{script_path} line {loop_file_line}: cannot parse '{token}' as f64: {e}"
+                        )
+                    })
+                })
+                .collect();
 
             // The variable-fed rate set must equal the lock rate set.
             let mut sorted_loop = loop_rates.clone();
@@ -987,7 +1020,7 @@ fn harness_loss_rates_come_from_the_calibration_lock() {
                 );
             }
 
-            for r in loop_rates {
+            for r in &loop_rates {
                 if !all_reachable
                     .iter()
                     .any(|reachable| (reachable - r).abs() < TOLERANCE)
@@ -1018,12 +1051,6 @@ fn harness_loss_rates_come_from_the_calibration_lock() {
             }
         }
     }
-
-    assert_eq!(
-        call_site_count, 4,
-        "{script_path}: found {call_site_count} run_one call sites, expected exactly 4; \
-         if the harness gains or loses a run this count must be updated deliberately",
-    );
 
     all_reachable.sort_by(|a, b| a.partial_cmp(b).unwrap());
     assert_eq!(
