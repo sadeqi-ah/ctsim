@@ -166,7 +166,7 @@ ERROR: README.md does not match generated content. Hand-edited numbers detected.
 --- committed README.md
 +++ generated README.md
 @@ -69,7 +69,7 @@
-
+ 
  ### 2PC over CE
  *   **log(round_length) vs log(N) (Primary):**
 -    *   Linear model: Slope = `0.13734` (95% CI: `[0.13101, 0.14365]`), AIC = 4.8, R² = 0.998
@@ -288,7 +288,6 @@ $ shasum -a 256 plots/topology/results/sweep_summary.csv plots/scalability/resul
 b982afa37606312737811bd985fcabf7d841d5bd3f6f782f5a424d8e8c3758e7  plots/scalability/results/sweep_summary.csv
 $ git status --porcelain
 ```
-
 
 ## NC-D2
 
