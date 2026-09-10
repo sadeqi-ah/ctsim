@@ -5,6 +5,7 @@ use ctsim::run::run_experiment;
 use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
 use std::env;
+use std::fs::OpenOptions;
 use std::fs::{self, File};
 use std::io::{BufWriter, Write};
 use std::path::{Path, PathBuf};
@@ -28,34 +29,57 @@ fn generate(n: usize, min_deg: usize, max_deg: usize, seed: u64) -> Option<Netwo
     })
 }
 
-fn selected_window(n: usize) -> Option<(usize, usize)> {
-    match n {
-        // Published anchors remain pinned because the search independently selects
-        // (72,72)/(75,75), not their historical (74,78)/(76,80) arguments.
-        180 => Some((74, 78)),
-        188 => Some((76, 80)),
-        _ => solve_window(n),
-    }
-}
-
-fn candidate_windows(n: usize) -> impl Iterator<Item = (usize, usize)> {
-    let centre = (0.4 * n as f64).round() as isize;
-    (0..n).flat_map(move |distance| {
-        let distance = distance as isize;
-        [centre - distance, centre + distance]
-            .into_iter()
-            .filter(move |min| *min >= 1 && *min < n as isize)
-            .flat_map(move |min| (0..=8).map(move |width| (min as usize, min as usize + width)))
-            .filter(move |(_, max)| *max < n)
-    })
-}
-
 fn solve_window(n: usize) -> Option<(usize, usize)> {
-    candidate_windows(n).find(|&(min_deg, max_deg)| {
-        SEEDS
-            .iter()
-            .all(|&seed| generate(n, min_deg, max_deg, seed).is_some())
-    })
+    let w = 10;
+    let target = 0.5 * n as f64;
+    let mut best_error = f64::MAX;
+    let mut best_window = None;
+
+    let start = (0.3 * n as f64) as usize;
+    let end = (0.5 * n as f64) as usize;
+
+    for center in start..=end {
+        let min_deg = center;
+        let max_deg = center + w;
+        if max_deg >= n {
+            continue;
+        }
+
+        let mut valid = true;
+        let mut sum_mean = 0.0;
+
+        for &seed in &SEEDS {
+            let mut rng = ChaCha8Rng::seed_from_u64(seed);
+            let mut found = false;
+            for _ in 0..MAX_GENERATION_ATTEMPTS {
+                let graph = NetworkGraph::random_topology(n, min_deg, max_deg, &mut rng);
+                if admissible(&graph, n) {
+                    sum_mean += 2.0 * graph.edge_count() as f64 / n as f64;
+                    found = true;
+                    break;
+                }
+            }
+            if !found {
+                valid = false;
+                break;
+            }
+        }
+
+        if valid {
+            let seed_mean = sum_mean / SEEDS.len() as f64;
+            let error = (seed_mean - target).abs() / target;
+            if error < best_error {
+                best_error = error;
+                best_window = Some((min_deg, max_deg));
+            }
+        }
+    }
+
+    if best_error <= 0.01 {
+        best_window
+    } else {
+        None
+    }
 }
 
 fn graph_stats(graph: &NetworkGraph) -> (usize, f64, f64, usize, usize, usize) {
@@ -135,60 +159,63 @@ fn main() {
     fs::create_dir_all(&out).unwrap();
 
     println!("acceptance: abs(mean_degree - 0.5*N) <= 0.05*(0.5*N), diameter == 2");
-    println!("search: centre=round(0.4*N); min_deg by increasing distance, lower before upper; width 0..=8; max_deg<N; attempts=100; seeds={SEEDS:?}");
+    println!("search: sweep min_deg to minimize density error across seeds, width W=10. Requires density error <= 1%.");
 
     if mode == "search" {
         for n in NS {
-            println!(
-                "N={n} searched={:?} selected={:?}",
-                solve_window(n),
-                selected_window(n)
-            );
+            println!("N={n} selected={:?}", solve_window(n));
         }
         return;
     }
 
-    let mut provenance =
-        BufWriter::new(File::create(out.join("graph_provenance_dense.csv")).unwrap());
-    writeln!(provenance, "n,seed,min_deg_arg,max_deg_arg,edges,mean_degree,degree_variance,min_degree,max_degree,diameter,graph_file").unwrap();
-    let mut rows = BufWriter::new(File::create(out.join("n_sweep.csv")).unwrap());
-    writeln!(rows, "n,arm,seed,mean_round_slots,mean_decision_latency_slots,committed,proposals,elapsed_seconds").unwrap();
+    let prov_exists = out.join("graph_provenance_dense.csv").exists();
+    let mut provenance = BufWriter::new(
+        OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(out.join("graph_provenance_dense.csv"))
+            .unwrap(),
+    );
+    if !prov_exists {
+        writeln!(provenance, "n,seed,min_deg_arg,max_deg_arg,edges,mean_degree,degree_variance,min_degree,max_degree,diameter,graph_file").unwrap();
+    }
+
+    let rows_exists = out.join("n_sweep.csv").exists();
+    let mut rows = BufWriter::new(
+        OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(out.join("n_sweep.csv"))
+            .unwrap(),
+    );
+    if !rows_exists {
+        writeln!(rows, "n,arm,seed,mean_round_slots,mean_decision_latency_slots,committed,proposals,elapsed_seconds").unwrap();
+    }
 
     let ns: Vec<usize> = if mode == "cost" {
         vec![240]
+    } else if let Ok(n_val) = mode.parse::<usize>() {
+        vec![n_val]
     } else {
         SWEEP_NS.to_vec()
     };
     for n in ns {
-        let (min_deg, max_deg) = selected_window(n).unwrap_or_else(|| {
+        let (min_deg, max_deg) = solve_window(n).unwrap_or_else(|| {
             panic!("N={n}: no generator window satisfies the fixed acceptance criterion")
         });
         let seeds: &[u64] = if mode == "cost" { &SEEDS[..1] } else { &SEEDS };
         for &seed in seeds {
-            let anchored_path =
-                PathBuf::from(format!("profiles/graphs/random_n{n}_dense_seed{seed}.txt"));
-            let graph = if n == 180 || n == 188 {
-                NetworkGraph::from_file(&anchored_path).unwrap_or_else(|error| {
-                    panic!(
-                        "failed to load pinned graph {}: {error}",
-                        anchored_path.display()
-                    )
-                })
-            } else {
-                generate(n, min_deg, max_deg, seed).unwrap()
-            };
+            let graph = generate(n, min_deg, max_deg, seed).unwrap();
             let (edges, mean, variance, min_real, max_real, diameter) = graph_stats(&graph);
             assert!(
                 admissible(&graph, n),
                 "N={n} seed={seed}: graph is inadmissible"
             );
-            let graph_path = if n == 180 || n == 188 {
-                anchored_path
-            } else {
-                let path = PathBuf::from(format!("/tmp/addition15_graph_n{n}_seed{seed}.txt"));
-                write_graph(&path, &graph);
-                path
-            };
+            let path = PathBuf::from(format!(
+                "docs/validation/addition15/data/graph_n{n}_seed{seed}.txt"
+            ));
+            write_graph(&path, &graph);
+            let graph_path = path;
             writeln!(provenance, "{n},{seed},{min_deg},{max_deg},{edges},{mean:.6},{variance:.6},{min_real},{max_real},{diameter},{}", graph_path.display()).unwrap();
             provenance.flush().unwrap();
             for protocol in ["2pc_ce", "paxos_ce"] {
@@ -196,9 +223,6 @@ fn main() {
                 std::io::stdout().flush().unwrap();
                 writeln!(rows, "{}", run_one(n, seed, &graph_path, protocol)).unwrap();
                 rows.flush().unwrap();
-            }
-            if n != 180 && n != 188 {
-                fs::remove_file(graph_path).unwrap();
             }
         }
     }
