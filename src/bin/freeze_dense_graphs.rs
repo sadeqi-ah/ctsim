@@ -21,24 +21,64 @@ const SEEDS: [u64; 15] = [2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47
 const NODE_COUNTS: [usize; 2] = [180, 188];
 const MAX_GENERATION_ATTEMPTS: usize = 100;
 
-fn calibrated_degree_window(n: usize) -> (usize, usize) {
+fn pinned_degree_window(n: usize) -> Option<(usize, usize)> {
     match n {
-        180 => (74, 78),
-        188 => (76, 80),
-        _ => panic!("no calibrated dense window for n={n}"),
+        // Existing published anchors stay byte-identical. The deterministic search
+        // independently selects (72,72)/(75,75), so this asymmetry is explicit.
+        180 => Some((74, 78)),
+        188 => Some((76, 80)),
+        _ => None,
     }
 }
 
-fn generate_dense_graph(n: usize, seed: u64) -> NetworkGraph {
-    let (min_deg, max_deg) = calibrated_degree_window(n);
+fn candidate_windows(n: usize) -> impl Iterator<Item = (usize, usize)> {
+    // Fixed search: centre round(0.4*N), increasing integer distance (lower first),
+    // then width 0..=8; bounds are 1 <= min <= max < N.
+    let centre = (0.4 * n as f64).round() as isize;
+    (0..n).flat_map(move |distance| {
+        let distance = distance as isize;
+        [centre - distance, centre + distance]
+            .into_iter()
+            .filter(move |min| *min >= 1 && *min < n as isize)
+            .flat_map(move |min| (0..=8).map(move |width| (min as usize, min as usize + width)))
+            .filter(move |(_, max)| *max < n)
+    })
+}
+
+fn admissible(graph: &NetworkGraph, n: usize) -> bool {
     let expected_mean = 0.5 * n as f64;
     let tolerance = 0.05 * expected_mean;
+    let mean_degree = 2.0 * graph.edge_count() as f64 / n as f64;
+    (mean_degree - expected_mean).abs() <= tolerance && graph.diameter() == 2
+}
+
+fn generate_candidate(n: usize, seed: u64, min_deg: usize, max_deg: usize) -> Option<NetworkGraph> {
+    let mut rng = ChaCha8Rng::seed_from_u64(seed);
+    (1..=MAX_GENERATION_ATTEMPTS).find_map(|_| {
+        let graph = NetworkGraph::random_topology(n, min_deg, max_deg, &mut rng);
+        admissible(&graph, n).then_some(graph)
+    })
+}
+
+fn searched_degree_window(n: usize) -> Option<(usize, usize)> {
+    candidate_windows(n).find(|&(min_deg, max_deg)| {
+        SEEDS
+            .iter()
+            .all(|&seed| generate_candidate(n, seed, min_deg, max_deg).is_some())
+    })
+}
+
+fn generate_dense_graph(n: usize, seed: u64) -> NetworkGraph {
+    let (min_deg, max_deg) = pinned_degree_window(n)
+        .or_else(|| searched_degree_window(n))
+        .unwrap_or_else(|| {
+            panic!("no generator window satisfies the dense acceptance criterion for n={n}")
+        });
 
     let mut rng = ChaCha8Rng::seed_from_u64(seed);
     for _attempt in 1..=MAX_GENERATION_ATTEMPTS {
         let graph = NetworkGraph::random_topology(n, min_deg, max_deg, &mut rng);
-        let mean_degree = 2.0 * graph.edge_count() as f64 / n as f64;
-        if (mean_degree - expected_mean).abs() <= tolerance && graph.diameter() == 2 {
+        if admissible(&graph, n) {
             return graph;
         }
     }
@@ -168,8 +208,12 @@ fn main() {
         //   n=180: center=76 (min=74, max=78) → output mean ≈ 91.0 ≈ 0.506*n ✓
         //   n=188: center=78 (min=76, max=80) → output mean ≈ 93.2 ≈ 0.496*n ✓
         // Both are within the 5% tolerance band around 0.5*n.
-        // Intentional call acting purely as an early guard for uncalibrated n.
-        calibrated_degree_window(n);
+        let selected_window = pinned_degree_window(n)
+            .or_else(|| searched_degree_window(n))
+            .unwrap_or_else(|| {
+                panic!("no generator window satisfies the dense acceptance criterion for n={n}")
+            });
+        println!("n={n}: selected generator window {selected_window:?}");
 
         for &seed in &SEEDS {
             let graph = generate_dense_graph(n, seed);

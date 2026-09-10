@@ -896,25 +896,41 @@ fn harness_loss_rates_come_from_the_calibration_lock() {
     //   0        1        2        3     4     5      6
     let mut block_stack: Vec<LossLoop> = Vec::new();
     let mut call_sites: Vec<(usize, String, LossLoop)> = Vec::new();
+    let mut structural_complaints = Vec::new();
+    let is_done = |command: &str| {
+        command
+            .trim_start()
+            .strip_prefix("done")
+            .is_some_and(|rest| {
+                rest.is_empty()
+                    || rest
+                        .chars()
+                        .next()
+                        .is_some_and(|c| c.is_whitespace() || "|&<>".contains(c))
+            })
+    };
 
     for (line_idx, line) in script_lines.iter().enumerate() {
         let file_line = line_idx + 1;
         let trimmed = line.trim();
+        let scan_line = trimmed.split('#').next().unwrap_or("").trim();
 
-        if trimmed.split_whitespace().next() == Some("done") {
-            block_stack.pop().unwrap_or_else(|| {
-                panic!("{script_path} line {file_line}: 'done' has no matching open block")
-            });
+        if is_done(scan_line) {
+            if block_stack.pop().is_none() {
+                structural_complaints.push(format!(
+                    "{script_path} line {file_line}: 'done' has no matching open block"
+                ));
+            }
             continue;
         }
 
-        if ["for ", "while ", "until "]
-            .iter()
-            .any(|prefix| trimmed.starts_with(prefix))
-            && !trimmed.starts_with("for (")
-        {
-            let loss_loop = if trimmed.starts_with("for loss in ") {
-                let after_in = trimmed.strip_prefix("for loss in ").unwrap();
+        let opens_loop = scan_line.starts_with("while ")
+            || scan_line.starts_with("until ")
+            || (scan_line.starts_with("for ") && !scan_line.starts_with("for ("))
+            || scan_line.starts_with("for ((");
+        if opens_loop {
+            let loss_loop = if scan_line.starts_with("for loss in ") {
+                let after_in = scan_line.strip_prefix("for loss in ").unwrap();
                 let tokens_part = after_in.split(';').next().unwrap_or(after_in);
                 let loop_rates = tokens_part.split_whitespace().map(str::to_owned).collect();
                 Some((file_line, loop_rates))
@@ -924,11 +940,11 @@ fn harness_loss_rates_come_from_the_calibration_lock() {
             block_stack.push(loss_loop);
         }
 
-        for command in trimmed.split(';').skip(1) {
-            if command.split_whitespace().next() == Some("done") {
-                block_stack.pop().unwrap_or_else(|| {
-                    panic!("{script_path} line {file_line}: 'done' has no matching open block")
-                });
+        for command in scan_line.split(';').skip(1) {
+            if is_done(command) && block_stack.pop().is_none() {
+                structural_complaints.push(format!(
+                    "{script_path} line {file_line}: 'done' has no matching open block"
+                ));
             }
         }
 
@@ -954,19 +970,16 @@ fn harness_loss_rates_come_from_the_calibration_lock() {
         };
 
         let enclosing_loss_loop = if loss_arg.starts_with('$') {
-            Some(
-                block_stack
-                    .iter()
-                    .rev()
-                    .find_map(Option::as_ref)
-                    .unwrap_or_else(|| {
-                        panic!(
-                            "{script_path} line {file_line}: run_one uses variable {loss_arg} \
-                     but is not enclosed by a 'for loss in' loop"
-                        )
-                    })
-                    .clone(),
-            )
+            match block_stack.iter().rev().find_map(Option::as_ref) {
+                Some(loss_loop) => Some(loss_loop.clone()),
+                None => {
+                    structural_complaints.push(format!(
+                        "{script_path} line {file_line}: run_one uses variable {loss_arg} \
+                         but is not enclosed by a 'for loss in' loop"
+                    ));
+                    None
+                }
+            }
         } else {
             None
         };
@@ -984,6 +997,11 @@ fn harness_loss_rates_come_from_the_calibration_lock() {
         block_stack.is_empty(),
         "{script_path}: structural scan ended with {} unclosed loop blocks",
         block_stack.len(),
+    );
+    assert!(
+        structural_complaints.is_empty(),
+        "{}",
+        structural_complaints.join("\n"),
     );
 
     let mut all_reachable: Vec<f64> = Vec::new();
