@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import csv
+import difflib
 import math
 import sys
 from collections import defaultdict
@@ -296,6 +297,11 @@ if CHECK:
 
     if existing != readme:
         print("ERROR: README.md does not match generated content. Hand-edited numbers detected.")
+        for line in difflib.unified_diff(
+            existing.splitlines(), readme.splitlines(),
+            fromfile="committed README.md", tofile="generated README.md", lineterm=""
+        ):
+            print(line)
         sys.exit(1)
     print("README check passed.")
     sys.exit(0)
