@@ -10,6 +10,7 @@ import numpy as np
 
 ROOT = Path(__file__).resolve().parents[4]
 DATA = ROOT / "docs/validation/addition15/data"
+CHECK = "--check" in sys.argv
 ROWS = list(csv.DictReader((DATA / "n_sweep.csv").open()))
 PROV = list(csv.DictReader((DATA / "graph_provenance_dense.csv").open()))
 
@@ -104,10 +105,11 @@ for (n, arm), cells in sorted(groups.items()):
     })
 
 fields = list(summary[0])
-with (DATA / "n_sweep_summary.csv").open("w", newline="") as out:
-    writer = csv.DictWriter(out, fieldnames=fields)
-    writer.writeheader()
-    writer.writerows(summary)
+if not CHECK:
+    with (DATA / "n_sweep_summary.csv").open("w", newline="") as out:
+        writer = csv.DictWriter(out, fieldnames=fields)
+        writer.writeheader()
+        writer.writerows(summary)
 
 fits = {}
 for arm in ["2pc_ce", "paxos_ce"]:
@@ -130,12 +132,13 @@ for arm in ["2pc_ce", "paxos_ce"]:
     # d. constant gap vs N
     fits[(arm, "constant_gap")] = weighted_fits(xs, [r["constant_gap"] for r in cells], [r["constant_gap_se"] for r in cells])
 
-with (DATA / "fits.csv").open("w", newline="") as out:
-    writer = csv.writer(out)
-    writer.writerow(["arm", "quantity", "model", "slope", "slope_ci95_low", "slope_ci95_high", "aic", "r_squared"])
-    for (arm, quantity), models in fits.items():
-        for model, fit in models.items():
-            writer.writerow([arm, quantity, model, f"{fit['slope']:.9f}", f"{fit['lo']:.9f}", f"{fit['hi']:.9f}", f"{fit['aic']:.6f}", f"{fit['r2']:.6f}"])
+if not CHECK:
+    with (DATA / "fits.csv").open("w", newline="") as out:
+        writer = csv.writer(out)
+        writer.writerow(["arm", "quantity", "model", "slope", "slope_ci95_low", "slope_ci95_high", "aic", "r_squared"])
+        for (arm, quantity), models in fits.items():
+            for model, fit in models.items():
+                writer.writerow([arm, quantity, model, f"{fit['slope']:.9f}", f"{fit['lo']:.9f}", f"{fit['hi']:.9f}", f"{fit['aic']:.6f}", f"{fit['r2']:.6f}"])
 
 # Generate README.md
 readme = f"""# Addition 15: Does the residual scale with N? (Pre-registration and Results)
@@ -228,7 +231,7 @@ readme += f"For Paxos over CE, the alpha CI is [{alpha_paxos['lo']:.5f}, {alpha_
 
 readme_path = ROOT / "docs/validation/addition15/README.md"
 
-if "--check" in sys.argv:
+if CHECK:
     if not readme_path.exists():
         print("README does not exist for checking.")
         sys.exit(1)
