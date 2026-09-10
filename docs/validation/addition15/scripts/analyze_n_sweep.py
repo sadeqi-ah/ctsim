@@ -162,8 +162,9 @@ The published anchors (from which the 3.5234x/3.7776x residuals derived) were ge
 
 | N | Arm | Historical Residual | New Sweep Constant Gap | Difference |
 |---|---|---:|---:|---:|
-| 180 | 2PC | 3.523 | {sum([r['constant_gap'] for r in summary if r['n']==180 and r['arm']=='2pc_ce']):.3f} | {sum([r['constant_gap'] for r in summary if r['n']==180 and r['arm']=='2pc_ce']) - 3.523:.3f} |
-| 188 | Paxos | 3.778 | {sum([r['constant_gap'] for r in summary if r['n']==188 and r['arm']=='paxos_ce']):.3f} | {sum([r['constant_gap'] for r in summary if r['n']==188 and r['arm']=='paxos_ce']) - 3.778:.3f} |
+| 180 | 2PC | 3.523 | {next(r['constant_gap'] for r in summary if r['n'] == 180 and r['arm'] == '2pc_ce'):.3f} | {next(r['constant_gap'] for r in summary if r['n'] == 180 and r['arm'] == '2pc_ce') - 3.523:.3f} |
+
+The Paxos anchor at n=188 lies outside this sweep's grid and is therefore not compared under the uniform W=10 procedure.
 
 ## Density Error vs N
 
