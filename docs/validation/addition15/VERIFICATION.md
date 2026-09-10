@@ -215,3 +215,76 @@ $ python3 docs/validation/addition15/scripts/analyze_n_sweep.py --check
 README check passed.
 $ git status --porcelain
 ```
+
+## X10
+
+````text
+$ nl -ba README.md | sed -n '104,113p'
+   104	## Parameter sweeps
+   105
+   106	The same binary runs a Cartesian-product sweep when given a sweep config
+   107	(any file whose name contains `sweep`). Results are collected into a single
+   108	summary CSV:
+   109
+   110	```bash
+   111	cargo run --release -- sweep_scalability.toml   # N × loss, 15 seeds
+   112	cargo run --release -- sweep_topology.toml      # 5 topologies, 15 seeds
+   113	```
+$ cargo run --release --bin ctsim -- sweep_topology.toml && cargo run --release --bin ctsim -- sweep_scalability.toml
+    Finished `release` profile [optimized] target(s) in 0.20s
+     Running `target/release/ctsim sweep_topology.toml`
+Starting sweep of 450 experiments...
+Sweep complete. Ran 450 experiments.
+Summary written to: plots/topology/results/sweep_summary.csv
+    Finished `release` profile [optimized] target(s) in 0.13s
+     Running `target/release/ctsim sweep_scalability.toml`
+Starting sweep of 1800 experiments...
+Sweep complete. Ran 1800 experiments.
+Summary written to: plots/scalability/results/sweep_summary.csv
+$ shasum -a 256 plots/topology/results/sweep_summary.csv plots/scalability/results/sweep_summary.csv
+1e596a3f480539972e21aa6a8f1186fc9f60f4bca6d08e125108c51a1dea0329  plots/topology/results/sweep_summary.csv
+b982afa37606312737811bd985fcabf7d841d5bd3f6f782f5a424d8e8c3758e7  plots/scalability/results/sweep_summary.csv
+$ python3 -c 'from pathlib import Path; import re; text=Path("docs/validation/addition13/README.md").read_text(); print("\n".join(line for line in text.splitlines() if re.match(r"^(topology|scalability) ", line.strip())))'
+topology     1e596a3f480539972e21aa6a8f1186fc9f60f4bca6d08e125108c51a1dea0329
+scalability  b982afa37606312737811bd985fcabf7d841d5bd3f6f782f5a424d8e8c3758e7
+$ git status --porcelain
+````
+
+## NC-D re-execution
+
+NC-D FAILED: the canonical regressions do not consume `profiles/graphs/random_n180_dense_seed2.txt`; perturbing that anchor graph left both regenerated digests unchanged.
+
+```text
+$ printf 'X' >> profiles/graphs/random_n180_dense_seed2.txt
+$ cargo run --release --bin ctsim -- sweep_topology.toml && cargo run --release --bin ctsim -- sweep_scalability.toml
+    Finished `release` profile [optimized] target(s) in 0.13s
+     Running `target/release/ctsim sweep_topology.toml`
+Starting sweep of 450 experiments...
+Sweep complete. Ran 450 experiments.
+Summary written to: plots/topology/results/sweep_summary.csv
+    Finished `release` profile [optimized] target(s) in 0.02s
+     Running `target/release/ctsim sweep_scalability.toml`
+Starting sweep of 1800 experiments...
+Sweep complete. Ran 1800 experiments.
+Summary written to: plots/scalability/results/sweep_summary.csv
+$ shasum -a 256 plots/topology/results/sweep_summary.csv plots/scalability/results/sweep_summary.csv
+1e596a3f480539972e21aa6a8f1186fc9f60f4bca6d08e125108c51a1dea0329  plots/topology/results/sweep_summary.csv
+b982afa37606312737811bd985fcabf7d841d5bd3f6f782f5a424d8e8c3758e7  plots/scalability/results/sweep_summary.csv
+$ git checkout -- profiles/graphs/random_n180_dense_seed2.txt
+$ git status --porcelain
+$ cargo run --release --bin ctsim -- sweep_topology.toml && cargo run --release --bin ctsim -- sweep_scalability.toml
+    Finished `release` profile [optimized] target(s) in 0.13s
+     Running `target/release/ctsim sweep_topology.toml`
+Starting sweep of 450 experiments...
+Sweep complete. Ran 450 experiments.
+Summary written to: plots/topology/results/sweep_summary.csv
+    Finished `release` profile [optimized] target(s) in 0.02s
+     Running `target/release/ctsim sweep_scalability.toml`
+Starting sweep of 1800 experiments...
+Sweep complete. Ran 1800 experiments.
+Summary written to: plots/scalability/results/sweep_summary.csv
+$ shasum -a 256 plots/topology/results/sweep_summary.csv plots/scalability/results/sweep_summary.csv
+1e596a3f480539972e21aa6a8f1186fc9f60f4bca6d08e125108c51a1dea0329  plots/topology/results/sweep_summary.csv
+b982afa37606312737811bd985fcabf7d841d5bd3f6f782f5a424d8e8c3758e7  plots/scalability/results/sweep_summary.csv
+$ git status --porcelain
+```
