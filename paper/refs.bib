@@ -1,0 +1,439 @@
+%%=====================================================================
+%% refs.bib -- Pipelined Consensus over Constructive Interference
+%%
+%% Build order:
+%%   pdflatex paper -> bibtex paper -> pdflatex paper -> pdflatex paper
+%%
+%% Part A: core references (already present in the Persian manuscript)
+%% Part B: 2022-2025 references added to close the recency gap
+%%
+%% All 20 references of the Persian manuscript are now covered. Entry [13]
+%% of that list is skeen81nonblocking, which was already present.
+%%=====================================================================
+
+
+%%---------------------------------------------------------------------
+%% PART A -- CORE REFERENCES
+%%---------------------------------------------------------------------
+
+@inproceedings{alnahas17a2,
+  author    = {Al Nahas, Beshr and Duquennoy, Simon and Landsiedel, Olaf},
+  title     = {Network-Wide Consensus Utilizing the Capture Effect in
+               Low-Power Wireless Networks},
+  booktitle = {Proc. ACM Conf. Embedded Networked Sensor Systems (SenSys)},
+  year      = {2017},
+}
+
+@article{zimmerling20survey,
+  author  = {Zimmerling, Marco and Mottola, Luca and Santini, Silvia},
+  title   = {Synchronous Transmissions in Low-Power Wireless: A Survey of
+             Communication Protocols and Network Services},
+  journal = {ACM Computing Surveys},
+  volume  = {53},
+  number  = {6},
+  year    = {2020},
+}
+
+@inproceedings{ferrari11glossy,
+  author    = {Ferrari, Federico and Zimmerling, Marco and Thiele, Lothar
+               and Saukh, Olga},
+  title     = {Efficient Network Flooding and Time Synchronization with
+               {Glossy}},
+  booktitle = {Proc. ACM/IEEE Int. Conf. Information Processing in Sensor
+               Networks (IPSN)},
+  year      = {2011},
+}
+
+@inproceedings{alnahas19blueflood,
+  author    = {Al Nahas, Beshr and Duquennoy, Simon and Landsiedel, Olaf},
+  title     = {Concurrent Transmissions for Multi-Hop {Bluetooth} 5},
+  booktitle = {Proc. Int. Conf. Embedded Wireless Systems and Networks
+               (EWSN)},
+  pages     = {130--141},
+  year      = {2019},
+}
+
+@article{alnahas21blueflood,
+  author  = {Al Nahas, Beshr and Escobar-Molero, Antonio and Klaue, Jirka
+             and Duquennoy, Simon and Landsiedel, Olaf},
+  title   = {{BlueFlood}: Concurrent Transmissions for Multi-Hop
+             {Bluetooth} 5---Modeling and Evaluation},
+  journal = {ACM Trans. Internet of Things},
+  volume  = {2},
+  number  = {4},
+  year    = {2021},
+}
+
+@inproceedings{landsiedel13chaos,
+  author    = {Landsiedel, Olaf and Ferrari, Federico and Zimmerling, Marco},
+  title     = {{Chaos}: Versatile and Efficient All-to-All Data Sharing and
+               In-Network Processing at Scale},
+  booktitle = {Proc. ACM Conf. Embedded Networked Sensor Systems (SenSys)},
+  year      = {2013},
+}
+
+@inproceedings{poirot19paxos,
+  author    = {Poirot, Valentin and Al Nahas, Beshr and Landsiedel, Olaf},
+  title     = {{Paxos} Made Wireless: Consensus in the Air},
+  booktitle = {Proc. Int. Conf. Embedded Wireless Systems and Networks
+               (EWSN)},
+  pages     = {1--12},
+  year      = {2019},
+}
+
+@phdthesis{poirot20thesis,
+  author = {Poirot, Valentin},
+  title  = {Synchronous and Concurrent Transmissions for Consensus in
+            Low-Power Wireless},
+  school = {Chalmers University of Technology},
+  type   = {Licentiate thesis},
+  year   = {2020},
+}
+
+@inproceedings{doddavenkatappa13splash,
+  author    = {Doddavenkatappa, Manjunath and Chan, Mun Choon and
+               Leong, Ben},
+  title     = {{Splash}: Fast Data Dissemination with Constructive
+               Interference in Wireless Sensor Networks},
+  booktitle = {Proc. USENIX Symp. Networked Systems Design and
+               Implementation (NSDI)},
+  pages     = {269--282},
+  year      = {2013},
+}
+
+@article{du17pando,
+  author  = {Du, Wan and Liando, Jansen Christian and Zhang, Huanle and
+             Li, Mo},
+  title   = {{Pando}: Fountain-Enabled Fast Data Dissemination with
+             Constructive Interference},
+  journal = {IEEE/ACM Trans. Networking},
+  volume  = {25},
+  number  = {2},
+  pages   = {820--833},
+  year    = {2017},
+}
+
+@article{lamport98parttime,
+  author  = {Lamport, Leslie},
+  title   = {The Part-Time Parliament},
+  journal = {ACM Trans. Computer Systems},
+  volume  = {16},
+  number  = {2},
+  pages   = {133--169},
+  year    = {1998},
+}
+
+@incollection{gray78notes,
+  author    = {Gray, Jim},
+  title     = {Notes on Data Base Operating Systems},
+  booktitle = {Operating Systems: An Advanced Course},
+  series    = {Lecture Notes in Computer Science},
+  volume    = {60},
+  publisher = {Springer},
+  pages     = {393--481},
+  year      = {1978},
+}
+
+@inproceedings{skeen81nonblocking,
+  author    = {Skeen, Dale},
+  title     = {Nonblocking Commit Protocols},
+  booktitle = {Proc. ACM SIGMOD Int. Conf. Management of Data},
+  pages     = {133--142},
+  year      = {1981},
+}
+
+@article{defago04total,
+  author  = {D{\'e}fago, Xavier and Schiper, Andr{\'e} and Urb{\'a}n, P{\'e}ter},
+  title   = {Total Order Broadcast and Multicast Algorithms: Taxonomy and
+             Survey},
+  journal = {ACM Computing Surveys},
+  volume  = {36},
+  number  = {4},
+  pages   = {372--421},
+  year    = {2004},
+}
+
+@article{flp85,
+  author  = {Fischer, Michael J. and Lynch, Nancy A. and
+             Paterson, Michael S.},
+  title   = {Impossibility of Distributed Consensus with One Faulty
+             Process},
+  journal = {Journal of the ACM},
+  volume  = {32},
+  number  = {2},
+  pages   = {374--382},
+  year    = {1985},
+}
+
+@inproceedings{mager19feedback,
+  author    = {Mager, Fabian and Baumann, Dominik and Jacob, Romain and
+               Thiele, Lothar and Trimpe, Sebastian and
+               Zimmerling, Marco},
+  title     = {Feedback Control Goes Wireless: Guaranteed Stability over
+               Low-Power Multi-Hop Networks},
+  booktitle = {Proc. ACM/IEEE Int. Conf. Cyber-Physical Systems (ICCPS)},
+  year      = {2019},
+}
+
+@inproceedings{baddeley20phy,
+  author    = {Baddeley, Michael and Boano, Carlo Alberto and
+               Escobar-Molero, Antonio and Liu, Ye and Ma, Xiaoyuan and
+               Raza, Usman and R{\"o}mer, Kay and Schu{\ss}, Markus and
+               Stanoev, Aleksandar},
+  title     = {The Impact of the Physical Layer on the Performance of
+               Concurrent Transmissions},
+  booktitle = {Proc. IEEE Int. Conf. Network Protocols (ICNP)},
+  year      = {2020},
+}
+
+
+@article{wilhelm14reception,
+  author  = {Wilhelm, Matthias and Lenders, Vincent and Schmitt, Jens B.},
+  title   = {On the Reception of Concurrent Transmissions in Wireless
+             Sensor Networks},
+  journal = {IEEE Trans. Wireless Communications},
+  volume  = {13},
+  number  = {12},
+  pages   = {6756--6767},
+  year    = {2014},
+}
+
+@inproceedings{ferrari12lwb,
+  author    = {Ferrari, Federico and Zimmerling, Marco and Mottola, Luca
+               and Thiele, Lothar},
+  title     = {Low-Power Wireless Bus},
+  booktitle = {Proc. ACM Conf. Embedded Networked Sensor Systems (SenSys)},
+  pages     = {1--14},
+  year      = {2012},
+}
+
+@inproceedings{herrmann18mixer,
+  author    = {Herrmann, Carsten and Mager, Fabian and
+               Zimmerling, Marco},
+  title     = {{Mixer}: Efficient Many-to-All Broadcast in Dynamic
+               Wireless Mesh Networks},
+  booktitle = {Proc. ACM Conf. Embedded Networked Sensor Systems (SenSys)},
+  pages     = {145--158},
+  year      = {2018},
+}
+
+
+%%---------------------------------------------------------------------
+%% PART B -- 2022-2025 REFERENCES
+%%
+%% B1. Concurrent transmissions: measurement, tooling, frameworks
+%%     -> Section II-A and Introduction paragraph 2
+%%---------------------------------------------------------------------
+
+@article{baddeley23understanding,
+  author  = {Baddeley, Michael and Boano, Carlo Alberto and
+             Escobar-Molero, Antonio and Liu, Ye and Ma, Xiaoyuan and
+             Marot, Victor and Raza, Usman and R{\"o}mer, Kay and
+             Schu{\ss}, Markus and Stanoev, Aleksandar},
+  title   = {Understanding Concurrent Transmissions: The Impact of Carrier
+             Frequency Offset and {RF} Interference on Physical Layer
+             Performance},
+  journal = {ACM Trans. Sensor Networks},
+  volume  = {20},
+  number  = {1},
+  year    = {2023},
+}
+
+@inproceedings{herrmann22rssispy,
+  author    = {Herrmann, Carsten and Zimmerling, Marco},
+  title     = {{RSSISpy}: Inspecting Concurrent Transmissions in the Wild},
+  booktitle = {Proc. Int. Conf. Embedded Wireless Systems and Networks
+               (EWSN)},
+  year      = {2022},
+  note      = {Best Paper Award},
+}
+
+@inproceedings{baddeley22osf,
+  author    = {Baddeley, Michael and Gyl, Yevgen and Schu{\ss}, Markus and
+               Ma, Xiaoyuan and Boano, Carlo Alberto},
+  title     = {{OSF}: An Open-Source Framework for Synchronous Flooding
+               over Multiple Physical Layers},
+  booktitle = {Proc. Int. Conf. Embedded Wireless Systems and Networks
+               (EWSN)},
+  year      = {2022},
+}
+
+@inproceedings{schuh24uwb,
+  author    = {Schuh, Maximilian and Baddeley, Michael and
+               R{\"o}mer, Kay and Boano, Carlo Alberto},
+  title     = {Understanding Concurrent Transmissions over Ultra-Wideband
+               Complex Channels},
+  booktitle = {Proc. ACM Conf. Embedded Networked Sensor Systems (SenSys)},
+  pages     = {757--770},
+  year      = {2024},
+}
+
+% TODO: confirm the first names of Rangwala, Powelson and Haque against the
+% published GLOBECOM version before submission.
+@inproceedings{rangwala24stxvote,
+  author    = {Rangwala, B. and Powelson, A. and Baddeley, Michael and
+               Haque, I.},
+  title     = {{STX-Vote}: Improving Reliability with Bit Voting in
+               Synchronous Transmission-Based {IoT} Networks},
+  booktitle = {Proc. IEEE Global Communications Conference (GLOBECOM)},
+  pages     = {1809--1814},
+  year      = {2024},
+}
+
+
+%%---------------------------------------------------------------------
+%% B2. Availability and many-to-many primitives over synchronous
+%%     transmissions -> Section II-A / II-B
+%%---------------------------------------------------------------------
+
+@inproceedings{mager22butler,
+  author    = {Mager, Fabian and Biri, Andreas and Thiele, Lothar and
+               Zimmerling, Marco},
+  title     = {{BUTLER}: Increasing the Availability of Low-Power Wireless
+               Communication Protocols},
+  booktitle = {Proc. Int. Conf. Embedded Wireless Systems and Networks
+               (EWSN)},
+  pages     = {108--119},
+  year      = {2022},
+}
+
+@article{debadarshini23timecast,
+  author  = {Debadarshini, Jagnyashini and Tummala, Madhav and
+             Saha, Sudipta and Landsiedel, Olaf and Chan, Mun Choon},
+  title   = {{TimeCast}: Real-Time Many-to-Many Data-Sharing in Low-Power
+             Wireless Distributed Systems},
+  journal = {IEEE Systems Journal},
+  volume  = {17},
+  number  = {4},
+  pages   = {5726--5737},
+  year    = {2023},
+}
+
+@inproceedings{debadarshini23synccast,
+  author    = {Debadarshini, Jagnyashini and Saha, Sudipta},
+  title     = {{SyncCast}: Real-Time Self-Adaptive and Fault-Tolerant
+               All-to-All Data-Sharing in {IoT}},
+  booktitle = {Proc. IEEE Int. Conf. Network Protocols (ICNP)},
+  pages     = {1--11},
+  year      = {2023},
+}
+
+@article{debadarshini24structure,
+  author  = {Debadarshini, Jagnyashini and Kausik H, Manish and
+             Saha, Sudipta},
+  title   = {Structure-Adaptive Many-to-Many Data-Sharing for
+             {Internet-of-Things}},
+  journal = {IEEE Trans. Network and Service Management},
+  volume  = {21},
+  number  = {3},
+  pages   = {2596--2607},
+  year    = {2024},
+}
+
+@article{trobinger24uwbcontrol,
+  author  = {Trobinger, Matteo and Picco, Gian Pietro},
+  title   = {A Case for Ultrawideband Concurrent Transmissions in Wireless
+             Control},
+  journal = {IEEE Internet of Things Journal},
+  volume  = {11},
+  number  = {24},
+  pages   = {39651--39664},
+  year    = {2024},
+}
+
+
+%%---------------------------------------------------------------------
+%% B3. Consensus and Byzantine fault tolerance in wireless / embedded
+%%     -> Section II-B and Introduction paragraph 3
+%%---------------------------------------------------------------------
+
+@inproceedings{goyal22reli,
+  author    = {Goyal, Himanshu and Kausik H, Manish and Saha, Sudipta},
+  title     = {{ReLI}: Real-Time Lightweight Byzantine Consensus in
+               Low-Power {IoT}-Systems},
+  booktitle = {Proc. Int. Conf. Network and Service Management (CNSM)},
+  pages     = {275--281},
+  year      = {2022},
+}
+
+% TODO: verify the final author order against the IEEE Xplore version; the
+% authors' own group page lists a slightly different order than the preprint.
+@inproceedings{liu25partiallysync,
+  author    = {Liu, Shuo and Xu, Minghui and Zheng, Yuezhou and
+               Zou, Yifei and Qiu, Wangjie and Qu, Gang and
+               Cheng, Xiuzhen},
+  title     = {Partially Synchronous {BFT} Consensus Made Practical in
+               Wireless Networks},
+  booktitle = {Proc. IEEE Int. Conf. Computer Communications (INFOCOM)},
+  year      = {2025},
+}
+
+@inproceedings{liu25asyncbft,
+  author    = {Liu, Shuo and Xu, Minghui and Sun, Tianyi and
+               Cheng, Xiuzhen},
+  title     = {Asynchronous {BFT} Consensus Made Wireless},
+  booktitle = {Proc. IEEE Int. Conf. Distributed Computing Systems
+               (ICDCS)},
+  year      = {2025},
+}
+
+@inproceedings{boehm24tinybft,
+  author    = {B{\"o}hm, Harald and Distler, Tobias and
+               W{\"a}gemann, Peter},
+  title     = {{TinyBFT}: Byzantine Fault-Tolerant Replication for Highly
+               Resource-Constrained Embedded Systems},
+  booktitle = {Proc. IEEE Real-Time and Embedded Technology and
+               Applications Symposium (RTAS)},
+  year      = {2024},
+}
+
+% TODO: complete the co-author list from the published version.
+@article{zou24survey,
+  author  = {Zou, Yifei and others},
+  title   = {A Survey of Fault Tolerant Consensus in Wireless Networks},
+  journal = {High-Confidence Computing},
+  note    = {Art. no. 100202},
+  year    = {2024},
+}
+
+@article{wu25dag,
+  author  = {Wu, Huanyu and Yue, Chentao and Zhang, Lei and Li, Yonghui
+             and Imran, Muhammad Ali},
+  title   = {When Distributed Consensus Meets Wireless Connected
+             Autonomous Systems: A Review and a {DAG}-Based Approach},
+  journal = {IEEE Network},
+  volume  = {39},
+  number  = {1},
+  pages   = {261--269},
+  year    = {2025},
+}
+
+
+%%---------------------------------------------------------------------
+%% B4. Optional / hold in reserve
+%%     Preprint. Cite only if a reviewer asks for the most recent CI work.
+%%---------------------------------------------------------------------
+
+@misc{muldoon25stair,
+  author       = {Muldoon, Conor},
+  title        = {Scalable and Energy-Efficient Predictive Data Collection
+                  in Wireless Sensor Networks with Constructive
+                  Interference},
+  howpublished = {arXiv:2508.07882},
+  year         = {2025},
+}
+
+%%=====================================================================
+%% PART C -- simulation methodology
+%%=====================================================================
+
+@article{sargent13validation,
+  author  = {Robert G. Sargent},
+  title   = {Verification and validation of simulation models},
+  journal = {Journal of Simulation},
+  volume  = {7},
+  number  = {1},
+  pages   = {12--24},
+  year    = {2013},
+  doi     = {10.1057/jos.2012.20}
+}
