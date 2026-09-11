@@ -63,6 +63,9 @@ jobs:
           python-version: "3.11"
       - run: pip install -r requirements.txt
 
+      - name: Addition 15 README and row provenance check
+        run: python3 docs/validation/addition15/scripts/analyze_n_sweep.py --check
+
       # The scalability sweep includes N=188 and takes minutes; the fast scripts
       # are enough to prove the figure pipeline still runs end to end.
       - name: Generate the single-run figures
