@@ -84,6 +84,7 @@
 \newcommand{\Send}{S_{\mathrm{end}}}      % slot of the last commit
 \newcommand{\Ssim}{S_{\mathrm{sim}}}      % total slots ticked
 
+% No TBD or TODO control sequences may remain at submission.
 
 % Correct bad hyphenation of domain terms here.
 \hyphenation{op-tical net-works semi-conduc-tor pipe-lined con-sen-sus
@@ -1326,7 +1327,8 @@ not a second calibrated parameter.
 
 The prediction step freezes that parameter and tests two published results
 that played no part in calibration. At the pre-registered
-$T_{\mathrm{guard}}=10\,\mu\mathrm{s}$ acceptance point, A2 predicts
+$T_{\mathrm{guard}}=10\,\mu\mathrm{s}$ acceptance point, with relative
+error required to remain within 20\,\%, A2 predicts
 16.722\,ms [16.527, 16.917] against 475\,ms (relative error $-0.9648$), while
 Wireless Paxos predicts 9.796\,ms [9.735, 9.858] against 289\,ms (relative
 error $-0.9661$). These are blind predictions, not fits: both fail the
@@ -1348,10 +1350,9 @@ bursty one---and verify that the ordering of the architectures does not
 invert. What matters for a comparative claim is not that the numbers are
 reproduced exactly under every assumption, but that the sign of the
 difference is stable; we report the range over which it holds. The topology
-sweep of
-Section~\ref{sec:results}, spanning diameters from 1 to 26, is itself an
-invariance test of this kind, and it is also where the one regime we have
-found in which a pipelined protocol is not competitive comes to light.
+sweep of Section~\ref{sec:results}, spanning diameters from 1 to 26, is itself
+an invariance test of this kind. The line topology is the regime in which the
+sign does not hold: there, a pipelined protocol is not competitive.
 
 \subsubsection{Scope of abstraction and direction of bias}
 Several phenomena are deliberately excluded from the model. Rather than
@@ -1541,6 +1542,24 @@ At the bottom of the ranking, 2PC over \CE{} has the lowest throughput at
 every network size: unanimity combined with strictly sequential execution
 is the most expensive point in the design space we examine.
 
+\subsubsection{Scaling of CE round length}
+
+The sweep establishes sublinear growth rather than either a constant cost
+or linear scaling. For 2PC over \CE, the primary
+$\log(\text{round length})$--$\log(\Nnodes)$ fit has slope 0.137331411 with
+95\,\% CI [0.131013055, 0.143649766], AIC 4.793313 and
+$R^2=0.997801$; for Paxos over \CE, the slope is 0.124085227 with 95\,\% CI
+[0.115956905, 0.132213550], AIC 20.403476 and $R^2=0.995552$. The
+pre-registered rule identifies $\alpha \sim 0$ with Hypothesis A and
+$\alpha \sim 1$ with Hypothesis B; a CI excluding both yields
+\texttt{SUBLINEAR-INTERMEDIATE}. Both reported CIs exclude 0 and 1, so both
+arms receive that classification. Historical width-4 windows produced
+residual ratios 3.5234x at $\Nnodes=180$ for 2PC and 3.7776x at
+$\Nnodes=188$ for Paxos. At $\Nnodes=180$, the historical 2PC residual
+3.523 agrees closely with the new sweep constant gap 3.508, a difference of
+-0.015. The Paxos anchor at $\Nnodes=188$ lies outside this sweep's grid and
+is therefore not compared under the uniform $W=10$ procedure.
+
 \subsubsection{Resilience of throughput to packet loss}
 
 % TODO: uncomment once figures/throughput_vs_loss.pdf exists.
@@ -1622,18 +1641,6 @@ time and not to the mass loss of decisions. The abort contribution is
 small but qualitatively significant, since it locates the fragile point
 of the pipeline precisely at the intersection of a unanimous agreement
 condition with a bounded time window.
-
-The sweep establishes sublinear growth rather than either a constant cost
-or linear scaling. For 2PC over \CE, the primary
-$\log(\text{round length})$--$\log(\Nnodes)$ fit has slope 0.137331411 with
-95\,\% CI [0.131013055, 0.143649766], AIC 4.793313 and
-$R^2=0.997801$; for Paxos over \CE, the slope is 0.124085227 with 95\,\% CI
-[0.115956905, 0.132213550], AIC 20.403476 and $R^2=0.995552$. Both arms are
-therefore classified \texttt{SUBLINEAR-INTERMEDIATE}. Against reference
-slot counts 100.0 for 2PC and 57.8 for Paxos, the published anchors are
-3.5234x at $\Nnodes=180$ and 3.7776x at $\Nnodes=188$. The Paxos anchor at
-$\Nnodes=188$ is excluded from the fit comparison because it lies outside
-this sweep's grid.
 
 %%---------------------------------------------------------------------
 \subsection{Decision Latency and Its Scalability}
@@ -2250,6 +2257,8 @@ the residual is falsified: density error has no systematic trend with
 $\Nnodes$, while both \CE{} arms remain \texttt{SUBLINEAR-INTERMEDIATE}.
 Consequently, the measurements do not support attributing either the
 architecture-level difference or its residual to infrastructure quality.
+Table~\ref{tab:diameter} summarises the measured throughput change on moving
+from the random topology to the full mesh.
 
 \begin{table}[!t]
 \caption{Change in throughput on moving from the random topology
