@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Collect the figure PDFs the paper needs into paper/figures/.
+r"""Collect the figure PDFs the paper needs into paper/figures/.
 
 The plot scripts under plots/** write their output next to themselves, and
 every *.pdf is git-ignored (see .gitignore), so no figure is ever committed.

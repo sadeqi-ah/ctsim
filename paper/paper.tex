@@ -2561,12 +2561,12 @@ mainly the throughput of 2PC over \CI, because unanimity within a fixed
 pipeline window is fragile; that instability shows up in two
 regimes: at low loss and in small networks the commit rate stays close to
 complete and the cost appears mainly as a longer run, whereas under heavy
-loss, at scale, or on large-diameter topologies the loss of decisions
-itself dominates, with the commit rate dropping to 23.2\,\% in the largest
-scalability network and 0.2\,\% for 2PC on the line topology. The cumulative progress view then shows that the
-high latency of \CI{} is
-misleading: all three pipelined protocols finish the workload before
-either vote-based \CE{} protocol.
+loss, at scale, or on large-diameter topologies the loss of decisions itself
+dominates, with the commit rate dropping to 23.2\,\% in the largest
+scalability network and 0.2\,\% for 2PC on the line topology. The cumulative
+progress view then shows that the high latency of \CI{} is misleading: all
+three pipelined protocols finish the workload before either vote-based \CE{}
+protocol.
 
 The underlying mechanism was quantified by Little's law: the pipeline
 holds about twelve proposals in flight under Paxos and about twenty-one under
