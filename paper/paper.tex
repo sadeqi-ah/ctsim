@@ -310,9 +310,9 @@ instant, 2PC commits without a coordinator and therefore never blocks,
 achieving 3PC-grade availability \cite{skeen81nonblocking} at 2PC message
 cost. Evaluating all six protocol--substrate combinations in a slot-level
 simulator, we find that the pipeline sustains about 12 concurrent proposals
-for Paxos and about 21 for 2PC, that this concurrency yields up to
-$4\times$ higher throughput and up to $5.7\times$ better
-per-decision energy, and---most importantly---that \CE{} architectures obey
+for Paxos and about 21 for 2PC, that this concurrency yields $4.083\times$
+higher baseline throughput (global maximum $4.268\times$) and $5.672\times$ better baseline
+per-decision energy (global maximum $5.987\times$), and---most importantly---that \CE{} architectures obey
 the identity $\Ece = \Nnodes L$, which holds exactly and by construction
 across 15 protocol-topology CE aggregates, each over 15 seeds (225 runs), spanning a $26\times$ range of network
 diameters. Pipelining breaks that identity: across our \CI{} configurations,
@@ -1208,7 +1208,7 @@ our figures can be read against the published ones.
 \item \textbf{Topology.} Five multi-hop topologies spanning a wide range
 of diameters: full mesh ($\Diam = 1$), partial mesh ($\Diam = 3$), random
 (mean $\Diam = 4.20$, range 4--5), scale-free (mean $\Diam = 4.13$, range 4--5) and line ($\Diam = 26$). Random
-and scale-free are matched in diameter (Table~\ref{tab:topologies}) but
+and scale-free are approximately matched in diameter (Table~\ref{tab:topologies}) but
 differ in the shape of their degree distribution, a pair chosen deliberately
 to test whether diameter alone predicts behaviour.
 
@@ -2183,8 +2183,8 @@ means of 4.20 and 4.13. The diameters listed here are the modal values.}
 \midrule
 Full mesh    & 1  & 26.00 \\
 Partial mesh & 3  & 9.30 \\
-Random       & 4  & 4.40 \\
-Scale-free   & 4  & 3.78 \\
+Random       & 4.20 (4--5)  & 4.40 \\
+Scale-free   & 4.13 (4--5)  & 3.78 \\
 Line         & 26 & 1.93 \\
 \bottomrule
 \end{tabular}
