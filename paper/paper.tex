@@ -83,10 +83,8 @@
 \newcommand{\ReLI}{ReLI}                  % protocol name, kept upright
 \newcommand{\Send}{S_{\mathrm{end}}}      % slot of the last commit
 \newcommand{\Ssim}{S_{\mathrm{sim}}}      % total slots ticked
-% Placeholder for numbers that must come from the simulator run.
-% Grep for \TBD before submission -- none may remain.
-\newcommand{\TBD}[1]{\textbf{[TBD: #1]}}
 
+% No TBD or TODO control sequences may remain at submission.
 
 % Correct bad hyphenation of domain terms here.
 \hyphenation{op-tical net-works semi-conduc-tor pipe-lined con-sen-sus
@@ -164,9 +162,10 @@ baseline per-decision energy efficiency (global maximum 5.987x) than CE-based co
 further show that CE architectures obey a structural identity that locks
 per-decision energy to per-decision latency, exactly and by construction, and
 that pipelining breaks this
-coupling and turns latency into a spendable design variable. Results hold
-across five topologies with diameters from 1 to 26, confirming that the
-effect is architectural rather than topological.
+coupling and turns latency into a spendable design variable. Across the four
+dense topologies the effect is stable, but the line topology exposes its
+boundary: 2PC over \CI{} reaches a commit rate of only 0.2\,\%, while TOM
+pipeline depth reaches about 26 and latency reaches 616 slots.
 \end{abstract}
 
 
@@ -317,7 +316,10 @@ the identity $\Ece = \Nnodes L$, which holds exactly and by construction
 across 15 protocol-topology CE aggregates, each over 15 seeds (225 runs), spanning a $26\times$ range of network
 diameters. Pipelining breaks that identity: across our \CI{} configurations,
 per-decision latency varies by roughly $27\times$ while per-decision energy
-varies by only about $1.3\times$. Latency stops being a proxy for energy
+varies by only about $1.3\times$. Across the four dense topologies this
+separation is stable. The line topology is the boundary case: 2PC over \CI{}
+commits only 0.2\,\% of proposals, while TOM pipeline depth reaches about 26
+and its latency reaches 616 slots. Latency stops being a proxy for energy
 and becomes a variable a designer can deliberately spend.
 
 We also report where the design fails. On a 27-node line topology with
@@ -1313,28 +1315,31 @@ The second layer addresses precisely that risk, and it is the layer on
 which the credibility of the results principally rests. It proceeds in two
 steps that must not be conflated.
 
-In the calibration step, the two free parameters of the physical
-abstraction---the per-attempt loss rate and the slot duration
-$\Tslot$---are fixed so that the simulator reproduces the published
-measurements of BlueFlood on the corresponding configuration, namely a
-packet delivery ratio of approximately 99.9\,\% at a radio duty cycle of
-0.4\,\% \cite{alnahas19blueflood}, \cite{alnahas21blueflood}. The
-parameters are thus derived from measured behaviour on real hardware
-rather than chosen for convenience.
+In the calibration step, the physical abstraction has one free parameter
+and one target. The per-attempt loss-rate upper bound is frozen at
+$p^*=0.05$ against BlueFlood's published end-to-end flood coverage over
+receivers of approximately 99.9\,\%
+\cite{alnahas19blueflood}, \cite{alnahas21blueflood}. The target ``radio duty
+cycle $\sim$0.4\,\%'' was dropped before calibration because its wall-clock
+denominator includes inter-round idle time that the simulator does not
+model. The slot duration $\Tslot$ is instead a paper-side unit conversion,
+not a second calibrated parameter.
 
-In the prediction step, those parameters are frozen and the simulator is
-asked to reproduce two independent published results that played no part
-in the calibration: agreement across 180 nodes in 475\,ms for A2/2PC
-\cite{alnahas17a2}, and consensus across 188 nodes in 289\,ms for Wireless
-Paxos \cite{poirot19paxos}. Because nothing is retuned between the two
-steps, the outcome is a blind prediction rather than a fit, which is what
-gives the exercise its evidential value. We adopt an acceptance criterion
-of 10--20\,\% relative error, stated in advance so that it cannot be
-chosen after the fact. The simulator reproduces the A2 configuration
-within \TBD{A2 error} and the Wireless Paxos configuration within
-\TBD{WPaxos error}. All three profiles are maintained as regression tests
-in the simulator's test suite, so that the calibration cannot silently
-drift as the code evolves.
+The prediction step freezes that parameter and tests two published results
+that played no part in calibration. At the pre-registered
+$T_{\mathrm{guard}}=10\,\mu\mathrm{s}$ acceptance point, with relative
+error required to remain within 20\,\%, A2 predicts
+16.722\,ms [16.527, 16.917] against 475\,ms (relative error $-0.9648$), while
+Wireless Paxos predicts 9.796\,ms [9.735, 9.858] against 289\,ms (relative
+error $-0.9661$). These are blind predictions, not fits: both fail the
+acceptance test at every $T_{\mathrm{guard}}$ from 10 to 100\,$\mu$s, with
+the pre-registered-point errors reported as $-96.5\,\%$ and $-96.6\,\%$.
+The distinct raw-slot comparison gives 42.441 slots [41.946, 42.935] for A2,
+outside its pre-registered slot-equivalent interval [828, 1205], and 24.614
+slots [24.459, 24.769] for Wireless Paxos, outside [500, 726]. The failed
+predictions therefore reject cross-level agreement with the published
+testbed latencies rather than validating it. All three profiles remain
+regression tests so that the frozen calibration cannot silently drift.
 
 \subsubsection{Layer 3: sensitivity and invariance}
 The third layer asks whether the conclusions survive perturbation of the
@@ -1344,11 +1349,10 @@ independent model of Section~\ref{sec:model-fault} with a correlated,
 bursty one---and verify that the ordering of the architectures does not
 invert. What matters for a comparative claim is not that the numbers are
 reproduced exactly under every assumption, but that the sign of the
-difference is stable; we report the range over which it holds and
-\TBD{any regime in which it does not}. The topology sweep of
-Section~\ref{sec:results}, spanning diameters from 1 to 26, is itself an
-invariance test of this kind, and it is also where the one regime we have
-found in which a pipelined protocol is not competitive comes to light.
+difference is stable; we report the range over which it holds. The topology
+sweep of Section~\ref{sec:results}, spanning diameters from 1 to 26, is itself
+an invariance test of this kind. The line topology is the regime in which the
+sign does not hold: there, a pipelined protocol is not competitive.
 
 \subsubsection{Scope of abstraction and direction of bias}
 Several phenomena are deliberately excluded from the model. Rather than
@@ -1537,6 +1541,24 @@ faces increasing contention and sequential merging as nodes are added.
 At the bottom of the ranking, 2PC over \CE{} has the lowest throughput at
 every network size: unanimity combined with strictly sequential execution
 is the most expensive point in the design space we examine.
+
+\subsubsection{Scaling of CE round length}
+
+The sweep establishes sublinear growth rather than either a constant cost
+or linear scaling. For 2PC over \CE, the primary
+$\log(\text{round length})$--$\log(\Nnodes)$ fit has slope 0.137331411 with
+95\,\% CI [0.131013055, 0.143649766], AIC 4.793313 and
+$R^2=0.997801$; for Paxos over \CE, the slope is 0.124085227 with 95\,\% CI
+[0.115956905, 0.132213550], AIC 20.403476 and $R^2=0.995552$. The
+pre-registered rule identifies $\alpha \sim 0$ with Hypothesis A and
+$\alpha \sim 1$ with Hypothesis B; a CI excluding both yields
+\texttt{SUBLINEAR-INTERMEDIATE}. Both reported CIs exclude 0 and 1, so both
+arms receive that classification. Historical width-4 windows produced
+residual ratios 3.5234x at $\Nnodes=180$ for 2PC and 3.7776x at
+$\Nnodes=188$ for Paxos. At $\Nnodes=180$, the historical 2PC residual
+3.523 agrees closely with the new sweep constant gap 3.508, a difference of
+-0.015. The Paxos anchor at $\Nnodes=188$ lies outside this sweep's grid and
+is therefore not compared under the uniform $W=10$ procedure.
 
 \subsubsection{Resilience of throughput to packet loss}
 
@@ -2227,11 +2249,13 @@ and no ratio reported anywhere in this paper is corrected by it.
 % \label{fig:topology}
 % \end{figure}
 
-The conventional expectation is that a better network benefits every
-protocol. The measurements show that this holds for one family only.
-Table~\ref{tab:diameter} summarises the change in throughput on moving
-from the random topology to the full mesh, that is, on improving
-connectivity by a factor of four in diameter.
+The proposed explanation that denser or better-quality networks account for
+the residual is falsified: density error has no systematic trend with
+$\Nnodes$, while both \CE{} arms remain \texttt{SUBLINEAR-INTERMEDIATE}.
+Consequently, the measurements do not support attributing either the
+architecture-level difference or its residual to infrastructure quality.
+Table~\ref{tab:diameter} summarises the measured throughput change on moving
+from the random topology to the full mesh.
 
 \begin{table}[!t]
 \caption{Change in throughput on moving from the random topology
@@ -2277,12 +2301,10 @@ immediately yields shorter rounds and therefore more decisions per unit of
 time. TOM over \CE{} obeys the same rule ($+70$\,\%) because it is a pure
 dissemination with no voting phase to impose a fixed overhead.
 
-The design consequence is direct. In deployments where network quality can
-be improved---by raising transmission power, increasing node density or
-improving routing---only the \CI{} architecture, together with
-single-phase protocols, converts that investment into performance. For
-Paxos and 2PC over \CE, investment in network infrastructure is largely
-wasted.
+These topology comparisons describe protocol sensitivity within the
+committed cases, not the cause of the residual. Because the densification
+hypothesis is falsified, they do not justify the broader claim that
+infrastructure investment explains the architecture-level performance gap.
 
 One further fact is established across all four dense topologies: the
 agreement of TOM over \CI{} and TOM over \CE{} is remarkably stable. The
@@ -2458,8 +2480,9 @@ the diameter remains a sufficient statistic.
 \label{sec:results-limitations}
 
 The line topology is the extreme point of the design space: with diameter
-26 in a network of 27 nodes, every node has just two neighbours and the
-path between the two ends of the network passes through all of them. Every
+26 in a network of 27 nodes, the two end nodes have one neighbour and every
+other node has two; the path between the two ends of the network passes
+through all of them. Every
 protocol degrades sharply there---the throughput of TOM over \CE, for
 instance, falls from 0.214 on the random topology to 0.009---but one
 combination fails outright: \textbf{2PC over \CI{} reaches a commit rate of
@@ -2608,10 +2631,13 @@ into a currency that can be spent to buy energy efficiency. This is the
 finding whose reach extends furthest beyond the three protocols studied
 here, because it cautions against the widespread practice of treating
 latency as a proxy for energy when low-power architectures are compared.
-Third, the results are stable across the topology space, and the boundary
-case of TOM shows that even with no concurrency at all---a pipeline of
-depth one---the duty-cycle saving of a radio that is allowed to sleep is
-by itself sufficient to preserve the advantage of \CI{}.
+Third, the results are stable across the four dense topologies, not across
+the full topology space. On the line topology, 2PC over \CI{} reaches a
+commit rate of only 0.2\,\%, while TOM pipeline depth reaches about 26 and
+latency reaches 616 slots. The boundary case of TOM nevertheless shows that
+even with no productive concurrency, the duty-cycle saving of a radio that
+is allowed to sleep can preserve the advantage of \CI{} without implying
+universal topology stability.
 
 An explicit account of the limits of validity
 (Section~\ref{sec:results-limitations}) points to two immediate lines of
