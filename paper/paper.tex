@@ -33,6 +33,13 @@
   \DeclareGraphicsExtensions{.eps}
 \fi
 
+%% *** INLINE DIAGRAMS ***
+% The three schematic diagrams (pipeline mechanism, frame format, Paxos
+% over CI) are drawn inline with TikZ, so no external file is needed for
+% them and nothing has to be placed in figures/ by hand.
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,calc,decorations.pathreplacing,positioning}
+
 
 %% *** MATH ***
 \usepackage{amsmath}
@@ -772,14 +779,42 @@ pay for.
 \subsection{The Pipeline Mechanism}
 \label{sec:design-pipeline}
 
-% TODO: uncomment once figures/pipeline_mechanism.pdf exists.
-% \begin{figure}[!t]
-% \centering
-% \includegraphics[width=3.4in]{pipeline_mechanism.pdf}
-% \caption{Pipelined execution: the phases of several agreement instances
-% overlap on a chain of deterministic flood rounds.}
-% \label{fig:pipeline}
-% \end{figure}
+\begin{figure}[!t]
+\centering
+\resizebox{3.4in}{!}{%
+\begin{tikzpicture}[
+  font=\footnotesize,
+  rnd/.style={draw, minimum width=1.05cm, minimum height=0.42cm,
+              inner sep=1pt},
+  ph/.style={draw, fill=black!8, minimum width=1.05cm,
+             minimum height=0.38cm, inner sep=1pt, font=\scriptsize},
+]
+\node[anchor=east, font=\scriptsize] at (-0.68,0.00) {flood rounds};
+\node[rnd] at (0.00,0.00) {$R_{1}$};
+\node[rnd] at (1.25,0.00) {$R_{2}$};
+\node[rnd] at (2.50,0.00) {$R_{3}$};
+\node[rnd] at (3.75,0.00) {$R_{4}$};
+\node[rnd] at (5.00,0.00) {$R_{5}$};
+\node[anchor=east, font=\scriptsize] at (-0.68,-0.80) {instance $k-1$};
+\node[ph] at (0.00,-0.80) {prop.};
+\node[ph] at (1.25,-0.80) {vote};
+\node[ph] at (2.50,-0.80) {commit};
+\node[anchor=east, font=\scriptsize] at (-0.68,-1.55) {instance $k$};
+\node[ph] at (1.25,-1.55) {prop.};
+\node[ph] at (2.50,-1.55) {vote};
+\node[ph] at (3.75,-1.55) {commit};
+\node[anchor=east, font=\scriptsize] at (-0.68,-2.30) {instance $k+1$};
+\node[ph] at (2.50,-2.30) {prop.};
+\node[ph] at (3.75,-2.30) {vote};
+\node[ph] at (5.00,-2.30) {commit};
+\draw[dashed] (1.90,-2.62) rectangle (3.10,0.28);
+\node[anchor=north, font=\scriptsize, align=center] at (2.50,-2.70)
+  {one round advances\\several instances};
+\end{tikzpicture}}
+\caption{Pipelined execution: the phases of several agreement instances
+overlap on a chain of deterministic flood rounds.}
+\label{fig:pipeline}
+\end{figure}
 
 A conventional agreement protocol serialises its phases: the system waits
 until a proposal has been disseminated network-wide and the votes of all
@@ -797,7 +832,8 @@ and simultaneously piggybacks the proposal or vote belonging to instance
 $k$, which is entering its first phase. Under sustained load the network
 is therefore always advancing several phases of several different
 agreements concurrently, and the medium is never idle waiting for a
-round trip to close.
+round trip to close. Fig.~\ref{fig:pipeline} sketches that overlap on a
+chain of consecutive flood rounds.
 
 It is worth distinguishing this from batching, with which it is easily
 confused (Section~\ref{sec:back-pipelining}). Batching would enlarge the
@@ -847,20 +883,40 @@ merged in flight.
 \subsection{Unified Message Format}
 \label{sec:design-format}
 
-% TODO: uncomment once figures/message_frame.pdf exists.
-% \begin{figure}[!t]
-% \centering
-% \includegraphics[width=3.4in]{message_frame.pdf}
-% \caption{Unified frame format: a control header (term identifier, last
-% accepted term, participation bitmap and NACK field) followed by the
-% pipelined payload.}
-% \label{fig:frame}
-% \end{figure}
+\begin{figure}[!t]
+\centering
+\resizebox{3.4in}{!}{%
+\begin{tikzpicture}[
+  font=\scriptsize,
+  fld/.style={draw, minimum height=0.95cm, inner sep=2pt, align=center},
+  br/.style={decorate, decoration={brace, amplitude=4pt}},
+]
+\node[fld, minimum width=1.35cm] (f1) at (0,0) {term\\ident.};
+\node[fld, minimum width=1.45cm, right=0pt of f1] (f2)
+  {last acc.\\term};
+\node[fld, minimum width=1.95cm, right=0pt of f2] (f3)
+  {particip.\ bitmap\\($\Nnodes$ bits)};
+\node[fld, minimum width=1.00cm, right=0pt of f3] (f4) {NACK};
+\node[fld, minimum width=1.75cm, right=0pt of f4, fill=black!8] (f5)
+  {pipelined\\payload};
+\draw[br]
+  ($(f1.north west)+(0,2pt)$) -- ($(f4.north east)+(0,2pt)$)
+  node[midway, above=4pt] {control header};
+\draw[br]
+  ($(f5.north west)+(0,2pt)$) -- ($(f5.north east)+(0,2pt)$)
+  node[midway, above=4pt] {payload};
+\end{tikzpicture}}
+\caption{Unified frame format: a control header (term identifier, last
+accepted term, participation bitmap and NACK field) followed by the
+pipelined payload.}
+\label{fig:frame}
+\end{figure}
 
 Low-power radios impose tight frame budgets, so pipelining and state
 recovery must share one compact structure rather than each introducing its
 own control traffic. The frame has two parts: a control header that drives
 the state machine, and a payload that carries protocol content.
+Fig.~\ref{fig:frame} shows the field layout.
 
 \subsubsection{Control header}
 The header carries four fields.
@@ -924,15 +980,42 @@ itself.
 \subsubsection{Paxos}
 \label{sec:design-paxos}
 
-% TODO: uncomment once figures/paxos_ci_example.pdf exists.
-% \begin{figure}[!t]
-% \centering
-% \includegraphics[width=3.4in]{paxos_ci_example.pdf}
-% \caption{Pipelined Paxos over \CI: implicit vote aggregation through the
-% participation bitmap and cumulative acknowledgement through the last
-% accepted term.}
-% \label{fig:paxos}
-% \end{figure}
+\begin{figure}[!t]
+\centering
+\resizebox{3.4in}{!}{%
+\begin{tikzpicture}[
+  font=\scriptsize,
+  turn/.style={draw, minimum width=1.35cm, minimum height=0.44cm,
+               inner sep=1pt},
+  st/.style={font=\ttfamily\scriptsize},
+]
+\node[turn] (t1) at (0.00,0) {turn of $n_1$};
+\node[turn] (t2) at (1.95,0) {turn of $n_2$};
+\node[turn] (t3) at (3.90,0) {turn of $n_3$};
+\node[turn] (t4) at (5.85,0) {turn of $n_4$};
+\draw[-{Latex[length=1.5mm]}] (t1) -- (t2);
+\draw[-{Latex[length=1.5mm]}] (t2) -- (t3);
+\draw[-{Latex[length=1.5mm]}] (t3) -- (t4);
+\node[st, below=2mm of t1] {1000};
+\node[st, below=2mm of t2] {1100};
+\node[st, below=2mm of t3] {1110};
+\node[st, below=2mm of t4] {1111};
+\node[anchor=north, align=center, below=7mm of t1]
+  {proposal for\\term $k$};
+\node[anchor=north, align=center, below=7mm of t2]
+  {bitmap grows\\by overhearing};
+\node[anchor=north, align=center, below=7mm of t3]
+  {majority quorum\\reached};
+\node[anchor=north, align=center, below=7mm of t4]
+  {last accepted\\term $:=k$};
+\node[anchor=south, font=\scriptsize] at (2.925,0.40)
+  {participation bitmap, example with four nodes};
+\end{tikzpicture}}
+\caption{Pipelined Paxos over \CI: implicit vote aggregation through the
+participation bitmap and cumulative acknowledgement through the last
+accepted term.}
+\label{fig:paxos}
+\end{figure}
 
 Combining Paxos with the round-robin schedule removes several of the
 costs that the protocol incurs in an asynchronous setting. As established
@@ -941,7 +1024,7 @@ nodes in advance, so two proposers can never contend for the same term.
 Proposal collision is therefore structurally impossible, and the classical
 Promise phase---whose purpose is to reserve a ballot number and discover
 contention---is redundant and omitted. Agreement proceeds as a continuous
-pipelined cycle in four steps.
+pipelined cycle in four steps, illustrated in Fig.~\ref{fig:paxos}.
 
 \paragraph{Proposal initiation}
 When the turn of node $i$ arrives, it opens a new agreement instance: it
@@ -1489,19 +1572,19 @@ figures show the spread across seeds.
 
 \subsubsection{Effect of network size}
 
-% TODO: uncomment once figures/throughput_vs_nodes.pdf exists.
-% \begin{figure}[!t]
-% \centering
-% \includegraphics[width=3.4in]{throughput_vs_nodes.pdf}
-% \caption{Throughput (decisions per slot) against network size
-% $\Nnodes$ at 5\,\% link loss (random topology, 100 proposals; mean
-% $\pm$ spread across seeds).}
-% \label{fig:thr-nodes}
-% \end{figure}
+\begin{figure}[!t]
+\centering
+\includegraphics[width=3.4in]{throughput_vs_nodes.pdf}
+\caption{Throughput (decisions per slot) against network size
+$\Nnodes$ at 5\,\% link loss (random topology, 100 proposals; mean
+$\pm$ spread across seeds).}
+\label{fig:thr-nodes}
+\end{figure}
 
-Throughput falls with $\Nnodes$ for every protocol, since the diameter
-and hence the length of each flood round grows, and more nodes must be
-reached before all-node completion holds. The slopes differ, however, and
+As Fig.~\ref{fig:thr-nodes} shows, throughput falls with $\Nnodes$ for
+every protocol, since the diameter and hence the length of each flood
+round grows, and more nodes must be reached before all-node completion
+holds. The slopes differ, however, and
 those differences expose the interaction between the communication
 architecture and the structure of the protocol.
 
@@ -1562,16 +1645,16 @@ is therefore not compared under the uniform $W=10$ procedure.
 
 \subsubsection{Resilience of throughput to packet loss}
 
-% TODO: uncomment once figures/throughput_vs_loss.pdf exists.
-% \begin{figure}[!t]
-% \centering
-% \includegraphics[width=3.4in]{throughput_vs_loss.pdf}
-% \caption{Throughput against link loss rate for $\Nnodes = 27$ (random
-% topology, $\Diam = 4$, 100 proposals).}
-% \label{fig:thr-loss}
-% \end{figure}
+\begin{figure}[!t]
+\centering
+\includegraphics[width=3.4in]{throughput_vs_loss.pdf}
+\caption{Throughput against link loss rate for $\Nnodes = 27$ (random
+topology, $\Diam = 4$, 100 proposals).}
+\label{fig:thr-loss}
+\end{figure}
 
-Raising the loss rate from 0 to 20\,\% degrades most protocols gently.
+Fig.~\ref{fig:thr-loss} shows that raising the loss rate from 0 to
+20\,\% degrades most protocols gently.
 TOM on both substrates and Paxos over \CI{} lose 14.33\,\%, 18.80\,\%, and
 14.35\,\% of their throughput, respectively, across that range and their curves remain
 close to linear. Both pure dissemination and the majority condition are
@@ -1632,7 +1715,7 @@ impose no such window and simply stretch the goal-oriented round until
 the missing votes arrive, holding their commit rate at 100\,\%---but that
 stability is not free, and is paid for directly in latency and energy.
 
-This matters for the interpretation of the preceding figure. While some
+This matters for the interpretation of Fig.~\ref{fig:thr-loss}. While some
 protocols degrade gracefully, 2PC over \CI{} suffers a severe drop in
 reliability: its commit rate falls to 70.07\,\% at 20\,\% loss.
 The 39.35\,\% throughput reduction is therefore driven substantially by the mass
@@ -1644,20 +1727,19 @@ condition with a bounded time window.
 \subsection{Decision Latency and Its Scalability}
 \label{sec:results-latency}
 
-% TODO: uncomment once figures/latency_vs_nodes.pdf exists.
-% \begin{figure}[!t]
-% \centering
-% \includegraphics[width=3.4in]{latency_vs_nodes.pdf}
-% \caption{Mean per-decision latency in slots (logarithmic axis) against
-% network size; settings as in Fig.~\ref{fig:thr-nodes}.}
-% \label{fig:lat-nodes}
-% \end{figure}
+\begin{figure}[!t]
+\centering
+\includegraphics[width=3.4in]{latency_vs_nodes.pdf}
+\caption{Mean per-decision latency in slots (logarithmic axis) against
+network size; settings as in Fig.~\ref{fig:thr-nodes}.}
+\label{fig:lat-nodes}
+\end{figure}
 
 Whereas Section~\ref{sec:results-throughput} measures the rate at which a
 workload completes, this subsection isolates the temporal cost of a
-\emph{single} decision. On a logarithmic vertical axis, latency growth
-with $\Nnodes$ is close to multiplicative for the vote-based protocols
-and almost flat for TOM.
+\emph{single} decision. On the logarithmic vertical axis of
+Fig.~\ref{fig:lat-nodes}, latency growth with $\Nnodes$ is close to
+multiplicative for the vote-based protocols and almost flat for TOM.
 
 The TOM family operates near the theoretical bound set by the network
 diameter, at roughly 2 to 8 slots, rising only slightly with $\Nnodes$,
@@ -1703,10 +1785,6 @@ latency.
 %%---------------------------------------------------------------------
 \subsection{Scheduling and System Dynamics}
 \label{sec:results-dynamics}
-% NOTE: the floats below are commented out until the vector PDFs exist.
-% When uncommenting, also insert the corresponding figure cross-references into
-% the prose; the text is currently written so that it reads correctly
-% without them.
 
 To characterise transient behaviour and sustained output we recorded the
 cumulative progress of each combination towards 100 committed decisions,
@@ -1719,31 +1797,30 @@ diameter 4, at 5\,\% link loss.
 \subsubsection{Initial agility: what determines the time to a first
 decision?}
 
-% TODO: uncomment once figures/progress_over_time_log.pdf and
-% figures/progress_over_time.pdf exist.
 % Consolidated two-panel float. Panel (a) is the logarithmic view
 % discussed in this subsubsection, panel (b) the linear view discussed in
 % the next one. Placed at the top of the page the float serves both.
-% \begin{figure}[!t]
-% \centering
-% \subfloat[Logarithmic time axis.]{%
-%   \includegraphics[width=1.65in]{progress_over_time_log.pdf}%
-%   \label{fig:progress-log}}
-% \hfil
-% \subfloat[Linear time axis.]{%
-%   \includegraphics[width=1.65in]{progress_over_time.pdf}%
-%   \label{fig:progress-lin}}
-% \caption{Cumulative completed decisions against time. (a) The
-% logarithmic scale resolves the opening of the run and exposes the order
-% in which the combinations enter their productive phase. (b) On a linear
-% scale the slope of each curve is the instantaneous decision rate and the
-% intersection with 100 is the workload completion time.}
-% \label{fig:progress}
-% \end{figure}
+\begin{figure}[!t]
+\centering
+\subfloat[Logarithmic time axis.]{%
+  \includegraphics[width=1.65in]{progress_over_time_log.pdf}%
+  \label{fig:progress-log}}
+\hfil
+\subfloat[Linear time axis.]{%
+  \includegraphics[width=1.65in]{progress_over_time.pdf}%
+  \label{fig:progress-lin}}
+\caption{Cumulative completed decisions against time. (a) The
+logarithmic scale resolves the opening of the run and exposes the order
+in which the combinations enter their productive phase. (b) On a linear
+scale the slope of each curve is the instantaneous decision rate and the
+intersection with 100 is the workload completion time.}
+\label{fig:progress}
+\end{figure}
 
-The logarithmic view reveals a clear and, at first sight, unexpected
-ordering. One might attribute early agility to the goal-oriented \CE{}
-physical layer, since a \CE{} round terminates as soon as its goal is met.
+The logarithmic view in Fig.~\ref{fig:progress-log} reveals a clear and,
+at first sight, unexpected ordering. One might attribute early agility to
+the goal-oriented \CE{} physical layer, since a \CE{} round terminates as
+soon as its goal is met.
 The measurement says otherwise: what determines the time to a first
 decision is the \emph{structural weight of the protocol}, not the
 communication architecture. Both TOM variants begin producing decisions in
@@ -1782,8 +1859,9 @@ single-phase protocols and is equally available on both substrates.
 % NOTE: the linear view is panel (b) of the consolidated progress float
 % placed at the start of the preceding subsubsection.
 
-The linear view presents an almost inverted picture and shows that initial
-agility is a poor predictor of workload completion time. Once warm-up
+The linear view in Fig.~\ref{fig:progress-lin} presents an almost
+inverted picture and shows that initial agility is a poor predictor of
+workload completion time. Once warm-up
 ends, the \CI{} curves climb steeply, uniformly and almost perfectly
 linearly, whereas Paxos and 2PC over \CE{} advance in a slow staircase,
 because each proposal requires its own exclusive round and the next
@@ -1979,20 +2057,21 @@ reported in this paper are cumulative, so no result depends on that gap.
 
 \subsubsection{The magnitude of the reduction}
 
-% TODO: uncomment once figures/energy_mean_ci_ce.pdf exists.
-% \begin{figure}[!t]
-% \centering
-% \includegraphics[width=3.4in]{energy_mean_ci_ce.pdf}
-% \caption{Mean amortised energy per decision by protocol and
-% architecture. The label above each pair of bars gives the ratio of the
-% baseline to the pipelined variant.}
-% \label{fig:energy-mean}
-% \end{figure}
+\begin{figure}[!t]
+\centering
+\includegraphics[width=3.4in]{energy_mean_ci_ce.pdf}
+\caption{Mean amortised energy per decision by protocol and
+architecture. The label above each pair of bars gives the ratio of the
+baseline to the pipelined variant.}
+\label{fig:energy-mean}
+\end{figure}
 
 Under the cumulative criterion, the pipeline reduces the energy required
 per final decision, relative to sequential execution of the same protocol
 on the same workload, by a factor of $3.83 \pm 0.07$ for Paxos and
-$5.67 \pm 0.27$ for 2PC (95\,\% intervals over fifteen seeds).
+$5.67 \pm 0.27$ for 2PC (95\,\% intervals over fifteen seeds);
+Fig.~\ref{fig:energy-mean} shows the two architectures side by side for
+each protocol.
 
 The ascending order of these ratios---$1.43 \pm 0.02$ for TOM, $3.83$ for
 Paxos and $5.67$ for 2PC---is informative in itself. The heavier the protocol
@@ -2016,17 +2095,17 @@ dissemination against multi-phase agreement---is an independent factor of
 comparable weight to the communication architecture. The choice of a heavy
 protocol cannot be compensated for by pipelining alone.
 
-% TODO: uncomment once figures/energy_boxplot.pdf exists.
-% \begin{figure}[!t]
-% \centering
-% \includegraphics[width=3.4in]{energy_boxplot.pdf}
-% \caption{Distribution and spread of radio-on cost per decision. Boxes
-% show the median and interquartile range; points show individual
-% proposals.}
-% \label{fig:energy-box}
-% \end{figure}
+\begin{figure}[!t]
+\centering
+\includegraphics[width=3.4in]{energy_boxplot.pdf}
+\caption{Distribution and spread of radio-on cost per decision. Boxes
+show the median and interquartile range; points show individual
+proposals.}
+\label{fig:energy-box}
+\end{figure}
 
-The distributional view adds two further observations. First, the \CI{} and
+The distributional view of Fig.~\ref{fig:energy-box} adds two further
+observations. First, the \CI{} and
 the vote-based \CE{} families occupy separate regions of the cost axis: the
 upper quartile of the pooled \CI{} decisions lies at 94.5 node-slots and the
 lower quartile of Paxos over \CE{} at 351, a factor of $3.7$ apart with no
@@ -2065,22 +2144,22 @@ $1\,\%$ of the \CI{} family overlapping them.
 
 \subsubsection{Divergence of latency and energy}
 
-% TODO: uncomment once figures/latency_vs_energy.pdf exists.
-% \begin{figure}[!t]
-% \centering
-% \includegraphics[width=3.4in]{latency_vs_energy.pdf}
-% \caption{The latency--energy trade-off. Each point is one
-% protocol\,$\times$\,architecture combination. The dashed reference line
-% is the identity of Equation~\eqref{eq:ece}, that is, the behaviour of a
-% hypothetical system with neither amortisation nor duty cycling. The
-% shaded region below it is the energy-saving space reachable only by
-% pipelining.}
-% \label{fig:lat-energy}
-% \end{figure}
+\begin{figure}[!t]
+\centering
+\includegraphics[width=3.4in]{latency_vs_energy.pdf}
+\caption{The latency--energy trade-off. Each point is one
+protocol\,$\times$\,architecture combination. The dashed reference line
+is the identity of Equation~\eqref{eq:ece}, that is, the behaviour of a
+hypothetical system with neither amortisation nor duty cycling. The
+shaded region below it is the energy-saving space reachable only by
+pipelining.}
+\label{fig:lat-energy}
+\end{figure}
 
-The latency--energy plane summarises the main conceptual result of this
-evaluation in a single picture. The three baseline points lie on the
-reference line of Equation~\eqref{eq:ece}---not approximately but
+The latency--energy plane of Fig.~\ref{fig:lat-energy} summarises the
+main conceptual result of this evaluation in a single picture. The three
+baseline points lie on the reference line of Equation~\eqref{eq:ece}---not
+approximately but
 exactly, since that line expresses a structural identity for sequential
 processing with an always-on radio. The baseline architecture is
 \textbf{pinned} to the line and has no degree of freedom with which to
@@ -2137,18 +2216,18 @@ compared.
 
 \subsubsection{Scalability of energy efficiency}
 
-% TODO: uncomment once figures/efficiency_vs_nodes.pdf exists.
-% \begin{figure}[!t]
-% \centering
-% \includegraphics[width=3.4in]{efficiency_vs_nodes.pdf}
-% \caption{Energy efficiency against network size (logarithmic axis,
-% 5\,\% loss). Efficiency is proportional to the ratio of throughput to
-% energy per decision.}
-% \label{fig:eff-nodes}
-% \end{figure}
+\begin{figure}[!t]
+\centering
+\includegraphics[width=3.4in]{efficiency_vs_nodes.pdf}
+\caption{Energy efficiency against network size (logarithmic axis,
+5\,\% loss). Efficiency is proportional to the ratio of throughput to
+energy per decision.}
+\label{fig:eff-nodes}
+\end{figure}
 
 The analyses above are anchored at $\Nnodes = 27$; the efficiency results
-show that their conclusions survive a change of scale. Efficiency declines
+in Fig.~\ref{fig:eff-nodes} show that their conclusions survive a change
+of scale. Efficiency declines
 for every protocol as $\Nnodes$ grows, since each decision requires radio
 activity from more nodes over longer rounds. The important finding is the
 \emph{stability of the intra-protocol ratios}: in all three protocol
@@ -2230,24 +2309,22 @@ and no ratio reported anywhere in this paper is corrected by it.
 
 \subsubsection{Effect of diameter: who benefits from a better network?}
 
-% TODO: uncomment once figures/throughput_vs_topology.pdf and
-% figures/latency_vs_topology.pdf exist.
 % Consolidated two-panel float replacing the separate throughput and
 % latency figures.
-% \begin{figure}[!t]
-% \centering
-% \subfloat[Throughput.]{%
-%   \includegraphics[width=1.65in]{throughput_vs_topology.pdf}%
-%   \label{fig:thr-topo}}
-% \hfil
-% \subfloat[Per-decision latency, logarithmic axis.]{%
-%   \includegraphics[width=1.65in]{latency_vs_topology.pdf}%
-%   \label{fig:lat-topo}}
-% \caption{Throughput and mean per-decision latency by topology and
-% protocol ($\Nnodes = 27$, 5\,\% loss, 100 proposals; error bars give
-% the standard error over fifteen seeds).}
-% \label{fig:topology}
-% \end{figure}
+\begin{figure}[!t]
+\centering
+\subfloat[Throughput.]{%
+  \includegraphics[width=1.65in]{throughput_vs_topology.pdf}%
+  \label{fig:thr-topo}}
+\hfil
+\subfloat[Per-decision latency, logarithmic axis.]{%
+  \includegraphics[width=1.65in]{latency_vs_topology.pdf}%
+  \label{fig:lat-topo}}
+\caption{Throughput and mean per-decision latency by topology and
+protocol ($\Nnodes = 27$, 5\,\% loss, 100 proposals; error bars give
+the standard error over fifteen seeds).}
+\label{fig:topology}
+\end{figure}
 
 The proposed explanation that denser or better-quality networks account for
 the residual is falsified: density error has no systematic trend with
@@ -2281,7 +2358,8 @@ Paxos (\CE) & 0.070 & 0.065 & $-7$\,\% \\
 
 The result is striking: \textbf{Paxos and 2PC over \CE{} gain nothing
 from the complete elimination of the routing problem, and in fact get
-worse.} The latency measurements identify the cause. The latency of Paxos
+worse.} The latency measurements in Fig.~\ref{fig:lat-topo} identify the
+cause. The latency of Paxos
 over \CE{} is essentially constant across the four dense topologies,
 between 12.5 and 15.9 slots, and is almost indifferent to the diameter
 falling from 4 to 1. These protocols are, precisely speaking,
@@ -2294,7 +2372,8 @@ $\Cdepth = 1$ established in Section~\ref{sec:results-dynamics}, constant
 latency translates directly into constant throughput.
 
 All three \CI{} protocols, by contrast, convert network quality into
-throughput at an almost identical rate of about 72\,\%, because the length
+throughput at an almost identical rate of about 72\,\%
+(Fig.~\ref{fig:thr-topo}), because the length
 of a flood round in that architecture is a direct function of the
 diameter, as Equation~\eqref{eq:round} states: a shorter diameter
 immediately yields shorter rounds and therefore more decisions per unit of
