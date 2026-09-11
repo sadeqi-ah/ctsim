@@ -157,8 +157,8 @@ format that combines a participation bitmap, cumulative commitment, and
 NACK-driven cascading recovery to keep several decisions in flight while
 preserving total order. Extensive slot-level simulation shows that the
 pipeline sustains, on average, about 12 concurrent proposals for Paxos and
-about 21 for 2PC, yielding up to 4x higher throughput and up to 5.7x better
-per-decision energy efficiency than CE-based counterparts. We
+about 21 for 2PC, yielding 4.083x higher baseline throughput (global maximum 4.268x) and 5.672x better
+baseline per-decision energy efficiency (global maximum 5.987x) than CE-based counterparts. We
 further show that CE architectures obey a structural identity that locks
 per-decision energy to per-decision latency, exactly and by construction, and
 that pipelining breaks this
@@ -309,11 +309,11 @@ instant, 2PC commits without a coordinator and therefore never blocks,
 achieving 3PC-grade availability \cite{skeen81nonblocking} at 2PC message
 cost. Evaluating all six protocol--substrate combinations in a slot-level
 simulator, we find that the pipeline sustains about 12 concurrent proposals
-for Paxos and about 21 for 2PC, that this concurrency yields up to
-$4\times$ higher throughput and up to $5.7\times$ better
-per-decision energy, and---most importantly---that \CE{} architectures obey
+for Paxos and about 21 for 2PC, that this concurrency yields $4.083\times$
+higher baseline throughput (global maximum $4.268\times$) and $5.672\times$ better baseline
+per-decision energy (global maximum $5.987\times$), and---most importantly---that \CE{} architectures obey
 the identity $\Ece = \Nnodes L$, which holds exactly and by construction
-across fifteen independent measurements spanning a $26\times$ range of network
+across 15 protocol-topology CE aggregates, each over 15 seeds (225 runs), spanning a $26\times$ range of network
 diameters. Pipelining breaks that identity: across our \CI{} configurations,
 per-decision latency varies by roughly $27\times$ while per-decision energy
 varies by only about $1.3\times$. Across the four dense topologies this
@@ -1209,8 +1209,8 @@ our figures can be read against the published ones.
 
 \item \textbf{Topology.} Five multi-hop topologies spanning a wide range
 of diameters: full mesh ($\Diam = 1$), partial mesh ($\Diam = 3$), random
-($\Diam = 4$), scale-free ($\Diam = 4$) and line ($\Diam = 26$). Random
-and scale-free are matched in diameter (Table~\ref{tab:topologies}) but
+(mean $\Diam = 4.20$, range 4--5), scale-free (mean $\Diam = 4.13$, range 4--5) and line ($\Diam = 26$). Random
+and scale-free are approximately matched in diameter (Table~\ref{tab:topologies}) but
 differ in the shape of their degree distribution, a pair chosen deliberately
 to test whether diameter alone predicts behaviour.
 
@@ -1224,7 +1224,7 @@ is the mean of fifteen independent random seeds.
 
 Unless stated otherwise, the reference operating point throughout
 Section~\ref{sec:results} is a 27-node network with random topology
-($\Diam = 4$) and 5\,\% link loss.
+(mean $\Diam = 4.20$) and 5\,\% link loss.
 
 %%---------------------------------------------------------------------
 \subsection{Evaluation Metrics}
@@ -1572,8 +1572,8 @@ is therefore not compared under the uniform $W=10$ procedure.
 % \end{figure}
 
 Raising the loss rate from 0 to 20\,\% degrades most protocols gently.
-TOM on both substrates and Paxos over \CI{} lose between 15\,\% and
-19\,\% of their throughput across that range and their curves remain
+TOM on both substrates and Paxos over \CI{} lose 14.33\,\%, 18.80\,\%, and
+14.35\,\% of their throughput, respectively, across that range and their curves remain
 close to linear. Both pure dissemination and the majority condition are
 thus inherently loss-tolerant: in the first case neighbouring
 retransmissions compensate for a missing copy, and in the second reaching
@@ -1593,7 +1593,7 @@ confidence band reflects exactly this sensitivity to the random pattern
 of losses.
 
 The curves for Paxos and 2PC over \CE, by contrast, remain almost
-perfectly flat at a low level, declining by only 4--5\,\% over the whole
+perfectly flat at a low level, declining by 4.65\,\% and 6.29\,\%, respectively, over the whole
 range. This should not be read as superior robustness. These protocols
 have already reached their structural bottleneck through sequential
 execution and an always-on radio, and adding channel errors changes
@@ -1632,13 +1632,11 @@ impose no such window and simply stretch the goal-oriented round until
 the missing votes arrive, holding their commit rate at 100\,\%---but that
 stability is not free, and is paid for directly in latency and energy.
 
-This matters for the interpretation of the preceding figure: in our
-simulation environment, link instability manifests predominantly as
-increased latency and energy cost rather than as visible transaction
-failure. The 39\,\% throughput reduction of 2PC over \CI{} at 20\,\% loss
-should therefore be attributed mainly to a longer workload completion
-time and not to the mass loss of decisions. The abort contribution is
-small but qualitatively significant, since it locates the fragile point
+This matters for the interpretation of the preceding figure. While some
+protocols degrade gracefully, 2PC over \CI{} suffers a severe drop in
+reliability: its commit rate falls to 70.07\,\% at 20\,\% loss.
+The 39.35\,\% throughput reduction is therefore driven substantially by the mass
+loss of decisions, not just a longer workload completion time. This locates the fragile point
 of the pipeline precisely at the intersection of a unanimous agreement
 condition with a bounded time window.
 
@@ -1665,8 +1663,8 @@ The TOM family operates near the theoretical bound set by the network
 diameter, at roughly 2 to 8 slots, rising only slightly with $\Nnodes$,
 since each decision is nothing more than a single-phase dissemination.
 Notably, the two TOM curves coincide almost exactly across the whole
-range of $\Nnodes$ and separate only at $\Nnodes = 188$ (about 6.6
-against 7.6 slots, this time in favour of \CI). This coincidence is
+range of $\Nnodes$ and separate only at $\Nnodes = 188$ (about 6.8
+against 8.1 slots, this time in favour of \CI). This coincidence is
 independent evidence for the analysis in
 Section~\ref{sec:results-dynamics}.
 
@@ -1678,9 +1676,9 @@ is very gradual, because early termination allows each round to last only
 as long as it needs to.
 
 The highest latencies belong to the pipelined variants of Paxos and
-especially 2PC. Latency for 2PC over \CI{} rises from about 170 slots at
-$\Nnodes = 6$ to more than 1700 slots at $\Nnodes = 188$, and Paxos over
-\CI{} from about 8 to about 620 slots. \textbf{This does not contradict
+especially 2PC. Latency for 2PC over \CI{} rises from 16.2 slots at
+$\Nnodes = 6$ to 1200.8 slots at $\Nnodes = 188$, and Paxos over
+\CI{} from 8.1 to 639.2 slots. \textbf{This does not contradict
 the throughput results; it complements them.} In a pipelined
 architecture the lifetime of an individual decision is deliberately
 stretched so that the radio schedule stays regular and flood rounds
@@ -1795,7 +1793,7 @@ The central observation is a \textbf{complete separation of the two
 families}: all three \CI{} combinations finish the 100-decision workload
 before either vote-based \CE{} protocol does. Even the slowest pipelined
 combination---2PC over \CI, which carries the highest per-decision
-latency in the entire system at nearly 360 slots---completes the workload
+latency in the entire system at 126.8 slots in the scalability baseline---completes the workload
 in about 590 slots, more than twice as fast as Paxos over \CE{} at about
 1420 slots and close to four times faster than 2PC over \CE{} at about
 2430 slots. This comparison alone establishes that per-decision latency
@@ -2052,8 +2050,7 @@ Spread is not monotone in concurrency---Paxos carries eleven times TOM's
 concurrency in a narrower interquartile range, 7.2 against 9.0---so it is the
 median and the upper percentile, not the width of the box, that measure what
 the pipeline costs. This is the decoupling in its per-decision form: mean
-concurrency rises from 1.00 to 20.84 while the median cost of a decision rises
-by $4.2\,\%$.
+concurrency rises from 1.00 to 21.25.
 
 % NOTE: the separate energy-histogram float was removed during figure
 % consolidation. The multimodal structure it showed is described in the
@@ -2208,8 +2205,8 @@ means of 4.20 and 4.13. The diameters listed here are the modal values.}
 \midrule
 Full mesh    & 1  & 26.00 \\
 Partial mesh & 3  & 9.30 \\
-Random       & 4  & 4.40 \\
-Scale-free   & 4  & 3.78 \\
+Random       & 4.20 (4--5)  & 4.40 \\
+Scale-free   & 4.13 (4--5)  & 3.78 \\
 Line         & 26 & 1.93 \\
 \bottomrule
 \end{tabular}
@@ -2313,8 +2310,8 @@ One further fact is established across all four dense topologies: the
 agreement of TOM over \CI{} and TOM over \CE{} is remarkably stable. The
 values are 0.367 against 0.365 in the full mesh, 0.295 against 0.294 in
 the partial mesh, 0.213 against 0.214 in the random graph, and 0.219
-against 0.220 in the scale-free graph; in no case does the difference
-exceed one per cent. The TOM boundary case analysed in
+against 0.220 in the scale-free graph; in no case does the relative difference
+exceed 1.239 per cent. The TOM boundary case analysed in
 Section~\ref{sec:results-dynamics} is therefore not an artefact of one
 topology but a structural property.
 
@@ -2362,7 +2359,7 @@ fifteen groups and reaches $1.94\,\%$ on a single seed of 2PC over \CE{} on the
 line topology, where two of the fifteen seeds commit 99 proposals of 100.
 
 On the other side, the \CI{} architecture consumes less energy than its
-\CE{} counterpart for all three protocols on all five topologies. The
+\CE{} counterpart for all three protocols on the four dense topologies. The
 margin ranges between 1.3 and 12 times on the dense topologies and, worth
 noting, reaches its largest value for TOM on the line, at 2916 against 401
 ---more than seven times. The worse the network and the longer the rounds,
@@ -2419,8 +2416,7 @@ effect of diameter, as Table~\ref{tab:degree} shows.
 the random topology of matched diameter. Reference values for the random
 topology are given in Table~\ref{tab:baseline}. Throughput is in committed
 decisions per slot and latency in slots per decision; each absolute figure is
-the mean over fifteen seeds and each change is the mean of the fifteen
-per-seed relative differences.}
+the mean over fifteen seeds and each change is the ratio of the means.}
 \label{tab:degree}
 \centering
 \footnotesize
@@ -2448,7 +2444,7 @@ indifferent to within about 3\,\%, whereas the vote-based \CE{} protocols
 lose substantially. A paired comparison confirms that the split is not an
 artefact of seed variation: the two vote-based \CE{} protocols are slower on
 the scale-free graph in every one of the fifteen seeds, whereas the \CI{}
-protocols are faster on eight to eleven of them.
+protocols are faster on eight to ten of them.
 
 The mechanism lies in the interaction between early termination and the
 degree distribution: the \CE{} mechanism closes a round only once its goal
@@ -2562,10 +2558,13 @@ into a coherent picture.
 Throughput declines with $\Nnodes$ for every design while per-decision
 latency rises, most steeply for pipelined 2PC. Packet loss threatens
 mainly the throughput of 2PC over \CI, because unanimity within a fixed
-pipeline window is fragile; that instability, however, manifests
-predominantly as a longer run rather than as failed transactions, since
-the commit rate stays close to complete for every combination. The
-cumulative progress view then shows that the high latency of \CI{} is
+pipeline window is fragile; that instability shows up in two
+regimes: at low loss and in small networks the commit rate stays close to
+complete and the cost appears mainly as a longer run, whereas under heavy
+loss and at scale the loss of decisions itself dominates, with the commit
+rate dropping to 23.2\,\% in the largest scalability network and 0.2\,\%
+for 2PC on the line topology. The cumulative progress view then shows that the
+high latency of \CI{} is
 misleading: all three pipelined protocols finish the workload before
 either vote-based \CE{} protocol.
 
