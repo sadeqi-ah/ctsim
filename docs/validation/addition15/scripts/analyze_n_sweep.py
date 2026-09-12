@@ -74,8 +74,11 @@ for (n, arm), cells in sorted(groups.items()):
     round_mean, round_se = mean_se(rounds)
     latency_mean, latency_se = mean_se(decisions)
     
-    constant_gaps = [CONSTANT_REFERENCES[arm] / value for value in rounds]
-    constant_gap_mean, constant_gap_se = mean_se(constant_gaps)
+    if (arm == "2pc_ce" and n == 180) or (arm == "paxos_ce" and n == 188):
+        constant_gaps = [CONSTANT_REFERENCES[arm] / value for value in rounds]
+        constant_gap_mean, constant_gap_se = mean_se(constant_gaps)
+    else:
+        constant_gap_mean, constant_gap_se = "NOT IDENTIFIABLE", "NOT IDENTIFIABLE"
     
 
 
@@ -98,7 +101,7 @@ for (n, arm), cells in sorted(groups.items()):
         "round_slots_se": round_se,
         "mean_decision_latency_slots": latency_mean,
         "decision_latency_se": latency_se,
-        "constant_ref": CONSTANT_REFERENCES[arm],
+        "constant_ref": CONSTANT_REFERENCES[arm] if ((arm == "2pc_ce" and n == 180) or (arm == "paxos_ce" and n == 188)) else "NOT IDENTIFIABLE",
         "constant_gap": constant_gap_mean,
         "constant_gap_se": constant_gap_se,
         "commit_rate": sum(r["committed"] for r in cells) / sum(r["proposals"] for r in cells),
@@ -188,12 +191,14 @@ for r in summary:
     if r["arm"] == "2pc_ce":
         readme += f"| {r['n']} | {r['mean_degree']:.2f} | {r['mean_diameter']:.1f} | {r['mean_round_slots']:.2f} | {r['round_slots_se']:.2f} |\n"
 
+
 readme += "\n### Paxos over CE (Wireless Paxos arm)\n"
 readme += "| N | Mean Degree | Diameter | Round Length (slots) | SE |\n"
 readme += "|---|---:|---:|---:|---:|\n"
 for r in summary:
     if r["arm"] == "paxos_ce":
         readme += f"| {r['n']} | {r['mean_degree']:.2f} | {r['mean_diameter']:.1f} | {r['mean_round_slots']:.2f} | {r['round_slots_se']:.2f} |\n"
+
 
 readme += "\n*(All 15 seeds per point committed 100% of proposals; no zero-commit seeds. All graphs connected.)*\n"
 readme += "\n## Analysis and Fits\n\nFits are precision-weighted (1/SE²).\n"
