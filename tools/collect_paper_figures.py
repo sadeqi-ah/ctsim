@@ -43,14 +43,11 @@ MAPPING: dict[str, str] = {
     "latency_vs_topology.pdf": "plots/topology/lat_vs_topology.pdf",
 }
 
-# Figures the paper includes that no script generates: hand-drawn diagrams.
-# They are git-ignored too, so they have to be placed in paper/figures/ by
-# hand until a source for them exists.
-DIAGRAMS: tuple[str, ...] = (
-    "pipeline_mechanism.pdf",
-    "message_frame.pdf",
-    "paxos_ci_example.pdf",
-)
+# The three schematic diagrams (pipeline mechanism, frame format, Paxos
+# over CI) are drawn inline with TikZ in paper/paper.tex, so they are not
+# files: nothing has to be placed in paper/figures/ by hand. The tuple is
+# kept, and empty, so that a future file-based figure can be added here.
+DIAGRAMS: tuple[str, ...] = ()
 
 
 def cmd_list() -> int:

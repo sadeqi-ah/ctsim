@@ -33,6 +33,13 @@
   \DeclareGraphicsExtensions{.eps}
 \fi
 
+%% *** INLINE DIAGRAMS ***
+% The three schematic diagrams (pipeline mechanism, frame format, Paxos
+% over CI) are drawn inline with TikZ, so no external file is needed for
+% them and nothing has to be placed in figures/ by hand.
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,calc,decorations.pathreplacing,positioning}
+
 
 %% *** MATH ***
 \usepackage{amsmath}
@@ -772,14 +779,42 @@ pay for.
 \subsection{The Pipeline Mechanism}
 \label{sec:design-pipeline}
 
-% TODO: uncomment once figures/pipeline_mechanism.pdf exists.
-% \begin{figure}[!t]
-% \centering
-% \includegraphics[width=3.4in]{pipeline_mechanism.pdf}
-% \caption{Pipelined execution: the phases of several agreement instances
-% overlap on a chain of deterministic flood rounds.}
-% \label{fig:pipeline}
-% \end{figure}
+\begin{figure}[!t]
+\centering
+\resizebox{3.4in}{!}{%
+\begin{tikzpicture}[
+  font=\footnotesize,
+  rnd/.style={draw, minimum width=1.05cm, minimum height=0.42cm,
+              inner sep=1pt},
+  ph/.style={draw, fill=black!8, minimum width=1.05cm,
+             minimum height=0.38cm, inner sep=1pt, font=\scriptsize},
+]
+\node[anchor=east, font=\scriptsize] at (-0.68,0.00) {flood rounds};
+\node[rnd] at (0.00,0.00) {$R_{1}$};
+\node[rnd] at (1.25,0.00) {$R_{2}$};
+\node[rnd] at (2.50,0.00) {$R_{3}$};
+\node[rnd] at (3.75,0.00) {$R_{4}$};
+\node[rnd] at (5.00,0.00) {$R_{5}$};
+\node[anchor=east, font=\scriptsize] at (-0.68,-0.80) {instance $k-1$};
+\node[ph] at (0.00,-0.80) {prop.};
+\node[ph] at (1.25,-0.80) {vote};
+\node[ph] at (2.50,-0.80) {commit};
+\node[anchor=east, font=\scriptsize] at (-0.68,-1.55) {instance $k$};
+\node[ph] at (1.25,-1.55) {prop.};
+\node[ph] at (2.50,-1.55) {vote};
+\node[ph] at (3.75,-1.55) {commit};
+\node[anchor=east, font=\scriptsize] at (-0.68,-2.30) {instance $k+1$};
+\node[ph] at (2.50,-2.30) {prop.};
+\node[ph] at (3.75,-2.30) {vote};
+\node[ph] at (5.00,-2.30) {commit};
+\draw[dashed] (1.90,-2.62) rectangle (3.10,0.28);
+\node[anchor=north, font=\scriptsize, align=center] at (2.50,-2.70)
+  {one round advances\\several instances};
+\end{tikzpicture}}
+\caption{Pipelined execution: the phases of several agreement instances
+overlap on a chain of deterministic flood rounds.}
+\label{fig:pipeline}
+\end{figure}
 
 A conventional agreement protocol serialises its phases: the system waits
 until a proposal has been disseminated network-wide and the votes of all
@@ -797,7 +832,8 @@ and simultaneously piggybacks the proposal or vote belonging to instance
 $k$, which is entering its first phase. Under sustained load the network
 is therefore always advancing several phases of several different
 agreements concurrently, and the medium is never idle waiting for a
-round trip to close.
+round trip to close. Fig.~\ref{fig:pipeline} sketches that overlap on a
+chain of consecutive flood rounds.
 
 It is worth distinguishing this from batching, with which it is easily
 confused (Section~\ref{sec:back-pipelining}). Batching would enlarge the
@@ -847,20 +883,40 @@ merged in flight.
 \subsection{Unified Message Format}
 \label{sec:design-format}
 
-% TODO: uncomment once figures/message_frame.pdf exists.
-% \begin{figure}[!t]
-% \centering
-% \includegraphics[width=3.4in]{message_frame.pdf}
-% \caption{Unified frame format: a control header (term identifier, last
-% accepted term, participation bitmap and NACK field) followed by the
-% pipelined payload.}
-% \label{fig:frame}
-% \end{figure}
+\begin{figure}[!t]
+\centering
+\resizebox{3.4in}{!}{%
+\begin{tikzpicture}[
+  font=\scriptsize,
+  fld/.style={draw, minimum height=0.95cm, inner sep=2pt, align=center},
+  br/.style={decorate, decoration={brace, amplitude=4pt}},
+]
+\node[fld, minimum width=1.35cm] (f1) at (0,0) {term\\ident.};
+\node[fld, minimum width=1.45cm, right=0pt of f1] (f2)
+  {last acc.\\term};
+\node[fld, minimum width=1.95cm, right=0pt of f2] (f3)
+  {particip.\ bitmap\\($\Nnodes$ bits)};
+\node[fld, minimum width=1.00cm, right=0pt of f3] (f4) {NACK};
+\node[fld, minimum width=1.75cm, right=0pt of f4, fill=black!8] (f5)
+  {pipelined\\payload};
+\draw[br]
+  ($(f1.north west)+(0,2pt)$) -- ($(f4.north east)+(0,2pt)$)
+  node[midway, above=4pt] {control header};
+\draw[br]
+  ($(f5.north west)+(0,2pt)$) -- ($(f5.north east)+(0,2pt)$)
+  node[midway, above=4pt] {payload};
+\end{tikzpicture}}
+\caption{Unified frame format: a control header (term identifier, last
+accepted term, participation bitmap and NACK field) followed by the
+pipelined payload.}
+\label{fig:frame}
+\end{figure}
 
 Low-power radios impose tight frame budgets, so pipelining and state
 recovery must share one compact structure rather than each introducing its
 own control traffic. The frame has two parts: a control header that drives
 the state machine, and a payload that carries protocol content.
+Fig.~\ref{fig:frame} shows the field layout.
 
 \subsubsection{Control header}
 The header carries four fields.
@@ -924,15 +980,42 @@ itself.
 \subsubsection{Paxos}
 \label{sec:design-paxos}
 
-% TODO: uncomment once figures/paxos_ci_example.pdf exists.
-% \begin{figure}[!t]
-% \centering
-% \includegraphics[width=3.4in]{paxos_ci_example.pdf}
-% \caption{Pipelined Paxos over \CI: implicit vote aggregation through the
-% participation bitmap and cumulative acknowledgement through the last
-% accepted term.}
-% \label{fig:paxos}
-% \end{figure}
+\begin{figure}[!t]
+\centering
+\resizebox{3.4in}{!}{%
+\begin{tikzpicture}[
+  font=\scriptsize,
+  turn/.style={draw, minimum width=1.35cm, minimum height=0.44cm,
+               inner sep=1pt},
+  st/.style={font=\ttfamily\scriptsize},
+]
+\node[turn] (t1) at (0.00,0) {turn of $n_1$};
+\node[turn] (t2) at (1.95,0) {turn of $n_2$};
+\node[turn] (t3) at (3.90,0) {turn of $n_3$};
+\node[turn] (t4) at (5.85,0) {turn of $n_4$};
+\draw[-{Latex[length=1.5mm]}] (t1) -- (t2);
+\draw[-{Latex[length=1.5mm]}] (t2) -- (t3);
+\draw[-{Latex[length=1.5mm]}] (t3) -- (t4);
+\node[st, below=2mm of t1] {1000};
+\node[st, below=2mm of t2] {1100};
+\node[st, below=2mm of t3] {1110};
+\node[st, below=2mm of t4] {1111};
+\node[anchor=north, align=center, below=7mm of t1]
+  {proposal for\\term $k$};
+\node[anchor=north, align=center, below=7mm of t2]
+  {bitmap grows\\by overhearing};
+\node[anchor=north, align=center, below=7mm of t3]
+  {majority quorum\\reached};
+\node[anchor=north, align=center, below=7mm of t4]
+  {last accepted\\term $:=k$};
+\node[anchor=south, font=\scriptsize] at (2.925,0.40)
+  {participation bitmap, example with four nodes};
+\end{tikzpicture}}
+\caption{Pipelined Paxos over \CI: implicit vote aggregation through the
+participation bitmap and cumulative acknowledgement through the last
+accepted term.}
+\label{fig:paxos}
+\end{figure}
 
 Combining Paxos with the round-robin schedule removes several of the
 costs that the protocol incurs in an asynchronous setting. As established
@@ -941,7 +1024,7 @@ nodes in advance, so two proposers can never contend for the same term.
 Proposal collision is therefore structurally impossible, and the classical
 Promise phase---whose purpose is to reserve a ballot number and discover
 contention---is redundant and omitted. Agreement proceeds as a continuous
-pipelined cycle in four steps.
+pipelined cycle in four steps, illustrated in Fig.~\ref{fig:paxos}.
 
 \paragraph{Proposal initiation}
 When the turn of node $i$ arrives, it opens a new agreement instance: it
