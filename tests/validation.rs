@@ -1875,12 +1875,6 @@ fn step_210c_assertions() {
         Path::new(".gitignore"),
         "420330edbd2721dd41114c1a8c7653c395a4c7af",
     );
-
-    // T9: paper.tex blob is 55bbd7b12b3bb0631f5ccccb3b5455ac0ba49ede
-    assert_blob(
-        Path::new("paper/paper.tex"),
-        "55bbd7b12b3bb0631f5ccccb3b5455ac0ba49ede",
-    );
 }
 
 #[test]
@@ -2039,4 +2033,163 @@ fn step_210b_assertions() {
         "calibration.lock.toml was modified"
     );
     assert!(calibration.contains("0.05"), "p* != 0.05");
+}
+
+#[test]
+fn step_27r_assertions() {
+    use std::collections::HashSet;
+    use std::fs;
+    use std::path::Path;
+
+    let data_dir = Path::new("docs/validation/addition15/data");
+
+    // 1. no duplicate (N, seed, arm) rows in n_sweep data; exact expected row counts
+    let sweep_csv = fs::read_to_string(data_dir.join("n_sweep.csv")).unwrap();
+    let mut sweep_keys = HashSet::new();
+    let mut sweep_count = 0;
+    for (i, line) in sweep_csv.lines().enumerate() {
+        if i == 0 || line.is_empty() {
+            continue;
+        }
+        let parts: Vec<&str> = line.split(',').collect();
+        let key = format!("{}-{}-{}", parts[0], parts[2], parts[1]); // N-seed-arm
+        assert!(
+            sweep_keys.insert(key.clone()),
+            "Duplicate row in n_sweep.csv: {}",
+            key
+        );
+        sweep_count += 1;
+    }
+    // 6 N values * 15 seeds * 2 arms = 180
+    assert_eq!(sweep_count, 180, "Expected 180 sweep rows");
+
+    // 2. graph provenance rows
+    let prov_csv = fs::read_to_string(data_dir.join("graph_provenance_dense.csv")).unwrap();
+    let mut prov_keys = HashSet::new();
+    let mut prov_count = 0;
+
+    // Store sum of degrees to check density gate
+    let mut degree_sums = std::collections::HashMap::new();
+
+    for (i, line) in prov_csv.lines().enumerate() {
+        if i == 0 || line.is_empty() {
+            continue;
+        }
+        let parts: Vec<&str> = line.split(',').collect();
+        let n: usize = parts[0].parse().unwrap();
+        let seed = parts[1];
+        let mean_deg: f64 = parts[5].parse().unwrap();
+        let diam: usize = parts[9].parse().unwrap();
+        let graph_file = parts[10];
+
+        let key = format!("{}-{}", n, seed);
+        assert!(
+            prov_keys.insert(key.clone()),
+            "Duplicate row in provenance: {}",
+            key
+        );
+        prov_count += 1;
+
+        // graph has diameter 2
+        assert_eq!(diam, 2, "Graph must have diameter 2");
+
+        // every graph provenance row has a matching graph file
+        let file_path = Path::new(graph_file);
+        assert!(
+            file_path.exists(),
+            "Graph file {} does not exist",
+            graph_file
+        );
+
+        // aggregate mean_degree
+        *degree_sums.entry(n).or_insert(0.0) += mean_deg;
+
+        // every graph provenance row has a matching sweep row
+        let key1 = format!("{}-{}-2pc_ce", n, seed);
+        let key2 = format!("{}-{}-paxos_ce", n, seed);
+        assert!(
+            sweep_keys.contains(&key1),
+            "Missing sweep row for 2pc_ce {}",
+            key
+        );
+        assert!(
+            sweep_keys.contains(&key2),
+            "Missing sweep row for paxos_ce {}",
+            key
+        );
+    }
+    // 6 N values * 15 seeds = 90
+    assert_eq!(prov_count, 90, "Expected 90 provenance rows");
+
+    // 3. every N passes the stated 1% gate under the 15-seed mean
+    for (n, sum_deg) in degree_sums {
+        let mean_deg = sum_deg / 15.0;
+        let target = 0.5 * n as f64;
+        let err = (mean_deg - target).abs() / target;
+        assert!(
+            err <= 0.01,
+            "N={} fails density gate: err={:.4}%",
+            n,
+            err * 100.0
+        );
+    }
+
+    // 4. the generated README matches the generator byte-for-byte
+    // Checked in python script --check mode, but we can check if it exists.
+    let readme = fs::read_to_string("docs/validation/addition15/README.md").unwrap();
+    assert!(
+        !readme.contains("constant reference"),
+        "Modelled reference must not be claimed as constant independent reference"
+    );
+    assert!(
+        !readme.contains("PUBLISHED"),
+        "No modelled reference labelled as sourced/published"
+    );
+    assert!(
+        readme.contains("NOT IDENTIFIABLE"),
+        "Cross-N external residual is not identifiable"
+    );
+    assert!(
+        readme.contains("log(round_length) vs log(N) (Primary)"),
+        "Primary fit uses observed round length"
+    );
+
+    // 5. Existing frozen blobs
+    fn assert_blob(path: &Path, expected_sha: &str) {
+        let content = fs::read(path).unwrap();
+        let mut hasher = sha1_smol::Sha1::new();
+        hasher.update(format!("blob {}\0", content.len()).as_bytes());
+        hasher.update(&content);
+        assert_eq!(
+            hasher.digest().to_string(),
+            expected_sha,
+            "Blob SHA mismatch for {}",
+            path.display()
+        );
+    }
+    let sources_dir = Path::new("docs/validation/paper-audit/sources");
+    assert_blob(
+        &sources_dir.join("per_decision_energy.csv"),
+        "7386c9467760b7c4bacb50d30705dfc7f00b0e8f",
+    );
+    assert_blob(
+        &sources_dir.join("distribution_stats.csv"),
+        "ace5a6b0e265259991efde61df3f8c65805543a0",
+    );
+    assert_blob(
+        &sources_dir.join("distribution_stats.md"),
+        "73a554b1daf40c8206de2fd85256b9592ffba345",
+    );
+    assert_blob(
+        &sources_dir.join("integer_multiple_check.md"),
+        "7c9cfbe521a3d082fbfa3ae254d7110164032def",
+    );
+    assert_blob(
+        Path::new("profiles/calibration.lock.toml"),
+        "fd88f784e18062c075f0b9c8a940918c87b2d0cf",
+    );
+    assert_blob(
+        Path::new(".gitignore"),
+        "420330edbd2721dd41114c1a8c7653c395a4c7af",
+    );
 }

@@ -15,13 +15,17 @@ CHECK = "--check" in sys.argv
 ROWS = list(csv.DictReader((DATA / "n_sweep.csv").open()))
 PROV = list(csv.DictReader((DATA / "graph_provenance_dense.csv").open()))
 
+# Uniqueness and count checks to eliminate append-induced contamination
+prov_keys = [(int(r["n"]), int(r["seed"])) for r in PROV]
+assert len(prov_keys) == len(set(prov_keys)), "Duplicate rows in graph_provenance_dense.csv"
+assert len(prov_keys) == 15 * 6, f"Expected 90 provenance rows, got {len(prov_keys)}"
+
+row_keys = [(int(r["n"]), int(r["seed"]), r["arm"]) for r in ROWS]
+assert len(row_keys) == len(set(row_keys)), "Duplicate rows in n_sweep.csv"
+assert len(row_keys) == 15 * 6 * 2, f"Expected 180 sweep rows, got {len(row_keys)}"
+
 CONSTANT_REFERENCES = {"2pc_ce": 100.0, "paxos_ce": 57.8}
-def model_reference(arm, n):
-    if arm == "2pc_ce":
-        return 100.0 * (n / 180.0)
-    elif arm == "paxos_ce":
-        return 57.8 * (n / 188.0)
-    raise ValueError()
+
 
 def mean_se(values):
     values = np.asarray(values, dtype=float)
@@ -70,11 +74,13 @@ for (n, arm), cells in sorted(groups.items()):
     round_mean, round_se = mean_se(rounds)
     latency_mean, latency_se = mean_se(decisions)
     
-    constant_gaps = [CONSTANT_REFERENCES[arm] / value for value in rounds]
-    constant_gap_mean, constant_gap_se = mean_se(constant_gaps)
+    if (arm == "2pc_ce" and n == 180) or (arm == "paxos_ce" and n == 188):
+        constant_gaps = [CONSTANT_REFERENCES[arm] / value for value in rounds]
+        constant_gap_mean, constant_gap_se = mean_se(constant_gaps)
+    else:
+        constant_gap_mean, constant_gap_se = "NOT IDENTIFIABLE", "NOT IDENTIFIABLE"
     
-    modelled_gaps = [model_reference(arm, n) / value for value in rounds]
-    modelled_gap_mean, modelled_gap_se = mean_se(modelled_gaps)
+
 
     degrees = [float(prov[(n, r["seed"])]["mean_degree"]) for r in cells]
     variances = [float(prov[(n, r["seed"])]["degree_variance"]) for r in cells]
@@ -95,12 +101,9 @@ for (n, arm), cells in sorted(groups.items()):
         "round_slots_se": round_se,
         "mean_decision_latency_slots": latency_mean,
         "decision_latency_se": latency_se,
-        "constant_ref": CONSTANT_REFERENCES[arm],
-        "modelled_ref": model_reference(arm, n),
+        "constant_ref": CONSTANT_REFERENCES[arm] if ((arm == "2pc_ce" and n == 180) or (arm == "paxos_ce" and n == 188)) else "NOT IDENTIFIABLE",
         "constant_gap": constant_gap_mean,
         "constant_gap_se": constant_gap_se,
-        "modelled_gap": modelled_gap_mean,
-        "modelled_gap_se": modelled_gap_se,
         "commit_rate": sum(r["committed"] for r in cells) / sum(r["proposals"] for r in cells),
         "zero_commit_seeds": "|".join(str(r["seed"]) for r in cells if not r["committed"]),
     })
@@ -127,11 +130,7 @@ for arm in ["2pc_ce", "paxos_ce"]:
     # b. round_length vs N
     fits[(arm, "round_length")] = weighted_fits(xs, [r["mean_round_slots"] for r in cells], [r["round_slots_se"] for r in cells])
     
-    # c. modelled gap vs N
-    fits[(arm, "modelled_gap")] = weighted_fits(xs, [r["modelled_gap"] for r in cells], [r["modelled_gap_se"] for r in cells])
-    
-    # d. constant gap vs N
-    fits[(arm, "constant_gap")] = weighted_fits(xs, [r["constant_gap"] for r in cells], [r["constant_gap_se"] for r in cells])
+
 
 if not CHECK:
     with (DATA / "fits.csv").open("w", newline="") as out:
@@ -168,7 +167,7 @@ The published anchors (from which the 3.5234x/3.7776x residuals derived) were ge
 |---|---|---:|---:|---:|
 | 180 | 2PC | 3.523 | {next(r['constant_gap'] for r in summary if r['n'] == 180 and r['arm'] == '2pc_ce'):.3f} | {next(r['constant_gap'] for r in summary if r['n'] == 180 and r['arm'] == '2pc_ce') - 3.523:.3f} |
 
-The Paxos anchor at n=188 lies outside this sweep's grid and is therefore not compared under the uniform W=10 procedure.
+The cross-N residual across the whole domain is NOT IDENTIFIABLE (there is no external reference that scales with N to compare against). The previous analysis that scaled a constant 100.0/57.8 by N/180 or N/188 was an ungrounded model, not a measurement.
 
 ## Density Error vs N
 
@@ -186,25 +185,27 @@ for n in ns_unique:
     readme += f"| {n} | {deg:.2f} | {density_errors_by_n[n]*100:.2f} |\n"
 
 readme += "\n## N-Sweep Results\n\n### 2PC over CE (A2 arm)\n"
-readme += "| N | Mean Degree | Diameter | Round Length (slots) | SE | Constant Gap | Modelled Gap | SE |\n"
-readme += "|---|---:|---:|---:|---:|---:|---:|---:|\n"
+readme += "| N | Mean Degree | Diameter | Round Length (slots) | SE |\n"
+readme += "|---|---:|---:|---:|---:|\n"
 for r in summary:
     if r["arm"] == "2pc_ce":
-        readme += f"| {r['n']} | {r['mean_degree']:.2f} | {r['mean_diameter']:.1f} | {r['mean_round_slots']:.2f} | {r['round_slots_se']:.2f} | {r['constant_gap']:.3f} | {r['modelled_gap']:.3f} | {r['modelled_gap_se']:.3f} |\n"
+        readme += f"| {r['n']} | {r['mean_degree']:.2f} | {r['mean_diameter']:.1f} | {r['mean_round_slots']:.2f} | {r['round_slots_se']:.2f} |\n"
+
 
 readme += "\n### Paxos over CE (Wireless Paxos arm)\n"
-readme += "| N | Mean Degree | Diameter | Round Length (slots) | SE | Constant Gap | Modelled Gap | SE |\n"
-readme += "|---|---:|---:|---:|---:|---:|---:|---:|\n"
+readme += "| N | Mean Degree | Diameter | Round Length (slots) | SE |\n"
+readme += "|---|---:|---:|---:|---:|\n"
 for r in summary:
     if r["arm"] == "paxos_ce":
-        readme += f"| {r['n']} | {r['mean_degree']:.2f} | {r['mean_diameter']:.1f} | {r['mean_round_slots']:.2f} | {r['round_slots_se']:.2f} | {r['constant_gap']:.3f} | {r['modelled_gap']:.3f} | {r['modelled_gap_se']:.3f} |\n"
+        readme += f"| {r['n']} | {r['mean_degree']:.2f} | {r['mean_diameter']:.1f} | {r['mean_round_slots']:.2f} | {r['round_slots_se']:.2f} |\n"
+
 
 readme += "\n*(All 15 seeds per point committed 100% of proposals; no zero-commit seeds. All graphs connected.)*\n"
 readme += "\n## Analysis and Fits\n\nFits are precision-weighted (1/SE²).\n"
 
 for arm, name in [("2pc_ce", "2PC over CE"), ("paxos_ce", "Paxos over CE")]:
     readme += f"\n### {name}\n"
-    for qty, label in [("log_round_length", "log(round_length) vs log(N) (Primary)"), ("round_length", "round_length vs N"), ("modelled_gap", "modelled gap vs N"), ("constant_gap", "constant gap vs N (reciprocal of round length; carries no independent information)")]:
+    for qty, label in [("log_round_length", "log(round_length) vs log(N) (Primary)"), ("round_length", "round_length vs N"), ]:
         readme += f"*   **{label}:**\n"
         linear = fits[(arm, qty)]["linear"]
         constant = fits[(arm, qty)]["constant"]
@@ -266,8 +267,6 @@ if CHECK:
                     assert f"{r['mean_round_slots']:.2f}" == cols[3], f"Mismatch in mean_round_slots: expected {r['mean_round_slots']:.2f}, got {cols[3]} in row {line}"
                 if not math.isnan(r['round_slots_se']):
                     assert f"{r['round_slots_se']:.2f}" == cols[4], f"Mismatch in round_slots_se: expected {r['round_slots_se']:.2f}, got {cols[4]} in row {line}"
-                assert f"{r['constant_gap']:.3f}" == cols[5], f"Mismatch in constant_gap: expected {r['constant_gap']:.3f}, got {cols[5]} in row {line}"
-                assert f"{r['modelled_gap']:.3f}" == cols[6], f"Mismatch in modelled_gap: expected {r['modelled_gap']:.3f}, got {cols[6]} in row {line}"
             except ValueError:
                 pass
         
@@ -309,7 +308,6 @@ else:
     readme_path.write_text(readme)
 
 for quantity, ykey, sekey, ylabel, filename in [
-    ("modelled_gap", "modelled_gap", "modelled_gap_se", "Modelled Gap (ref_model / simulated)", "modelled_gap_vs_n.png"),
     ("round_length", "mean_round_slots", "round_slots_se", "Mean round length (slots)", "round_length_vs_n.png"),
 ]:
     fig, ax = plt.subplots(figsize=(7.0, 4.5))

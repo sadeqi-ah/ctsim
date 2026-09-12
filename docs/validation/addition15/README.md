@@ -24,7 +24,7 @@ The published anchors (from which the 3.5234x/3.7776x residuals derived) were ge
 |---|---|---:|---:|---:|
 | 180 | 2PC | 3.523 | 3.508 | -0.015 |
 
-The Paxos anchor at n=188 lies outside this sweep's grid and is therefore not compared under the uniform W=10 procedure.
+The cross-N residual across the whole domain is NOT IDENTIFIABLE (there is no external reference that scales with N to compare against). The previous analysis that scaled a constant 100.0/57.8 by N/180 or N/188 was an ungrounded model, not a measurement.
 
 ## Density Error vs N
 
@@ -42,24 +42,24 @@ The correlation coefficient between density error and N is -0.3294, confirming n
 ## N-Sweep Results
 
 ### 2PC over CE (A2 arm)
-| N | Mean Degree | Diameter | Round Length (slots) | SE | Constant Gap | Modelled Gap | SE |
-|---|---:|---:|---:|---:|---:|---:|---:|
-| 60 | 29.98 | 2.0 | 24.39 | 0.09 | 4.101 | 1.367 | 0.005 |
-| 90 | 45.44 | 2.0 | 26.10 | 0.09 | 3.832 | 1.916 | 0.007 |
-| 120 | 59.72 | 2.0 | 27.06 | 0.08 | 3.696 | 2.464 | 0.008 |
-| 150 | 75.51 | 2.0 | 27.79 | 0.07 | 3.598 | 2.999 | 0.008 |
-| 180 | 89.83 | 2.0 | 28.51 | 0.05 | 3.508 | 3.508 | 0.006 |
-| 240 | 119.69 | 2.0 | 29.67 | 0.05 | 3.371 | 4.494 | 0.008 |
+| N | Mean Degree | Diameter | Round Length (slots) | SE |
+|---|---:|---:|---:|---:|
+| 60 | 29.98 | 2.0 | 24.39 | 0.09 |
+| 90 | 45.44 | 2.0 | 26.10 | 0.09 |
+| 120 | 59.72 | 2.0 | 27.06 | 0.08 |
+| 150 | 75.51 | 2.0 | 27.79 | 0.07 |
+| 180 | 89.83 | 2.0 | 28.51 | 0.05 |
+| 240 | 119.69 | 2.0 | 29.67 | 0.05 |
 
 ### Paxos over CE (Wireless Paxos arm)
-| N | Mean Degree | Diameter | Round Length (slots) | SE | Constant Gap | Modelled Gap | SE |
-|---|---:|---:|---:|---:|---:|---:|---:|
-| 60 | 29.98 | 2.0 | 13.33 | 0.02 | 4.335 | 1.384 | 0.002 |
-| 90 | 45.44 | 2.0 | 14.09 | 0.01 | 4.103 | 1.964 | 0.002 |
-| 120 | 59.72 | 2.0 | 14.57 | 0.02 | 3.968 | 2.533 | 0.003 |
-| 150 | 75.51 | 2.0 | 15.00 | 0.01 | 3.853 | 3.074 | 0.002 |
-| 180 | 89.83 | 2.0 | 15.22 | 0.01 | 3.798 | 3.636 | 0.003 |
-| 240 | 119.69 | 2.0 | 15.90 | 0.01 | 3.635 | 4.641 | 0.003 |
+| N | Mean Degree | Diameter | Round Length (slots) | SE |
+|---|---:|---:|---:|---:|
+| 60 | 29.98 | 2.0 | 13.33 | 0.02 |
+| 90 | 45.44 | 2.0 | 14.09 | 0.01 |
+| 120 | 59.72 | 2.0 | 14.57 | 0.02 |
+| 150 | 75.51 | 2.0 | 15.00 | 0.01 |
+| 180 | 89.83 | 2.0 | 15.22 | 0.01 |
+| 240 | 119.69 | 2.0 | 15.90 | 0.01 |
 
 *(All 15 seeds per point committed 100% of proposals; no zero-commit seeds. All graphs connected.)*
 
@@ -74,12 +74,6 @@ Fits are precision-weighted (1/SE²).
 *   **round_length vs N:**
     *   Linear model: Slope = `0.02649` (95% CI: `[0.02103, 0.03195]`), AIC = 22.9, R² = 0.958
     *   Constant model: AIC = 39.9, R² = 0.000
-*   **modelled gap vs N:**
-    *   Linear model: Slope = `0.01753` (95% CI: `[0.01711, 0.01795]`), AIC = 20.4, R² = 0.999
-    *   Constant model: AIC = 63.0, R² = 0.000
-*   **constant gap vs N (reciprocal of round length; carries no independent information):**
-    *   Linear model: Slope = `-0.00330` (95% CI: `[-0.00420, -0.00241]`), AIC = 25.3, R² = 0.929
-    *   Constant model: AIC = 39.1, R² = 0.000
 
 ### Paxos over CE
 *   **log(round_length) vs log(N) (Primary):**
@@ -88,12 +82,6 @@ Fits are precision-weighted (1/SE²).
 *   **round_length vs N:**
     *   Linear model: Slope = `0.01284` (95% CI: `[0.01057, 0.01512]`), AIC = 32.4, R² = 0.968
     *   Constant model: AIC = 51.1, R² = 0.000
-*   **modelled gap vs N:**
-    *   Linear model: Slope = `0.01826` (95% CI: `[0.01777, 0.01875]`), AIC = 33.9, R² = 0.999
-    *   Constant model: AIC = 75.1, R² = 0.000
-*   **constant gap vs N (reciprocal of round length; carries no independent information):**
-    *   Linear model: Slope = `-0.00324` (95% CI: `[-0.00397, -0.00251]`), AIC = 34.6, R² = 0.950
-    *   Constant model: AIC = 50.6, R² = 0.000
 
 ## Verdict
 
