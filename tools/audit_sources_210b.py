@@ -47,7 +47,7 @@ def main():
         f.write(f"Config files used:\n")
         for p in ["paxos_pipeline", "2pc_pipeline", "tom_pipeline", "paxos_ce", "2pc_ce", "tom_ce"]:
             f.write(f"- plots/progress/sim_{p}_progress.toml\n")
-        f.write(f"Commit SHA: {sha}\n")
+        f.write(f"Pre-generation source revision: {sha}\n")
         f.write("\n".join(summary_lines) + "\n")
         
         f.write("\n## Snapshot vs run totals\n")
@@ -61,8 +61,9 @@ def main():
             final_end_slot = df_res['end_slot'].max()
             
             agree = (prog_count == commits)
+            operator = "<=" if final_end_slot <= max_slot else ">"
             
-            line = f"- {label}: snapshot file `results/snapshots_{proto}.csv` (snapshot slot column `slot`, last snapshot slot={max_slot}, progress_count column `progress_count`, progress_count={prog_count}) vs run-total file `results/results_{proto}.csv` (committed-decision column `outcome`, run total committed decisions={commits}, final end-slot column `end_slot`, value={final_end_slot}). Comparison: final end slot {final_end_slot} <= last snapshot slot {max_slot}. Agree: {str(agree).lower()}\n"
+            line = f"- {label}: snapshot file `results/snapshots_{proto}.csv` (snapshot slot column `slot`, last snapshot slot={max_slot}, progress_count column `progress_count`, progress_count={prog_count}) vs run-total file `results/results_{proto}.csv` (committed-decision column `outcome`, run total committed decisions={commits}, final end-slot column `end_slot`, value={final_end_slot}). Comparison: final end slot {final_end_slot} {operator} last snapshot slot {max_slot}. Agree: {str(agree).lower()}\n"
             f.write(line)
             
         f.write("\nConclusion: the complete run records 100 committed decisions; the progress snapshot/report records 99. This is treated in this round as a known one-count reporting mismatch. No counter, snapshot code, protocol logic, or simulator behavior is changed. The discrepancy does not alter the paper's main performance conclusions, but it is disclosed for reproducibility.\n")
