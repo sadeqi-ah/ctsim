@@ -262,3 +262,13 @@ $ grep -nE 'energy_boxplot_15seed|addition7_boxplot' tools/regen_figures.py docs
 docs/validation/addition7/scripts/addition7_boxplot.py:57:    fig.savefig(OUT / "energy_boxplot_15seed.png", dpi=300)
 docs/validation/addition7/scripts/addition7_boxplot.py:58:    fig.savefig(OUT / "energy_boxplot_15seed.pdf")
 ```
+
+
+## Sources added in round 24 (step 2.10-b)
+| Claim | Paper location | Evidence file | Verdict |
+|---|---|---|---|
+| Progress curves (Fig 13/14) | Fig. fig:progress-lin / fig:progress-log | `docs/validation/paper-audit/sources/progress_snapshots.csv` | SOURCED |
+| Slots per decision | 1986-1989 | `docs/validation/paper-audit/sources/slots_per_decision.csv` | NEW MISMATCH |
+| Energy distribution extrema | 2009-2045 | `docs/validation/paper-audit/sources/distribution_stats.csv` | SOURCED |
+| Integer multiple check | 2088-2090 | `docs/validation/paper-audit/sources/integer_multiple_check.md` | SOURCED |
+| Line 2PC energy/efficiency | 2489-2493 | removed from text | REMOVED |
