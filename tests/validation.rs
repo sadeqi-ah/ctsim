@@ -1769,3 +1769,161 @@ fn per_proposal_latencies_match_aggregate_round_columns() {
 
     assert!(file_count > 0, "examined 0 .csv files in per_proposal/");
 }
+
+#[test]
+fn step_210b_assertions() {
+    use std::fs;
+    use std::path::Path;
+
+    let paper = fs::read_to_string("paper/paper.tex").unwrap();
+
+    // T1: paper/paper.tex contains exactly zero occurrences of the string "190\,180".
+    assert!(
+        !paper.contains("190\\,180"),
+        "paper still contains 190\\,180"
+    );
+
+    // T2: paper/paper.tex contains no line consisting solely of the word "is".
+    for (i, line) in paper.lines().enumerate() {
+        assert_ne!(
+            line.trim(),
+            "is",
+            "line {} consists solely of the word 'is'",
+            i + 1
+        );
+    }
+
+    // T3: paper/paper.tex contains no line shorter than 36 characters inside the
+    // "Distributed decision" paragraph other than the paragraph command itself.
+    let start_idx = paper.find("\\paragraph{Distributed decision}").unwrap();
+    let end_idx = paper[start_idx..].find("\n\n").unwrap() + start_idx;
+    let para = &paper[start_idx..end_idx];
+    for line in para.lines() {
+        let trimmed = line.trim();
+        if !trimmed.is_empty() && !trimmed.starts_with("\\paragraph") {
+            assert!(
+                trimmed.len() >= 36,
+                "line too short ({} chars): {}",
+                trimmed.len(),
+                trimmed
+            );
+        }
+    }
+
+    // T4: Every file listed in section 2 exists under docs/validation/paper-audit/sources/ and is non-empty.
+    let sources_dir = Path::new("docs/validation/paper-audit/sources");
+    let files = [
+        "progress_snapshots.csv",
+        "progress_README.md",
+        "slots_per_decision.csv",
+        "slots_per_decision.md",
+        "per_decision_energy.csv",
+        "distribution_stats.csv",
+        "distribution_stats.md",
+        "integer_multiple_check.md",
+    ];
+    for f in &files {
+        let p = sources_dir.join(f);
+        assert!(p.exists(), "file {} does not exist", p.display());
+        let metadata = fs::metadata(&p).unwrap();
+        assert!(metadata.len() > 0, "file {} is empty", p.display());
+    }
+
+    // T5: progress_snapshots.csv contains all six protocol labels used by
+    // plots/progress/plot_progress.py, and at least two distinct slot values per protocol.
+    let progress_csv = fs::read_to_string(sources_dir.join("progress_snapshots.csv")).unwrap();
+    let mut labels = std::collections::HashSet::new();
+    let mut slot_counts = std::collections::HashMap::new();
+    for line in progress_csv.lines().skip(1) {
+        let parts: Vec<&str> = line.split(',').collect();
+        if parts.len() >= 2 {
+            labels.insert(parts[0].to_string());
+            slot_counts
+                .entry(parts[0].to_string())
+                .or_insert_with(std::collections::HashSet::new)
+                .insert(parts[1].to_string());
+        }
+    }
+    let expected_labels = [
+        "Paxos (CI)",
+        "2PC (CI)",
+        "TOM (CI)",
+        "Paxos (CE)",
+        "2PC (CE)",
+        "TOM (CE)",
+    ];
+    for label in &expected_labels {
+        assert!(labels.contains(*label), "missing protocol label {}", label);
+        assert!(
+            slot_counts.get(*label).unwrap().len() >= 2,
+            "less than two distinct slots for {}",
+            label
+        );
+    }
+
+    // T6: per_decision_energy.csv row count equals the N reported in
+    // integer_multiple_check.md for the CE reference population.
+    let energy_csv = fs::read_to_string(sources_dir.join("per_decision_energy.csv")).unwrap();
+    let ce_rows = energy_csv
+        .lines()
+        .skip(1)
+        .filter(|l| l.starts_with("CE,"))
+        .count();
+    let check_md = fs::read_to_string(sources_dir.join("integer_multiple_check.md")).unwrap();
+    let n_line = check_md
+        .lines()
+        .find(|l| l.starts_with("N (number of"))
+        .unwrap();
+    let reported_n: usize = n_line.split(':').nth(1).unwrap().trim().parse().unwrap();
+    assert_eq!(
+        ce_rows, reported_n,
+        "row count {} does not match reported N {}",
+        ce_rows, reported_n
+    );
+
+    // T7: distribution_stats.csv contains one row per family with all eight summary
+    // columns populated and q1 <= median <= q3 for every row.
+    let stats_csv = fs::read_to_string(sources_dir.join("distribution_stats.csv")).unwrap();
+    for line in stats_csv.lines().skip(1) {
+        let parts: Vec<&str> = line.split(',').collect();
+        assert_eq!(
+            parts.len(),
+            9,
+            "stats row has {} columns instead of 9",
+            parts.len()
+        );
+        let q1: f64 = parts[4].parse().unwrap();
+        let median: f64 = parts[5].parse().unwrap();
+        let q3: f64 = parts[6].parse().unwrap();
+        assert!(
+            q1 <= median && median <= q3,
+            "quartiles out of order: q1={}, median={}, q3={}",
+            q1,
+            median,
+            q3
+        );
+    }
+
+    // T8: .gitignore is byte-identical to blob 420330edbd2721dd41114c1a8c7653c395a4c7af.
+    let gitignore = fs::read_to_string(".gitignore").unwrap();
+    let mut sha1 = sha1_smol::Sha1::new();
+    sha1.update(format!("blob {}\0", gitignore.len()).as_bytes());
+    sha1.update(gitignore.as_bytes());
+    assert_eq!(
+        sha1.digest().to_string(),
+        "420330edbd2721dd41114c1a8c7653c395a4c7af",
+        ".gitignore was modified"
+    );
+
+    // T9: profiles/calibration.lock.toml is unchanged and still declares p* = 0.05.
+    let calibration = fs::read_to_string("profiles/calibration.lock.toml").unwrap();
+    let mut sha1_cal = sha1_smol::Sha1::new();
+    sha1_cal.update(format!("blob {}\0", calibration.len()).as_bytes());
+    sha1_cal.update(calibration.as_bytes());
+    assert_eq!(
+        sha1_cal.digest().to_string(),
+        "fd88f784e18062c075f0b9c8a940918c87b2d0cf",
+        "calibration.lock.toml was modified"
+    );
+    assert!(calibration.contains("0.05"), "p* != 0.05");
+}

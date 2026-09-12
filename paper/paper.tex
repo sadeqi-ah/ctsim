@@ -1094,14 +1094,12 @@ design.
 
 \paragraph{Distributed decision}
 Thanks to overhearing, every node reconstructs the same accumulated
-bitmap from the sequence of floods.
-The decision is consequently not taken by the coordinator: once exactly
-one cycle has elapsed since the transaction opened, \emph{each node}
+bitmap from the sequence of floods. The decision is consequently not taken
+by the coordinator: once exactly one cycle has elapsed since the transaction opened, \emph{each node}
 independently evaluates the bitmap. Unlike Paxos, a node commits only if
 every bit is set; a single clear bit---whether from a negative vote or
 from an unreachable node---yields abort. Since the input to this
-evaluation is the same reconstructed bitmap and the instant of evaluation
-is
+evaluation is the same reconstructed bitmap and the instant of evaluation is
 the same deterministic bound, all informed nodes reach the same verdict
 independently and without further communication. An explicit negative vote
 is in addition propagated as an abort flag, which terminates the
@@ -2595,8 +2593,8 @@ happens to be the highest value among all combinations on the line.
 
 Two figures reported for 2PC over \CI{} on the line topology are
 statistically meaningless and should not be interpreted: the energy per
-decision (190\,180) and the efficiency (0.00) both result from division by
-a denominator close to zero and merely restate the commit rate of
+decision and the efficiency reported for that cell both result from division
+by a denominator close to zero and merely restate the commit rate of
 0.2\,\%.
 
 This finding places an explicit constraint on the scope of validity of the
