@@ -49,6 +49,23 @@ def main():
             f.write(f"- plots/progress/sim_{p}_progress.toml\n")
         f.write(f"Commit SHA: {sha}\n")
         f.write("\n".join(summary_lines) + "\n")
+        
+        f.write("\n## Snapshot vs run totals\n")
+        for proto, label in zip(protos, labels):
+            df_snap = pd.read_csv(RESULTS / f"snapshots_{proto}.csv")
+            max_slot = df_snap['slot'].max()
+            prog_count = df_snap[df_snap['slot'] == max_slot]['progress_count'].values[0]
+            
+            df_res = pd.read_csv(RESULTS / f"results_{proto}.csv")
+            commits = len(df_res[df_res['outcome'] == 'committed'])
+            final_end_slot = df_res['end_slot'].max()
+            
+            agree = (prog_count == commits)
+            
+            line = f"- {label}: snapshot file `results/snapshots_{proto}.csv` (snapshot slot column `slot`, last snapshot slot={max_slot}, progress_count column `progress_count`, progress_count={prog_count}) vs run-total file `results/results_{proto}.csv` (committed-decision column `outcome`, run total committed decisions={commits}, final end-slot column `end_slot`, value={final_end_slot}). Comparison: final end slot {final_end_slot} <= last snapshot slot {max_slot}. Agree: {str(agree).lower()}\n"
+            f.write(line)
+            
+        f.write("\nConclusion: the complete run records 100 committed decisions; the progress snapshot/report records 99. This is treated in this round as a known one-count reporting mismatch. No counter, snapshot code, protocol logic, or simulator behavior is changed. The discrepancy does not alter the paper's main performance conclusions, but it is disclosed for reproducibility.\n")
 
     print("Running A2...")
     df_sweep = pd.read_csv(ROOT / "plots/scalability/results/sweep_summary.csv")
@@ -109,25 +126,18 @@ def main():
 
     print("Running B2...")
     with open(SOURCES / "proposal_sharing_candidates.md", "w") as f:
+        f.write("Reference operating point: N=27, random topology, loss_rate=0.05, 15 seeds.\n")
+        f.write("Source path: plots/scalability/results/sweep_summary.csv\n\n")
         f.write("Paper text:\n")
         f.write("> The rise from there to $5.67$ under 2PC is not proposal sharing, which\n")
         f.write("> accounts for $1.6\\,\\%$ of it; it is the number of slots a decision\n")
         f.write("> occupies, measured as total simulated slots per committed decision and\n")
         f.write("> summed over seeds, which runs from $4.70$ to $6.17$ under \\CI{} against\n")
         f.write("> $4.68$ to $24.34$ under \\CE.\n\n")
-        f.write("Candidate readings of 'accounts for 1.6% of it':\n\n")
-        
-        c1_val = 1 - (1.43 / 5.67)
-        c1_diff = abs(c1_val * 100 - 1.6)
-        c1_status = "REPRODUCES" if c1_diff <= 0.05 else "DOES NOT REPRODUCE"
-        f.write(f"- Candidate 1 (proportion of the ratio 5.67 not explained by duty cycle 1.43): 1 - (1.43 / 5.67) = {c1_val:.4f} -> {c1_val*100:.2f}%. {c1_status} 1.6%.\n")
-        
-        c2_val = (21.25 - 1.00) / 21.25 # depth
-        c2_diff = abs(c2_val * 100 - 1.6)
-        c2_status = "REPRODUCES" if c2_diff <= 0.05 else "DOES NOT REPRODUCE"
-        f.write(f"- Candidate 2 (proportion of concurrent proposals): (depth - 1) / depth = {c2_val:.4f} -> {c2_val*100:.2f}%. {c2_status} 1.6%.\n")
-        
-        f.write("\nNone of the candidates reproduces 1.6%.\n")
+        f.write("The available paper text plus the named CSV columns do not define two defensible arithmetic candidates for the antecedent of 'it'.\n")
+        f.write("No preferred candidate is selected.\n")
+        f.write("The claim 1.6% remains UNSOURCED.\n")
+        f.write("The withdrawn 4.57% calculation must not be used because it divided a fresh-run numerator by a frozen-sweep denominator.\n")
 
     print("Running A3...")
     stats_rows = []

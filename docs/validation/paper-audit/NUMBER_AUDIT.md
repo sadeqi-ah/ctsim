@@ -277,5 +277,5 @@ docs/validation/addition7/scripts/addition7_boxplot.py:58:    fig.savefig(OUT / 
 ## Corrections in round 25 (step 2.10-c)
 - Proposal sharing share: 4.57% withdrawn (invalid mix of fresh numerator and frozen denominator).
 - Slots per decision: estimator corrected from per-seed mean to pooled (sum/sum) to match paper definition.
-- Progress curves: 99 final decisions diagnosed as missing final snapshot, not missing commit (explanation ii).
-- Test count corrected to 9 / 3 / 19 (superseding stale 9 / 3 / 18).
+- Progress curves: 99-versus-100 is a disclosed reporting/counting mismatch, not a repaired simulator bug.
+- Test count corrected to 9 / 3 / 20 (superseding stale 9 / 3 / 19).
