@@ -1771,6 +1771,145 @@ fn per_proposal_latencies_match_aggregate_round_columns() {
 }
 
 #[test]
+fn step_210c_assertions() {
+    use std::fs;
+    use std::path::Path;
+    let sources_dir = Path::new("docs/validation/paper-audit/sources");
+
+    // T1: slots_per_decision.md contains required lines
+    let slots_md = fs::read_to_string(sources_dir.join("slots_per_decision.md")).unwrap();
+    assert!(
+        slots_md.contains("pooled (paper definition): sum(total_slots) / sum(committed_decisions)")
+    );
+    assert!(slots_md.contains("per-seed mean: mean(total_slots / committed_decisions)"));
+
+    // T2: slots_per_decision.md does NOT contain old proposal sharing text
+    assert!(!slots_md.contains("Proposal sharing share"));
+    assert!(!slots_md.contains("Share = 1 -"));
+
+    // T3: proposal_sharing_candidates.md exists, has 1.6, and at least two Candidate lines
+    let sharing_md =
+        fs::read_to_string(sources_dir.join("proposal_sharing_candidates.md")).unwrap();
+    assert!(!sharing_md.is_empty());
+    assert!(sharing_md.contains("1.6"));
+    let cand_count = sharing_md
+        .lines()
+        .filter(|l| l.starts_with("- Candidate"))
+        .count();
+    assert!(
+        cand_count >= 2,
+        "Found {} Candidate lines, expected at least 2",
+        cand_count
+    );
+
+    // T4: progress_README.md has the exact heading and six arm lines
+    let prog_md = fs::read_to_string(sources_dir.join("progress_README.md")).unwrap();
+    assert!(prog_md.contains("## Snapshot vs run totals"));
+    let mut arm_count = 0;
+    let mut in_section = false;
+    for line in prog_md.lines() {
+        if line == "## Snapshot vs run totals" {
+            in_section = true;
+            continue;
+        }
+        if in_section {
+            if line.starts_with("- Paxos") || line.starts_with("- 2PC") || line.starts_with("- TOM")
+            {
+                arm_count += 1;
+            } else if line.is_empty() {
+                in_section = false;
+            }
+        }
+    }
+    assert_eq!(
+        arm_count, 6,
+        "Expected 6 arm lines under Snapshot vs run totals, found {}",
+        arm_count
+    );
+
+    // T5: Evidence blobs are byte-identical
+    fn assert_blob(path: &Path, expected_sha: &str) {
+        let content =
+            fs::read(path).unwrap_or_else(|e| panic!("Failed to read {}: {}", path.display(), e));
+        let mut hasher = sha1_smol::Sha1::new();
+        hasher.update(format!("blob {}\0", content.len()).as_bytes());
+        hasher.update(&content);
+        assert_eq!(
+            hasher.digest().to_string(),
+            expected_sha,
+            "Blob SHA mismatch for {}",
+            path.display()
+        );
+    }
+    assert_blob(
+        &sources_dir.join("per_decision_energy.csv"),
+        "7386c9467760b7c4bacb50d30705dfc7f00b0e8f",
+    );
+    assert_blob(
+        &sources_dir.join("distribution_stats.csv"),
+        "ace5a6b0e265259991efde61df3f8c65805543a0",
+    );
+    assert_blob(
+        &sources_dir.join("distribution_stats.md"),
+        "73a554b1daf40c8206de2fd85256b9592ffba345",
+    );
+    assert_blob(
+        &sources_dir.join("integer_multiple_check.md"),
+        "7c9cfbe521a3d082fbfa3ae254d7110164032def",
+    );
+
+    // T6: calibration.lock.toml blob is fd88f784e18062c075f0b9c8a940918c87b2d0cf
+    assert_blob(
+        Path::new("profiles/calibration.lock.toml"),
+        "fd88f784e18062c075f0b9c8a940918c87b2d0cf",
+    );
+
+    // T7: .gitignore blob is 420330edbd2721dd41114c1a8c7653c395a4c7af
+    assert_blob(
+        Path::new(".gitignore"),
+        "420330edbd2721dd41114c1a8c7653c395a4c7af",
+    );
+
+    // T8: paper.tex line limits inside "Distributed decision"
+    let paper_tex = fs::read_to_string("paper/paper.tex").unwrap();
+    let mut in_target = false;
+    let mut target_long_lines = 0;
+    let mut total_long_lines = 0;
+
+    for line in paper_tex.lines() {
+        let chars = line.chars().count();
+        if chars > 80 {
+            total_long_lines += 1;
+        }
+        if line.contains(r"\paragraph{Distributed decision}")
+            || line.starts_with(r"\paragraph{Distributed decision}")
+        {
+            in_target = true;
+        } else if in_target
+            && (line.contains(r"\paragraph{")
+                || line.starts_with(r"\subsection{")
+                || line.starts_with(r"\section{"))
+        {
+            in_target = false;
+        }
+
+        if in_target && chars > 80 {
+            target_long_lines += 1;
+        }
+    }
+
+    assert_eq!(
+        target_long_lines, 0,
+        "Found lines longer than 80 chars inside 'Distributed decision'"
+    );
+    assert!(
+        total_long_lines <= 334,
+        "Total long lines {} is greater than base blob count 334",
+        total_long_lines
+    );
+}
+
+#[test]
 fn step_210b_assertions() {
     use std::fs;
     use std::path::Path;

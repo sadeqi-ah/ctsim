@@ -59,42 +59,75 @@ def main():
         columns={"end_slot": "total_slots", "committed": "committed_decisions"}
     ).to_csv(SOURCES / "slots_per_decision.csv", index=False)
     
-    means = df_ref.groupby(["phy", "protocol"])["slots_per_decision"].mean().reset_index()
-    ci_min = means[means["phy"] == "ci"]["slots_per_decision"].min()
-    ci_max = means[means["phy"] == "ci"]["slots_per_decision"].max()
-    ce_min = means[means["phy"] == "ce"]["slots_per_decision"].min()
-    ce_max = means[means["phy"] == "ce"]["slots_per_decision"].max()
-    
-    # To get proposal sharing share properly, let's compute it like this:
-    # Use the 15-seed amortized energy
+    # Calculate pooled estimator: sum(total_slots) / sum(committed_decisions)
+    pooled = df_ref.groupby(["phy", "protocol"]).apply(
+        lambda x: pd.Series({"pooled_slots_per_decision": x["end_slot"].sum() / x["committed"].sum()})
+    ).reset_index()
+    pooled.columns = ["phy", "protocol", "pooled_slots_per_decision"]
+    pooled_ci_min = pooled[pooled["phy"] == "ci"]["pooled_slots_per_decision"].min()
+    pooled_ci_max = pooled[pooled["phy"] == "ci"]["pooled_slots_per_decision"].max()
+    pooled_ce_min = pooled[pooled["phy"] == "ce"]["pooled_slots_per_decision"].min()
+    pooled_ce_max = pooled[pooled["phy"] == "ce"]["pooled_slots_per_decision"].max()
+
+    # Calculate per-seed mean estimator: mean(total_slots / committed_decisions)
+    per_seed_mean = df_ref.groupby(["phy", "protocol"])["slots_per_decision"].mean().reset_index()
+    per_seed_mean.columns = ["phy", "protocol", "mean_slots_per_decision"]
+    per_seed_mean_ci_min = per_seed_mean[per_seed_mean["phy"] == "ci"]["mean_slots_per_decision"].min()
+    per_seed_mean_ci_max = per_seed_mean[per_seed_mean["phy"] == "ci"]["mean_slots_per_decision"].max()
+    per_seed_mean_ce_min = per_seed_mean[per_seed_mean["phy"] == "ce"]["mean_slots_per_decision"].min()
+    per_seed_mean_ce_max = per_seed_mean[per_seed_mean["phy"] == "ce"]["mean_slots_per_decision"].max()
+
+    # Calculate per-seed min/max (over all seeds for a given family)
+    per_seed_ci_min = df_ref[df_ref["phy"] == "ci"]["slots_per_decision"].min()
+    per_seed_ci_max = df_ref[df_ref["phy"] == "ci"]["slots_per_decision"].max()
+    per_seed_ce_min = df_ref[df_ref["phy"] == "ce"]["slots_per_decision"].min()
+    per_seed_ce_max = df_ref[df_ref["phy"] == "ce"]["slots_per_decision"].max()
+
+    # Generate per-decision energy and keep for A3 and A4
     sys.path.insert(0, str(ROOT / "plots" / "energy"))
     import plot_stacked_bar
-    # This will run the 15 seeds and return per-proposal energy: Protocol, seed, proposal_id, awake_slots
     df_energy = plot_stacked_bar.run_simulation_and_extract_per_proposal(plot_stacked_bar.SEEDS)
     df_energy.rename(columns={"awake_slots": "energy_node_slots", "Protocol": "protocol", "proposal_id": "decision_index"}, inplace=True)
-    
-    # map PHY
     def get_phy(prot):
         return "CI" if "(CI)" in prot else "CE"
     df_energy["phy"] = df_energy["protocol"].apply(get_phy)
-    
     df_energy[["phy", "protocol", "seed", "decision_index", "energy_node_slots"]].to_csv(SOURCES / "per_decision_energy.csv", index=False)
     
-    # A2 proposal sharing for 2PC CI
-    amortized_2pc = df_energy[df_energy["protocol"] == "2PC (CI)"]["energy_node_slots"].mean()
-    d_2pc_ci = df_ref[df_ref["protocol"] == "2pc_pipeline"]
-    cum_2pc = (d_2pc_ci["listen"] + d_2pc_ci["flood"]).sum() / d_2pc_ci["committed"].sum()
-    prop_sharing_share = 1 - (amortized_2pc / cum_2pc)
-    
     with open(SOURCES / "slots_per_decision.md", "w") as f:
-        f.write("Formula: slots_per_decision = total_slots / committed_decisions (computed per seed, then mean taken)\n")
         f.write("Configs: scalability sweep at N=27, random topology, loss_rate=0.05, 15 seeds\n")
-        f.write(f"CI min: {ci_min:.3f}, CI max: {ci_max:.3f}\n")
-        f.write(f"CE min: {ce_min:.3f}, CE max: {ce_max:.3f}\n")
-        f.write(f"Proposal sharing share for 2PC: {prop_sharing_share*100:.2f}%\n")
-        f.write(f"  Numerator: Amortized energy per decision across 15 seeds ({amortized_2pc})\n")
-        f.write(f"  Denominator: Cumulative energy per decision from sweep_summary.csv ({cum_2pc})\n")
-        f.write(f"  Share = 1 - (Numerator / Denominator)\n")
+        f.write("\npooled (paper definition): sum(total_slots) / sum(committed_decisions)\n")
+        f.write(f"CI min: {pooled_ci_min:.3f}, CI max: {pooled_ci_max:.3f}\n")
+        f.write(f"CE min: {pooled_ce_min:.3f}, CE max: {pooled_ce_max:.3f}\n")
+        
+        f.write("\nper-seed mean: mean(total_slots / committed_decisions)\n")
+        f.write(f"CI min: {per_seed_mean_ci_min:.3f}, CI max: {per_seed_mean_ci_max:.3f}\n")
+        f.write(f"CE min: {per_seed_mean_ce_min:.3f}, CE max: {per_seed_mean_ce_max:.3f}\n")
+        
+        f.write("\nper-seed raw min/max:\n")
+        f.write(f"CI min: {per_seed_ci_min:.3f}, CI max: {per_seed_ci_max:.3f}\n")
+        f.write(f"CE min: {per_seed_ce_min:.3f}, CE max: {per_seed_ce_max:.3f}\n")
+
+    print("Running B2...")
+    with open(SOURCES / "proposal_sharing_candidates.md", "w") as f:
+        f.write("Paper text:\n")
+        f.write("> The rise from there to $5.67$ under 2PC is not proposal sharing, which\n")
+        f.write("> accounts for $1.6\\,\\%$ of it; it is the number of slots a decision\n")
+        f.write("> occupies, measured as total simulated slots per committed decision and\n")
+        f.write("> summed over seeds, which runs from $4.70$ to $6.17$ under \\CI{} against\n")
+        f.write("> $4.68$ to $24.34$ under \\CE.\n\n")
+        f.write("Candidate readings of 'accounts for 1.6% of it':\n\n")
+        
+        c1_val = 1 - (1.43 / 5.67)
+        c1_diff = abs(c1_val * 100 - 1.6)
+        c1_status = "REPRODUCES" if c1_diff <= 0.05 else "DOES NOT REPRODUCE"
+        f.write(f"- Candidate 1 (proportion of the ratio 5.67 not explained by duty cycle 1.43): 1 - (1.43 / 5.67) = {c1_val:.4f} -> {c1_val*100:.2f}%. {c1_status} 1.6%.\n")
+        
+        c2_val = (21.25 - 1.00) / 21.25 # depth
+        c2_diff = abs(c2_val * 100 - 1.6)
+        c2_status = "REPRODUCES" if c2_diff <= 0.05 else "DOES NOT REPRODUCE"
+        f.write(f"- Candidate 2 (proportion of concurrent proposals): (depth - 1) / depth = {c2_val:.4f} -> {c2_val*100:.2f}%. {c2_status} 1.6%.\n")
+        
+        f.write("\nNone of the candidates reproduces 1.6%.\n")
 
     print("Running A3...")
     stats_rows = []

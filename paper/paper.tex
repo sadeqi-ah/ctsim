@@ -1095,8 +1095,9 @@ design.
 \paragraph{Distributed decision}
 Thanks to overhearing, every node reconstructs the same accumulated
 bitmap from the sequence of floods. The decision is consequently not taken
-by the coordinator: once exactly one cycle has elapsed since the transaction opened, \emph{each node}
-independently evaluates the bitmap. Unlike Paxos, a node commits only if
+by the coordinator: once exactly one cycle has elapsed since the
+transaction opened, \emph{each node} independently evaluates the bitmap.
+Unlike Paxos, a node commits only if
 every bit is set; a single clear bit---whether from a negative vote or
 from an unreachable node---yields abort. Since the input to this
 evaluation is the same reconstructed bitmap and the instant of evaluation is
