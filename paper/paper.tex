@@ -878,9 +878,14 @@ which is what allows commit notifications to occupy no payload space at
 all.
 
 \item \textbf{Participation bitmap.} A field of $\Nnodes$ bits, one per
-node. On receiving a frame---whether addressed to it or merely
-overheard---a node sets its own bit to record its acknowledgement or
-affirmative vote, so that votes accumulate across the network without any
+node. The sender writes the bits it currently holds for the instance named
+in the header; a node that receives or merely overhears the frame merges
+those bits into its own record of that instance and of every earlier one,
+and contributes its own bit when its turn to flood arrives. Because a
+constructive-interference flood requires every retransmission to carry a
+byte-identical payload, a relay cannot modify the frame in flight: the
+bitmap therefore accumulates in the replicated local state of the nodes
+rather than inside a single travelling frame, and it still costs no
 dedicated acknowledgement message.
 
 \item \textbf{NACK field.} Zero in normal operation. A node that infers
@@ -950,12 +955,13 @@ and initiates the flood.
 
 \paragraph{Implicit, concurrent quorum}
 Instead of soliciting dedicated acknowledgements, the protocol relies on
-overhearing. Every node that receives the frame sets its own bit in the
-participation bitmap, so votes accumulate as the schedule advances through
-the remaining nodes of the cycle. Since a frame carries the bitmaps of
-several instances at once, nodes evaluate the state of several
-in-flight decisions in parallel, and no instance has to be suspended while
-another collects its votes.
+overhearing. Every node that receives the frame sets its own bit for the
+current instance and floods that bit when its own turn arrives, so votes
+accumulate as the schedule advances through the remaining nodes of the
+cycle. A vote is cumulative: a bit set for the term named in the header
+also counts for every earlier term still in flight, so a single bitmap
+advances several in-flight decisions at once and no instance has to be
+suspended while another collects its votes.
 
 \paragraph{Cumulative commit}
 When the turn returns to the original proposer, it inspects the bitmap and
@@ -995,7 +1001,8 @@ the phase indicator to Prepare, and floods the transaction data.
 The voting window is not a timeout to be tuned but a structural quantity:
 it is exactly one cycle, that is $\Nnodes$ rounds, during which every node
 takes its turn once. Each node evaluates the transaction and, if it can
-commit, sets its bit in the participation bitmap. The volatile, poorly
+commit, sets its bit in its local copy of the participation bitmap and
+floods that bit when its own turn arrives. The volatile, poorly
 conditioned timeouts of conventional 2PC disappear entirely. The
 sufficiency of this bound depends on the ratio of diameter to network
 size; Section~\ref{sec:results} shows that it does not hold when $\Diam$
@@ -1003,13 +1010,15 @@ approaches $\Nnodes$, and treats that case as a limitation of the present
 design.
 
 \paragraph{Distributed decision}
-Thanks to overhearing, the accumulated bitmap is replicated at every node.
+Thanks to overhearing, every node reconstructs the same accumulated
+bitmap from the sequence of floods.
 The decision is consequently not taken by the coordinator: once exactly
 one cycle has elapsed since the transaction opened, \emph{each node}
 independently evaluates the bitmap. Unlike Paxos, a node commits only if
 every bit is set; a single clear bit---whether from a negative vote or
 from an unreachable node---yields abort. Since the input to this
-evaluation is the same replicated bitmap and the instant of evaluation is
+evaluation is the same reconstructed bitmap and the instant of evaluation
+is
 the same deterministic bound, all informed nodes reach the same verdict
 independently and without further communication. An explicit negative vote
 is in addition propagated as an abort flag, which terminates the
