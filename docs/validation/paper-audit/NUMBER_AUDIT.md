@@ -268,7 +268,14 @@ docs/validation/addition7/scripts/addition7_boxplot.py:58:    fig.savefig(OUT / 
 | Claim | Paper location | Evidence file | Verdict |
 |---|---|---|---|
 | Progress curves (Fig 13/14) | Fig. fig:progress-lin / fig:progress-log | `docs/validation/paper-audit/sources/progress_snapshots.csv` | SOURCED |
-| Slots per decision | 1986-1989 | `docs/validation/paper-audit/sources/slots_per_decision.csv` | NEW MISMATCH |
+| Slots per decision `4.70`, `6.17`, `4.68`, `24.34` | 1986 | `docs/validation/paper-audit/sources/slots_per_decision.md` | MISMATCH (pooled: 4.70-5.97 / 4.68-24.34; per-seed mean: 4.70-5.97 / 4.68-24.34) |
 | Energy distribution extrema | 2009-2045 | `docs/validation/paper-audit/sources/distribution_stats.csv` | SOURCED |
 | Integer multiple check | 2088-2090 | `docs/validation/paper-audit/sources/integer_multiple_check.md` | SOURCED |
 | Line 2PC energy/efficiency | 2489-2493 | removed from text | REMOVED |
+| Proposal sharing share `1.6%` | 1986 | `docs/validation/paper-audit/sources/proposal_sharing_candidates.md` | UNSOURCED |
+
+## Corrections in round 25 (step 2.10-c)
+- Proposal sharing share: 4.57% withdrawn (invalid mix of fresh numerator and frozen denominator).
+- Slots per decision: estimator corrected from per-seed mean to pooled (sum/sum) to match paper definition.
+- Progress curves: 99-versus-100 is a disclosed reporting/counting mismatch, not a repaired simulator bug.
+- Test count corrected to 9 / 3 / 20 (superseding stale 9 / 3 / 19).
