@@ -11,7 +11,7 @@ use std::io::{BufWriter, Write};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
-const NS: [usize; 8] = [60, 90, 120, 150, 180, 188, 240, 2];
+const NS: [usize; 7] = [60, 90, 120, 150, 180, 188, 240];
 const SWEEP_NS: [usize; 6] = [60, 90, 120, 150, 180, 240];
 const SEEDS: [u64; 15] = [2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47];
 const MAX_GENERATION_ATTEMPTS: usize = 100;

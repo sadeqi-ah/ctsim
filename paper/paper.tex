@@ -2334,11 +2334,11 @@ the standard error over fifteen seeds).}
 \label{fig:topology}
 \end{figure}
 
-The proposed explanation that denser or better-quality networks account for
-the residual is falsified: density error has no systematic trend with
-$\Nnodes$, while both \CE{} arms remain \texttt{SUBLINEAR-INTERMEDIATE}.
-Consequently, the measurements do not support attributing either the
-architecture-level difference or its residual to infrastructure quality.
+The density-controlled sweep bounds the density confound across $\Nnodes$:
+density error has no systematic trend with $\Nnodes$, while both \CE{} arms
+remain \texttt{SUBLINEAR-INTERMEDIATE}. The measurements bound the effect of
+density variation, but do not prove an external explanation for the residual;
+they establish only that infrastructure quality cannot account for it entirely.
 Table~\ref{tab:diameter} summarises the measured throughput change on moving
 from the random topology to the full mesh.
 
