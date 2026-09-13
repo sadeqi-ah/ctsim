@@ -81,7 +81,7 @@ jobs:
             MANIFEST.sha256
 
   regeneration:
-    if: github.event_name == 'workflow_dispatch'
+    if: contains(github.event.pull_request.labels.*.name, 'run-regeneration') || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
