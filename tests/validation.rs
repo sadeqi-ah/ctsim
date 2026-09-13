@@ -2103,7 +2103,12 @@ fn step_27r_assertions() {
             );
         }
     }
-    // 6 N values * 15 seeds * 2 arms = 180
+    // R2: ensure exactly 181 lines (1 header + 180 data)
+    assert_eq!(
+        sweep_csv.lines().count(),
+        181,
+        "n_sweep.csv must have exactly 181 lines"
+    );
     assert_eq!(sweep_count, 180, "Expected 180 sweep rows");
 
     // 2. graph provenance rows
@@ -2190,7 +2195,12 @@ fn step_27r_assertions() {
             key
         );
     }
-    // 6 N values * 15 seeds = 90
+    // R2: ensure exactly 91 lines (1 header + 90 data)
+    assert_eq!(
+        prov_csv.lines().count(),
+        91,
+        "graph_provenance_dense.csv must have exactly 91 lines"
+    );
     assert_eq!(prov_count, 90, "Expected 90 provenance rows");
 
     // R1d: mean_gate (1% tolerance on 15-seed mean)
