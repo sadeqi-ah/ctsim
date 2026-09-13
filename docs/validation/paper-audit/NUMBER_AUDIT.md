@@ -185,8 +185,8 @@ $ grep -nE '1\.94|2250|4500|22 and 31|1\.3 and 12|27\.4|10\.6|8 to eleven|337|20
 
 ## Exclusion, hypothesis, classification
 
-| Check | Paper line/sentence | Committed counterpart | Verdict |
-|---|---|---|---|
+| Check | Paper line/sentence | Committed counterpart | Exact source | Verdict |
+|---|---|---|---|---|
 | n=188 exclusion | no exclusion statement or reason; paper includes n=188 at 1204-1206 | Paxos anchor at n=188 is not reproduced in this round | `docs/validation/addition15/README.md:27` | UNSOURCED |
 | densification residual hypothesis | lines 2233-2234 and 2283-2288 still imply improving density/network quality should explain performance, without reporting falsification | Addition 15 CIs exclude both α=0 and α=1 | `fits.csv:3,11`; README:100-102 | MISMATCH (Revised to acknowledge sweep only bounds the confound) |
 | classification | absent | both arms `SUBLINEAR-INTERMEDIATE` | `docs/validation/addition15/README.md:100,102` | UNSOURCED |
@@ -198,8 +198,8 @@ $ grep -nEi 'excluded|exclusion|outside this sweep|densif|hypothes|falsif|SUBLIN
 2233:The conventional expectation is that a better network benefits every
 2234:protocol. The measurements show that this holds for one family only.
 2284:be improved---by raising transmission power, increasing node density or
-$ grep -nE 'outside this sweep|SUBLINEAR-INTERMEDIATE|alpha CI' docs/validation/addition15/README.md
-27:The Paxos anchor at n=188 lies outside this sweep's grid and is therefore not included in the primary fit.
+$ grep -nE 'not reproduced|SUBLINEAR-INTERMEDIATE|alpha CI' docs/validation/addition15/README.md
+27:The Paxos anchor at n=188 is not reproduced in this round. The cross-N residual across the whole domain is NOT IDENTIFIABLE (there is no external reference that scales with N to compare against). The previous analysis that scaled a constant 100.0/57.8 by N/180 or N/188 was an ungrounded model, not a measurement.
 100:For 2PC over CE, the alpha CI is [0.13101, 0.14365]. By the decision rule, we conclude SUBLINEAR-INTERMEDIATE.
 102:For Paxos over CE, the alpha CI is [0.11596, 0.13221]. By the decision rule, we conclude SUBLINEAR-INTERMEDIATE.
 ```
