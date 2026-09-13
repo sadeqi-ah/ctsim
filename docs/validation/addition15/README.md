@@ -24,7 +24,7 @@ The published anchors (from which the 3.5234x/3.7776x residuals derived) were ge
 |---|---|---:|---:|---:|
 | 180 | 2PC | 3.523 | 3.508 | -0.015 |
 
-The cross-N residual across the whole domain is NOT IDENTIFIABLE (there is no external reference that scales with N to compare against). The previous analysis that scaled a constant 100.0/57.8 by N/180 or N/188 was an ungrounded model, not a measurement.
+The Paxos anchor at n=188 is not reproduced in this round. The cross-N residual across the whole domain is NOT IDENTIFIABLE (there is no external reference that scales with N to compare against). The previous analysis that scaled a constant 100.0/57.8 by N/180 or N/188 was an ungrounded model, not a measurement.
 
 ## Density Error vs N
 
