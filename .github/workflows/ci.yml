@@ -45,6 +45,29 @@ jobs:
             cargo test --release --test reproducibility
           done
 
+      - name: Addition 15 clean two-run regeneration
+        run: |
+          mkdir -p /tmp/add15_a /tmp/add15_b
+          ./target/release/n_sweep sweep
+          cp docs/validation/addition15/data/graph_provenance_dense.csv /tmp/add15_a/
+          cp docs/validation/addition15/data/n_sweep.csv /tmp/add15_a/
+          ./target/release/n_sweep sweep
+          cp docs/validation/addition15/data/graph_provenance_dense.csv /tmp/add15_b/
+          cp docs/validation/addition15/data/n_sweep.csv /tmp/add15_b/
+          diff /tmp/add15_a/graph_provenance_dense.csv /tmp/add15_b/graph_provenance_dense.csv \
+            || { echo "Addition 15 provenance output differs between runs"; exit 1; }
+          cut -d, -f1-7 /tmp/add15_a/n_sweep.csv > /tmp/add15_a/n_sweep_det.csv
+          cut -d, -f1-7 /tmp/add15_b/n_sweep.csv > /tmp/add15_b/n_sweep_det.csv
+          diff /tmp/add15_a/n_sweep_det.csv /tmp/add15_b/n_sweep_det.csv \
+            || { echo "Addition 15 deterministic n_sweep output differs between runs"; exit 1; }
+          
+          # also verify against committed files
+          diff /tmp/add15_a/graph_provenance_dense.csv docs/validation/addition15/data/graph_provenance_dense.csv \
+            || { echo "Committed graph_provenance_dense.csv is stale"; exit 1; }
+          cut -d, -f1-7 docs/validation/addition15/data/n_sweep.csv > /tmp/add15_c_n_sweep_det.csv
+          diff /tmp/add15_a/n_sweep_det.csv /tmp/add15_c_n_sweep_det.csv \
+            || { echo "Committed n_sweep.csv is stale"; exit 1; }
+
       - name: Sweeps are reproducible across separate processes
         run: |
           ./target/release/ctsim sweep_topology.toml

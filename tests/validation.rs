@@ -2037,28 +2037,71 @@ fn step_210b_assertions() {
 
 #[test]
 fn step_27r_assertions() {
-    use std::collections::HashSet;
+    use std::collections::{HashMap, HashSet};
     use std::fs;
     use std::path::Path;
 
     let data_dir = Path::new("docs/validation/addition15/data");
 
+    // R1a: Assert the exact node domain
+    let expected_ns: HashSet<usize> = [60, 90, 120, 150, 180, 240].iter().cloned().collect();
+    // R1b: Assert the exact seed set
+    let expected_seeds: HashSet<String> = [2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47]
+        .iter()
+        .map(|s| s.to_string())
+        .collect();
+
     // 1. no duplicate (N, seed, arm) rows in n_sweep data; exact expected row counts
     let sweep_csv = fs::read_to_string(data_dir.join("n_sweep.csv")).unwrap();
     let mut sweep_keys = HashSet::new();
     let mut sweep_count = 0;
+
+    let mut sweep_ns_found = HashSet::new();
+    let mut seeds_per_n_arm: HashMap<(usize, String), HashSet<String>> = HashMap::new();
+
+    // Safely parse header to get indices, though we can just split by comma and take specific indices
+    // n,arm,seed,mean_round_slots,mean_decision_latency_slots,committed,proposals,elapsed_seconds
     for (i, line) in sweep_csv.lines().enumerate() {
         if i == 0 || line.is_empty() {
             continue;
         }
         let parts: Vec<&str> = line.split(',').collect();
-        let key = format!("{}-{}-{}", parts[0], parts[2], parts[1]); // N-seed-arm
+        let n_val: usize = parts[0].parse().unwrap();
+        let arm = parts[1].to_string();
+        let seed = parts[2].to_string();
+
+        sweep_ns_found.insert(n_val);
+        seeds_per_n_arm
+            .entry((n_val, arm.clone()))
+            .or_default()
+            .insert(seed.clone());
+
+        let key = format!("{}-{}-{}", n_val, seed, arm);
         assert!(
             sweep_keys.insert(key.clone()),
             "Duplicate row in n_sweep.csv: {}",
             key
         );
         sweep_count += 1;
+    }
+
+    // R1a: set equality for N
+    assert_eq!(
+        sweep_ns_found, expected_ns,
+        "Distinct N values in sweep do not exactly match expected set"
+    );
+    // R1b: Exact seed set for every N and every arm
+    for n in &expected_ns {
+        for arm in &["2pc_ce", "paxos_ce"] {
+            let seeds = seeds_per_n_arm
+                .get(&(*n, arm.to_string()))
+                .unwrap_or_else(|| panic!("No seeds found for N={}, arm={}", n, arm));
+            assert_eq!(
+                seeds, &expected_seeds,
+                "Seeds for N={}, arm={} do not match exactly expected set",
+                n, arm
+            );
+        }
     }
     // 6 N values * 15 seeds * 2 arms = 180
     assert_eq!(sweep_count, 180, "Expected 180 sweep rows");
@@ -2069,15 +2112,24 @@ fn step_27r_assertions() {
     let mut prov_count = 0;
 
     // Store sum of degrees to check density gate
-    let mut degree_sums = std::collections::HashMap::new();
+    let mut degree_sums = HashMap::new();
+
+    // R1d: Gate constants
+    // The 5% constant applies to every single seed row
+    const PER_SEED_TOLERANCE: f64 = 0.05;
+    // The 1% constant applies to the mean of 15 seeds for a given N
+    const MEAN_GATE_TOLERANCE: f64 = 0.01;
 
     for (i, line) in prov_csv.lines().enumerate() {
         if i == 0 || line.is_empty() {
             continue;
         }
+        // n,seed,min_deg_arg,max_deg_arg,edges,mean_degree,degree_variance,min_degree,max_degree,diameter,graph_file
         let parts: Vec<&str> = line.split(',').collect();
         let n: usize = parts[0].parse().unwrap();
         let seed = parts[1];
+        let min_deg_arg: usize = parts[2].parse().unwrap();
+        let max_deg_arg: usize = parts[3].parse().unwrap();
         let mean_deg: f64 = parts[5].parse().unwrap();
         let diam: usize = parts[9].parse().unwrap();
         let graph_file = parts[10];
@@ -2090,7 +2142,16 @@ fn step_27r_assertions() {
         );
         prov_count += 1;
 
-        // graph has diameter 2
+        // R1c: W exactly 10
+        assert_eq!(
+            max_deg_arg - min_deg_arg,
+            10,
+            "W is not exactly 10 for N={}, seed={}",
+            n,
+            seed
+        );
+
+        // graph has diameter 2 (connectivity checked elsewhere but diam 2 implies connectivity)
         assert_eq!(diam, 2, "Graph must have diameter 2");
 
         // every graph provenance row has a matching graph file
@@ -2103,6 +2164,17 @@ fn step_27r_assertions() {
 
         // aggregate mean_degree
         *degree_sums.entry(n).or_insert(0.0) += mean_deg;
+
+        // R1d: per_seed gate (5% tolerance)
+        let target = 0.5 * n as f64;
+        let err = (mean_deg - target).abs() / target;
+        assert!(
+            err <= PER_SEED_TOLERANCE,
+            "N={} seed={} fails per-seed density gate: err={:.4}% > 5%",
+            n,
+            seed,
+            err * 100.0
+        );
 
         // every graph provenance row has a matching sweep row
         let key1 = format!("{}-{}-2pc_ce", n, seed);
@@ -2121,21 +2193,20 @@ fn step_27r_assertions() {
     // 6 N values * 15 seeds = 90
     assert_eq!(prov_count, 90, "Expected 90 provenance rows");
 
-    // 3. every N passes the stated 1% gate under the 15-seed mean
+    // R1d: mean_gate (1% tolerance on 15-seed mean)
     for (n, sum_deg) in degree_sums {
         let mean_deg = sum_deg / 15.0;
         let target = 0.5 * n as f64;
         let err = (mean_deg - target).abs() / target;
         assert!(
-            err <= 0.01,
-            "N={} fails density gate: err={:.4}%",
+            err <= MEAN_GATE_TOLERANCE,
+            "N={} fails mean density gate: err={:.4}% > 1%",
             n,
             err * 100.0
         );
     }
 
-    // 4. the generated README matches the generator byte-for-byte
-    // Checked in python script --check mode, but we can check if it exists.
+    // 4. the generated README matches the generator byte-for-byte and analyzer checks
     let readme = fs::read_to_string("docs/validation/addition15/README.md").unwrap();
     assert!(
         !readme.contains("constant reference"),
@@ -2154,9 +2225,25 @@ fn step_27r_assertions() {
         "Primary fit uses observed round length"
     );
 
+    let analyze_py =
+        fs::read_to_string("docs/validation/addition15/scripts/analyze_n_sweep.py").unwrap();
+    assert!(
+        !analyze_py.contains("def model_reference"),
+        "model_reference must be completely removed"
+    );
+
+    // R3: paper.tex semantic check
+    let paper = fs::read_to_string("paper/paper.tex").unwrap();
+    assert!(paper.contains("The density-controlled sweep bounds the density confound across"));
+    assert!(paper.contains(
+        "they establish only that infrastructure quality cannot account for it entirely."
+    ));
+    assert!(!paper.contains("is falsified: density error has no systematic trend with"));
+
     // 5. Existing frozen blobs
     fn assert_blob(path: &Path, expected_sha: &str) {
-        let content = fs::read(path).unwrap();
+        let content =
+            fs::read(path).unwrap_or_else(|e| panic!("Failed to read {}: {}", path.display(), e));
         let mut hasher = sha1_smol::Sha1::new();
         hasher.update(format!("blob {}\0", content.len()).as_bytes());
         hasher.update(&content);

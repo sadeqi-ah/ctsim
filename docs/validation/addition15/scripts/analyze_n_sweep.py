@@ -74,7 +74,7 @@ for (n, arm), cells in sorted(groups.items()):
     round_mean, round_se = mean_se(rounds)
     latency_mean, latency_se = mean_se(decisions)
     
-    if (arm == "2pc_ce" and n == 180) or (arm == "paxos_ce" and n == 188):
+    if (arm == "2pc_ce" and n == 180):
         constant_gaps = [CONSTANT_REFERENCES[arm] / value for value in rounds]
         constant_gap_mean, constant_gap_se = mean_se(constant_gaps)
     else:
@@ -101,7 +101,7 @@ for (n, arm), cells in sorted(groups.items()):
         "round_slots_se": round_se,
         "mean_decision_latency_slots": latency_mean,
         "decision_latency_se": latency_se,
-        "constant_ref": CONSTANT_REFERENCES[arm] if ((arm == "2pc_ce" and n == 180) or (arm == "paxos_ce" and n == 188)) else "NOT IDENTIFIABLE",
+        "constant_ref": CONSTANT_REFERENCES[arm] if (arm == "2pc_ce" and n == 180) else "NOT IDENTIFIABLE",
         "constant_gap": constant_gap_mean,
         "constant_gap_se": constant_gap_se,
         "commit_rate": sum(r["committed"] for r in cells) / sum(r["proposals"] for r in cells),
@@ -167,7 +167,7 @@ The published anchors (from which the 3.5234x/3.7776x residuals derived) were ge
 |---|---|---:|---:|---:|
 | 180 | 2PC | 3.523 | {next(r['constant_gap'] for r in summary if r['n'] == 180 and r['arm'] == '2pc_ce'):.3f} | {next(r['constant_gap'] for r in summary if r['n'] == 180 and r['arm'] == '2pc_ce') - 3.523:.3f} |
 
-The cross-N residual across the whole domain is NOT IDENTIFIABLE (there is no external reference that scales with N to compare against). The previous analysis that scaled a constant 100.0/57.8 by N/180 or N/188 was an ungrounded model, not a measurement.
+The Paxos anchor at n=188 is not reproduced in this round. The cross-N residual across the whole domain is NOT IDENTIFIABLE (there is no external reference that scales with N to compare against). The previous analysis that scaled a constant 100.0/57.8 by N/180 or N/188 was an ungrounded model, not a measurement.
 
 ## Density Error vs N
 

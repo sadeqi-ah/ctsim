@@ -8,8 +8,8 @@
 |---|---:|---|---|---|
 | current slopes, CIs, AIC, R² absent | — | 2PC `0.13733 [0.13101, 0.14365]`, AIC `4.8`, R² `0.998`; Paxos `0.12409 [0.11596, 0.13221]`, AIC `20.4`, R² `0.996` | `docs/validation/addition15/data/fits.csv:3,11`; `docs/validation/addition15/README.md:72,86` | UNSOURCED |
 | withdrawn `0.13797`, `0.12264`, AIC `8.9`, `26.0` absent | — | values withdrawn; no occurrence | `paper/paper.tex` grep below | MATCH |
-| published anchors absent | — | 2PC `3.5234x` at n=180; Paxos `3.7776x` at n=188 | `docs/validation/addition15/README.md:21-27` | MATCH (anchor only) |
-| reference slots absent | — | `100.0` for `2pc_ce`; `57.8` for `paxos_ce` | `docs/validation/addition15/README.md:21-27` | MATCH (anchor only) |
+| published anchors absent | — | 2PC `3.5234x` at n=180; Paxos `3.7776x` at n=188 | `docs/validation/addition15/README.md:21-27` | UNSOURCED (Paxos not reproduced) |
+| reference slots absent | — | `100.0` for `2pc_ce`; `57.8` for `paxos_ce` | `docs/validation/addition15/README.md:21-27` | UNSOURCED (Paxos not reproduced) |
 | blind prediction A2 `475 ms`; error `TBD` | 1327,1334 | `42.4407` slots against `100.0`; fails | `docs/validation/addition13/README.md:89-99,115-121` | MISMATCH |
 | blind prediction Paxos `289 ms`; error `TBD` | 1328,1334-1335 | `24.6140` slots against `57.8`; fails | `docs/validation/addition13/README.md:101-111,115-121` | MISMATCH |
 | calibration uses loss and slot duration; PDR `99.9%`, duty `0.4%` | 1316-1323 | one free parameter/target; `p*=0.05`; duty target dropped; slot duration not a simulator parameter | `profiles/calibration.lock.toml:13-24,62-68,107-113` | MISMATCH |
