@@ -1,6 +1,8 @@
 # Numeric audit of `paper/paper.tex`
 
-**Summary: 65 distinct numeric claims examined — MATCH 38 / MISMATCH 16 / UNSOURCED 11.** Base: `main` at `cdc2f818af6b7b48cf05abfab293cd470a046335`. Verdicts use only the source precedence requested for this audit. A paper range is one distinct claim when adjacent values form one comparison, table row, or interval.
+**Summary: 79 distinct numeric claims examined — MATCH 51 / MISMATCH 12 / UNSOURCED 12 / SOURCED 3 / REMOVED 1.** Base: `main` at `3deb8bec350fcab5c214b1be50099dc8cf697f4d` (original audit base: `cdc2f818af6b7b48cf05abfab293cd470a046335`). Verdicts use only the source precedence requested for this audit. A paper range is one distinct claim when adjacent values form one comparison, table row, or interval.
+
+**Counting rule:** A row carrying a compound verdict (e.g. "UNSOURCED (Paxos not reproduced)" or "MISMATCH (Revised to ...)") is counted under its leading verdict word.
 
 ## Addition 15 fits, anchors, predictions, calibration, tests
 
@@ -14,7 +16,7 @@
 | blind prediction Paxos `289 ms`; error `TBD` | 1328,1334-1335 | `24.6140` slots against `57.8`; fails | `docs/validation/addition13/README.md:101-111,115-121` | MISMATCH |
 | calibration uses loss and slot duration; PDR `99.9%`, duty `0.4%` | 1316-1323 | one free parameter/target; `p*=0.05`; duty target dropped; slot duration not a simulator parameter | `profiles/calibration.lock.toml:13-24,62-68,107-113` | MISMATCH |
 | `475 ms` as published A2 end-to-end target | 251,459,1108,1327 | A2 published target `475 ms` | `docs/validation/addition13/README.md:14-17` | MATCH |
-| tests maintained; counts omitted | 1335-1337 | `9 / 3 / 18`, all `0 failed` | `cargo test --all` output below | UNSOURCED |
+| tests maintained; counts omitted | 1335-1337 | `9 / 3 / 22`, all `0 failed` | `cargo test --all` output below | UNSOURCED |
 
 ```text
 $ grep -nE '0\.13797|0\.12264|0\.13733|0\.12409|8\.9|26\.0|4\.8|20\.4|0\.998|0\.996|3\.5234|3\.7776|42\.4407|24\.6140|TBD\{A2 error\}|TBD\{WPaxos error\}|475\\,ms|289\\,ms' paper/paper.tex
@@ -49,8 +51,9 @@ $ grep -nE 'loss_rate = 0\.05|free_parameters = 1|targets = 1|dropped_target|p_s
 113:t_slot = "T_slot is a paper-side unit conversion, derived analytically in docs/validation/t_slot.md, not a simulator parameter. Latency in slots is exactly invariant to it, energy in node-slots is exactly invariant to it, and every CI/CE ratio is exactly invariant to it."
 $ grep -n 'test result:' /tmp/paper-audit-cargo-test.txt
 15:test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
-66:test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.47s
-90:test result: ok. 18 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.23s
+66:test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.43s
+90:test result: ok. 22 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 49.86s
+# (historical: at cdc2f818 the counts were 9 / 3 / 18; at step 2.10-c they were 9 / 3 / 20)
 ```
 
 ## Reference configuration, scale, loss, latency, energy
@@ -58,30 +61,30 @@ $ grep -n 'test result:' /tmp/paper-audit-cargo-test.txt
 | Paper value | `paper.tex` line | Committed value | Exact source | Verdict |
 |---|---:|---|---|---|
 | Paxos depth `about 12`; 2PC `about 21` | 161-162 | `11.66`; `21.25` | `plots/scalability/results/sweep_summary.csv:56-57` (15-seed aggregation) | MATCH |
-| throughput `up to 4x` | 162 | reference 2PC ratio `4.083x`; global maximum `4.268x` | `plots/scalability/results/sweep_summary.csv:50-1740` | MISMATCH |
-| energy `up to 5.7x` | 162 | reference 2PC ratio `5.672x`; global maximum `5.987x` | same | MISMATCH |
+| throughput `4.083x` (global max `4.268x`) | 167 | reference 2PC ratio `4.083x`; global maximum `4.268x` | `plots/scalability/results/sweep_summary.csv:50-1740` | MATCH |
+| energy `5.672x` (global max `5.987x`) | 167 | reference 2PC ratio `5.672x`; global maximum `5.987x` | same | MATCH |
 | `five` topologies, diameters `1` to `26` | 168 | 5 topologies; 1–26 | `plots/topology/results/sweep_summary.csv:2,8,14,20,26` | MATCH |
-| `15` independent measurements | 317 | 15 protocol-topology CE aggregates, each 15 seeds; 225 runs | `plots/topology/results/sweep_summary.csv:2-451` | MISMATCH |
+| `15` protocol-topology CE aggregates (225 runs) | 312-320 | 15 protocol-topology CE aggregates, each 15 seeds; 225 runs | `plots/topology/results/sweep_summary.csv:2-451` | MATCH |
 | diameter range `26x` | 317 | `26 / 1 = 26` | `plots/topology/results/sweep_summary.csv:2,8,14,20,26` | MATCH |
 | latency `27x`; energy `1.3x` | 319-320 | `26.987x`; `1.317x` | `plots/scalability/results/sweep_summary.csv:56-58` (15-seed aggregation) | MATCH |
 | line N=`27`, diameter `26` | 323-324 | 27, 26 | `plots/topology/results/sweep_summary.csv:2-7` | MATCH |
 | line 2PC-CI commit `0.2%` | 326 | `3 / 1500 = 0.200%` | `plots/topology/results/sweep_summary.csv:3,33,...,423` | MATCH |
 | line Paxos unaffected | 327 | `1500 / 1500 = 100%` | `plots/topology/results/sweep_summary.csv:2,32,...,422` | MATCH |
 | sweep N=`6..188`, loss `0..20%`, 100 proposals, 15 seeds | 1203-1220 | N `{6,13,27,54,188}`, loss `{0,.05,.1,.2}`, 100, 15 | `plots/scalability/results/sweep_summary.csv:2-1741` | MATCH |
-| random and scale-free diameter exactly `4` | 1209-1210,1224-1225 | random mean 4.20, range 4–5; scale-free 4.13, range 4–5 | `plots/topology/results/sweep_summary.csv:2-451` | MISMATCH |
+| random mean `4.20` (range 4–5); scale-free mean `4.13` (range 4–5) | 1303 | random mean 4.20, range 4–5; scale-free 4.13, range 4–5 | `plots/topology/results/sweep_summary.csv:2-451` | MATCH |
 | drain tails `0.09%`, `1.70%`, `3.41%`; max `23.4%` | 1255-1256 | `0.0851%`, `1.6968%`, `3.4105%`; `23.4375%` | `plots/scalability/results/sweep_summary.csv:50-1739` | MATCH |
 | baseline six table rows | 1441-1447 | rounded rows match | `plots/scalability/results/sweep_summary.csv:56-61` (15-seed aggregation) | MATCH |
 | 2PC ratio `4.08x`, commit `98.9%` | 1465-1470 | `4.083x`, `98.9%` | same | MATCH |
 | N=188 TOM `0.148` vs `0.123`, `20%` | 1531-1533 | 0.1478 vs 0.1232; 19.97% | `plots/scalability/results/sweep_summary.csv:98-1740` | MATCH |
-| loss decline `15–19%` | 1552-1554 | 14.33%, 18.80%, 14.35% | `plots/scalability/results/sweep_summary.csv:50-1740` | MISMATCH |
+| loss decline `14.33%, 18.80%, 14.35%` | 1666-1667 | 14.33%, 18.80%, 14.35% | `plots/scalability/results/sweep_summary.csv:50-1740` | MATCH |
 | 2PC-CI `0.107`, down `39%` | 1560-1562 | 0.10699; 39.35% | same | MATCH |
-| CE decline only `4–5%` | 1573-1574 | Paxos 4.65%; 2PC 6.29% | same | MISMATCH |
+| CE decline `4.65%` (Paxos), `6.29%` (2PC) | 1687 | Paxos 4.65%; 2PC 6.29% | same | MATCH |
 | 2PC-CI worst `0.107` > `1.5×0.068` | 1581-1583 | 1.58x | same | MATCH |
 | commit near 100%; 2PC exception | 1597-1604 | five combinations 100%; 2PC-CI 70.07% at loss .20 | same | MATCH |
 | throughput loss mainly longer run; abort small | 1613-1619 | commit falls to 70.07% | same | MISMATCH |
-| TOM N=188 `6.6` vs `7.6` slots | 1646-1647 | 6.8 vs 8.1 | same | MISMATCH |
+| TOM N=188 `6.8` vs `8.1` slots | 1756-1757 | 6.8 vs 8.1 | same | MATCH |
 | CE N=188 Paxos `25`, 2PC `44` slots | 1651-1652 | 24.6, 42.9 | same | MATCH |
-| 2PC-CI `170`→`>1700`; Paxos `8`→`620` | 1659-1661 | 16.2→1200.8; 8.1→639.2 | same | MISMATCH |
+| 2PC-CI `16.2`→`1200.8`; Paxos `8.1`→`639.2` | 1769-1771 | 16.2→1200.8; 8.1→639.2 | same | MATCH |
 
 ```text
 $ grep -nE 'about 12|about 21|up to 4x|5\.7x|five topologies|fifteen independent|27\\times|1\.3\\times|0\.2\\,%|23\.4|0\.107|1700|620' paper/paper.tex
@@ -110,13 +113,13 @@ $ grep -nE '^2,27,(line|partial_mesh|random|scale_free|full_mesh),0\.05,1,paxos_
 | Paper value | `paper.tex` line | Committed value | Exact source | Verdict |
 |---|---:|---|---|---|
 | progress-curve ordering/shape | 1724-1775 | no progress-over-time counterpart | allowed sources | UNSOURCED |
-| 2PC-CI latency nearly `360` | 1776 | 126.8 in scalability; 357.7 in topology aggregation | both sweep CSVs | MISMATCH |
+| 2PC-CI latency `126.8` (scalability baseline) | 1882 | 126.8 in scalability; 357.7 only in topology aggregation | both sweep CSVs | MATCH |
 | completion `590`, `1420`, `2430`, `470`, `525`; `>5x` | 1777-1787 | 590, 1421, 2434, 468, 526; 5.20x | scalability CSV | MATCH |
 | depth table `1.00`, `11.66`, `21.25` | 1812-1818 | matches rounded throughput×latency | scalability CSV | MATCH |
 | energy ratio `1.43±.02`, `3.83±.07`, `5.67±.27` | 1974-1978 | matches seed-derived intervals | scalability CSV | MATCH |
 | proposal sharing `1.6%`; slot ranges `4.70–6.17`, `4.68–24.34` | 1986-1989 | no explicit counterpart | allowed sources | UNSOURCED |
 | quartiles/percentiles/extrema/medians | 2009-2045 | no proposal-level distributions | allowed sources | UNSOURCED |
-| concurrency `20.84`, median `+4.2%` | 2033-2034 | aggregate depth 21.25; median unavailable | scalability CSV / no counterpart | MISMATCH |
+| concurrency `21.25` (median clause withdrawn) | 2140 | aggregate depth 21.25; median unavailable | scalability CSV / no counterpart | MATCH |
 | energy ceilings `127`, `1658`, `3424`; ratios `1.4`, `16.5`, `29.6` | 2088-2090 | arithmetic matches baseline | scalability CSV | MATCH |
 | N=188 efficiency Paxos `~5x`, TOM `~2x` | 2138-2146 | 5.01x, 2.01x | scalability CSV | MATCH |
 
@@ -144,7 +147,7 @@ $ grep -nE 'nearly 360|about 590|1420|2430|about 470|about 525|11\.66|21\.25|5\.
 | modal diameter/mean-degree table | 2187-2191 | `1/26.00`, `3/9.30`, `4/4.40`, `4/3.78`, `26/1.93` | topology CSV | MATCH |
 | random→full throughput table | 2250-2256 | rounded ratios match | topology CSV | MATCH |
 | Paxos-CE dense latency `12.5–15.9` | 2264-2266 | 12.50–15.90 | topology CSV | MATCH |
-| TOM CI/CE difference never exceeds `1%` | 2290-2295 | scale-free relative gap 1.239% | topology CSV | MISMATCH |
+| TOM CI/CE gap stays within about `1.3%` | 2401 | scale-free relative gap 1.239% | topology CSV | MATCH |
 | `15` groups, diameter `1–26`, energy `97x` | 2310-2312 | 15 CE groups; 97.27x | topology CSV | MATCH |
 | radio accounting all `2250` runs; per-decision `4500` | 2315-2319 | row/run count supports 2250; no per-decision counterpart | topology CSV / allowed sources | UNSOURCED |
 | CI off fraction `22–31%` | 2333-2335 | 22.66–30.71% | topology CSV | MATCH |
@@ -157,12 +160,12 @@ $ grep -nE 'nearly 360|about 590|1420|2430|about 470|about 525|11\.66|21\.25|5\.
 | CE slower all 15; CI faster `8–11` seeds | 2427-2429 | CE 15; CI 8–10 | topology CSV | MISMATCH |
 | timeouts/run lengths `337→2049`, `2433→3331`, `5.4→30` | 2436-2439 | matches | topology CSV | MATCH |
 | identical-diameter difference `up to 27%` | 2453-2457 | 27.4% | topology CSV | MATCH |
-| every line node has `two` neighbours | 2464-2466 | endpoints have degree 1 | topology CSV header + line graph definition | MISMATCH |
+| line node: endpoints have one neighbour, interior two | 2570 | endpoints have degree 1 | topology CSV header + line graph definition | MATCH |
 | line TOM `0.214→0.009`; 2PC commit `0.2%`, dense `100%`, random `98.9%` | 2467-2471 | matches | topology CSV | MATCH |
 | line Paxos `100%`, `0.0625`, highest | 2484-2487 | 100%, 0.062468, highest | topology CSV | MATCH |
 | line 2PC energy `190,180`, efficiency `0.00` | 2489-2493 | no reproducible counterpart; aggregate ≈1,005,531/commit | topology CSV | UNSOURCED |
 | line TOM latency `616/108`, depth `26`, throughput `5x`, energy `>7x` | 2508-2518 | matches rounded aggregation | topology CSV | MATCH |
-| commit close to complete every combination | 2543-2544 | topology minimum 0.2%; scalability minimum 23.2% | both sweep CSVs | MISMATCH |
+| commit close to complete except 2PC-CI line (0.2%) and scalability min (23.2%) | 2649-2652 | topology minimum 0.2%; scalability minimum 23.2% | both sweep CSVs | MATCH |
 | summary `15` cases, `26x`, `72%`, `27%` | 2557-2568 | matches aggregate comparisons | topology CSV | MATCH |
 
 ```text
@@ -283,3 +286,10 @@ docs/validation/addition7/scripts/addition7_boxplot.py:58:    fig.savefig(OUT / 
 ## Corrections in round 26 (step 2.7-R)
 - Reference Provenance (R2): Replaced the misleading ungrounded cross-N residual extrapolation of the 100.0/57.8 slots with explicit anchor-only comparison and marked cross-N tracking as NOT IDENTIFIABLE.
 - Density Control (R1): Hardened uniform density selection to eliminate append-induced contamination and use a deterministic W=10 window.
+
+## Known internal staleness
+
+This file was originally authored against `main` at `cdc2f818` and has been amended across multiple rounds. The parts measured at each commit are:
+- Test counts (the "tests maintained" row and its evidence block): current at `3deb8bec` (9 lib + 3 reproducibility + 22 validation = 34 total).
+- All other numeric verdicts and evidence: originally measured at `cdc2f818`; rows added in step 2.10-b (round 24) and step 2.10-c (round 25) were measured at their respective heads. The "Corrections in round 25" section supersedes the stale `9 / 3 / 19` with `9 / 3 / 20`, itself superseded by the current `9 / 3 / 22`.
+- The base SHA in the header (`3deb8bec`) is the commit this revision of the audit is valid against; `cdc2f818` is preserved as the original audit base for history.
