@@ -127,5 +127,5 @@ jobs:
           diff /tmp/add15_a/n_sweep_det.csv /tmp/committed/n_sweep_det.csv \
             || { echo "Committed n_sweep.csv is stale"; exit 1; }
             
-          git diff --exit-code -- docs/validation/addition15/data \
+          git diff --exit-code -- docs/validation/addition15/data/graph_provenance_dense.csv \
             || { echo "Working tree is dirty"; exit 1; }

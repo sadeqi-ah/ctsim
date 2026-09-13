@@ -2291,126 +2291,79 @@ fn step_27r_assertions() {
     );
 }
 
-/// Regression test: the sweep writer must replace (not append to) the output
-/// CSVs.  This test invokes the `n_sweep` binary in single-N mode (N=60)
-/// twice from the repo root, saving and restoring the committed data.
+/// Regression test: the sweep writer must truncate (not append to) the
+/// `*_tmp.csv` files it writes.  This test invokes the `n_sweep` binary
+/// in single-N mode (N=60) twice into a **temporary directory** so the
+/// committed data is never touched.
 ///
-/// Single-N mode produces 15 provenance rows + 1 header = 16 lines, and
-/// 15 × 2 = 30 sweep rows + 1 header = 31 lines.  If the writer appends
-/// instead of truncating, run 2 will have 32/62 lines.
+/// Single-N mode does not reach `fs::rename` (the guard `if ns == SWEEP_NS`
+/// prevents it), so the `*_tmp.csv` files are the direct output of the
+/// writer.  If the writer appends instead of truncating, the second run
+/// will produce 2× the expected line count.
+///
+/// Uses `env!("CARGO_BIN_EXE_n_sweep")` to find the binary Cargo just built.
 #[test]
 fn sweep_writer_does_not_append() {
     use std::fs;
-    use std::path::{Path, PathBuf};
     use std::process::Command;
 
-    let data_dir = Path::new("docs/validation/addition15/data");
-    let prov_path = data_dir.join("graph_provenance_dense.csv");
-    let sweep_path = data_dir.join("n_sweep.csv");
+    let binary = env!("CARGO_BIN_EXE_n_sweep");
 
-    // Save committed data so the test never dirties the working tree.
-    let prov_saved = fs::read(&prov_path).expect("read committed provenance");
-    let sweep_saved = fs::read(&sweep_path).expect("read committed sweep");
+    // Create a unique temp directory with the expected relative data path.
+    let tmp = std::env::temp_dir().join(format!("n_sweep_append_test_{}", std::process::id()));
+    fs::remove_dir_all(&tmp).ok();
+    let data_dir = tmp.join("docs/validation/addition15/data");
+    fs::create_dir_all(&data_dir).unwrap();
 
-    // Save committed N=60 graph files (the test will overwrite them).
-    let seeds_arr = [2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47];
-    let graph_paths: Vec<_> = seeds_arr
-        .iter()
-        .map(|&s| data_dir.join(format!("graph_n60_seed{s}.txt")))
-        .collect();
-    let graph_saved: Vec<_> = graph_paths
-        .iter()
-        .map(|p| fs::read(p).expect("read committed graph file"))
-        .collect();
-
-    // Build the binary if needed.
-    let status = Command::new("cargo")
-        .args(["build", "--release", "--bin", "n_sweep"])
-        .stdout(std::process::Stdio::inherit())
-        .stderr(std::process::Stdio::inherit())
-        .status()
-        .expect("failed to run cargo build");
-    assert!(
-        status.success(),
-        "cargo build --release --bin n_sweep failed"
-    );
-
-    let binary = PathBuf::from("target/release/n_sweep");
+    let prov_tmp = data_dir.join("graph_provenance_dense_tmp.csv");
+    let sweep_tmp = data_dir.join("n_sweep_tmp.csv");
 
     // Run 1: single-N mode (N=60).
-    let s1 = Command::new(&binary)
+    let s1 = Command::new(binary)
         .arg("60")
+        .current_dir(&tmp)
         .stdout(std::process::Stdio::piped())
         .stderr(std::process::Stdio::piped())
         .status()
         .expect("failed to run n_sweep 60 (run 1)");
     assert!(s1.success(), "n_sweep 60 failed (run 1)");
 
-    let prov1 = fs::read_to_string(&prov_path).expect("read prov after run 1");
-    let sweep1 = fs::read_to_string(&sweep_path).expect("read sweep after run 1");
-    let tmp1 = data_dir.read_dir().unwrap().any(|e| {
-        e.unwrap()
-            .file_name()
-            .to_string_lossy()
-            .ends_with("_tmp.csv")
-    });
-    assert!(!tmp1, "run 1: _tmp.csv files remain after rename");
+    let prov1 = fs::read_to_string(&prov_tmp).expect("read prov_tmp after run 1");
+    let sweep1 = fs::read_to_string(&sweep_tmp).expect("read sweep_tmp after run 1");
 
-    // Run 2: same N, same directory — must replace, not append.
-    let s2 = Command::new(&binary)
+    // Run 2: same N, same directory — tmp files must be truncated, not appended.
+    let s2 = Command::new(binary)
         .arg("60")
+        .current_dir(&tmp)
         .stdout(std::process::Stdio::piped())
         .stderr(std::process::Stdio::piped())
         .status()
         .expect("failed to run n_sweep 60 (run 2)");
     assert!(s2.success(), "n_sweep 60 failed (run 2)");
 
-    let prov2 = fs::read_to_string(&prov_path).expect("read prov after run 2");
-    let sweep2 = fs::read_to_string(&sweep_path).expect("read sweep after run 2");
-    let tmp2 = data_dir.read_dir().unwrap().any(|e| {
-        e.unwrap()
-            .file_name()
-            .to_string_lossy()
-            .ends_with("_tmp.csv")
-    });
-    assert!(!tmp2, "run 2: _tmp.csv files remain after rename");
+    let prov2 = fs::read_to_string(&prov_tmp).expect("read prov_tmp after run 2");
+    let sweep2 = fs::read_to_string(&sweep_tmp).expect("read sweep_tmp after run 2");
 
     // Line counts must be identical between runs (no append).
     assert_eq!(
         prov1.lines().count(),
         prov2.lines().count(),
-        "provenance line count changed: {} vs {} — append bug",
+        "provenance tmp line count changed: {} vs {}",
         prov1.lines().count(),
         prov2.lines().count()
     );
     assert_eq!(
         sweep1.lines().count(),
         sweep2.lines().count(),
-        "sweep line count changed: {} vs {} — append bug",
+        "sweep tmp line count changed: {} vs {}",
         sweep1.lines().count(),
         sweep2.lines().count()
     );
 
-    // Single-N mode: 15 seeds × 1 N = 15 provenance rows + 1 header = 16.
-    assert_eq!(
-        prov1.lines().count(),
-        16,
-        "expected 16 provenance lines for single-N mode, got {}",
-        prov1.lines().count()
-    );
-    // 15 seeds × 2 arms = 30 sweep rows + 1 header = 31.
-    assert_eq!(
-        sweep1.lines().count(),
-        31,
-        "expected 31 sweep lines for single-N mode, got {}",
-        sweep1.lines().count()
-    );
+    // Single-N mode: 15 seeds = 15 provenance rows + 1 header = 16.
+    assert_eq!(prov1.lines().count(), 16, "expected 16 prov tmp lines");
+    // 15 seeds * 2 arms = 30 sweep rows + 1 header = 31.
+    assert_eq!(sweep1.lines().count(), 31, "expected 31 sweep tmp lines");
 
-    // Restore committed data.
-    fs::write(&prov_path, &prov_saved).expect("restore provenance");
-    fs::write(&sweep_path, &sweep_saved).expect("restore sweep");
-    // Restore committed N=60 graph files overwritten by the test.
-    for (p, saved) in graph_paths.iter().zip(graph_saved.iter()) {
-        fs::write(p, saved).expect("restore graph file");
-    }
+    fs::remove_dir_all(&tmp).ok();
 }
