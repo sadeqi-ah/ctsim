@@ -24,7 +24,7 @@ row_keys = [(int(r["n"]), int(r["seed"]), r["arm"]) for r in ROWS]
 assert len(row_keys) == len(set(row_keys)), "Duplicate rows in n_sweep.csv"
 assert len(row_keys) == 15 * 6 * 2, f"Expected 180 sweep rows, got {len(row_keys)}"
 
-CONSTANT_REFERENCES = {"2pc_ce": 100.0, "paxos_ce": 57.8}
+CONSTANT_REFERENCES = {"2pc_ce": 100.0, "paxos_ce": 57.8} # Retained only as documentation of the published values.
 
 
 def mean_se(values):

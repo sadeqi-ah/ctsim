@@ -187,7 +187,7 @@ $ grep -nE '1\.94|2250|4500|22 and 31|1\.3 and 12|27\.4|10\.6|8 to eleven|337|20
 
 | Check | Paper line/sentence | Committed counterpart | Verdict |
 |---|---|---|---|
-| n=188 exclusion | no exclusion statement or reason; paper includes n=188 at 1204-1206 | Paxos anchor excluded because it lies outside uniform W=10 grid | `docs/validation/addition15/README.md:27` | UNSOURCED |
+| n=188 exclusion | no exclusion statement or reason; paper includes n=188 at 1204-1206 | Paxos anchor at n=188 is not reproduced in this round | `docs/validation/addition15/README.md:27` | UNSOURCED |
 | densification residual hypothesis | lines 2233-2234 and 2283-2288 still imply improving density/network quality should explain performance, without reporting falsification | Addition 15 CIs exclude both α=0 and α=1 | `fits.csv:3,11`; README:100-102 | MISMATCH (Revised to acknowledge sweep only bounds the confound) |
 | classification | absent | both arms `SUBLINEAR-INTERMEDIATE` | `docs/validation/addition15/README.md:100,102` | UNSOURCED |
 
