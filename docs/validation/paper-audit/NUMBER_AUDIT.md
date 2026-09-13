@@ -1,6 +1,8 @@
 # Numeric audit of `paper/paper.tex`
 
-**Summary: 65 distinct numeric claims examined — MATCH 38 / MISMATCH 16 / UNSOURCED 11.** Base: `main` at `cdc2f818af6b7b48cf05abfab293cd470a046335`. Verdicts use only the source precedence requested for this audit. A paper range is one distinct claim when adjacent values form one comparison, table row, or interval.
+**Summary: 79 distinct numeric claims examined — MATCH 38 / MISMATCH 25 / UNSOURCED 12 / SOURCED 3 / REMOVED 1.** Base: `main` at `3deb8bec350fcab5c214b1be50099dc8cf697f4d` (original audit base: `cdc2f818af6b7b48cf05abfab293cd470a046335`). Verdicts use only the source precedence requested for this audit. A paper range is one distinct claim when adjacent values form one comparison, table row, or interval.
+
+**Counting rule:** A row carrying a compound verdict (e.g. "UNSOURCED (Paxos not reproduced)" or "MISMATCH (Revised to ...)") is counted under its leading verdict word.
 
 ## Addition 15 fits, anchors, predictions, calibration, tests
 
@@ -14,7 +16,7 @@
 | blind prediction Paxos `289 ms`; error `TBD` | 1328,1334-1335 | `24.6140` slots against `57.8`; fails | `docs/validation/addition13/README.md:101-111,115-121` | MISMATCH |
 | calibration uses loss and slot duration; PDR `99.9%`, duty `0.4%` | 1316-1323 | one free parameter/target; `p*=0.05`; duty target dropped; slot duration not a simulator parameter | `profiles/calibration.lock.toml:13-24,62-68,107-113` | MISMATCH |
 | `475 ms` as published A2 end-to-end target | 251,459,1108,1327 | A2 published target `475 ms` | `docs/validation/addition13/README.md:14-17` | MATCH |
-| tests maintained; counts omitted | 1335-1337 | `9 / 3 / 18`, all `0 failed` | `cargo test --all` output below | UNSOURCED |
+| tests maintained; counts omitted | 1335-1337 | `9 / 3 / 22`, all `0 failed` | `cargo test --all` output below | UNSOURCED |
 
 ```text
 $ grep -nE '0\.13797|0\.12264|0\.13733|0\.12409|8\.9|26\.0|4\.8|20\.4|0\.998|0\.996|3\.5234|3\.7776|42\.4407|24\.6140|TBD\{A2 error\}|TBD\{WPaxos error\}|475\\,ms|289\\,ms' paper/paper.tex
@@ -49,8 +51,9 @@ $ grep -nE 'loss_rate = 0\.05|free_parameters = 1|targets = 1|dropped_target|p_s
 113:t_slot = "T_slot is a paper-side unit conversion, derived analytically in docs/validation/t_slot.md, not a simulator parameter. Latency in slots is exactly invariant to it, energy in node-slots is exactly invariant to it, and every CI/CE ratio is exactly invariant to it."
 $ grep -n 'test result:' /tmp/paper-audit-cargo-test.txt
 15:test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
-66:test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.47s
-90:test result: ok. 18 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.23s
+66:test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.43s
+90:test result: ok. 22 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 49.86s
+# (historical: at cdc2f818 the counts were 9 / 3 / 18; at step 2.10-c they were 9 / 3 / 20)
 ```
 
 ## Reference configuration, scale, loss, latency, energy
@@ -283,3 +286,10 @@ docs/validation/addition7/scripts/addition7_boxplot.py:58:    fig.savefig(OUT / 
 ## Corrections in round 26 (step 2.7-R)
 - Reference Provenance (R2): Replaced the misleading ungrounded cross-N residual extrapolation of the 100.0/57.8 slots with explicit anchor-only comparison and marked cross-N tracking as NOT IDENTIFIABLE.
 - Density Control (R1): Hardened uniform density selection to eliminate append-induced contamination and use a deterministic W=10 window.
+
+## Known internal staleness
+
+This file was originally authored against `main` at `cdc2f818` and has been amended across multiple rounds. The parts measured at each commit are:
+- Test counts (the "tests maintained" row and its evidence block): current at `3deb8bec` (9 lib + 3 reproducibility + 22 validation = 34 total).
+- All other numeric verdicts and evidence: originally measured at `cdc2f818`; rows added in step 2.10-b (round 24) and step 2.10-c (round 25) were measured at their respective heads. The "Corrections in round 25" section supersedes the stale `9 / 3 / 19` with `9 / 3 / 20`, itself superseded by the current `9 / 3 / 22`.
+- The base SHA in the header (`3deb8bec`) is the commit this revision of the audit is valid against; `cdc2f818` is preserved as the original audit base for history.
