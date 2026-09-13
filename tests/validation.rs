@@ -2296,6 +2296,10 @@ fn step_27r_assertions() {
 /// in single-N mode (N=60) twice into a **temporary directory** so the
 /// committed data is never touched.
 ///
+/// To keep CI fast, `N_SWEEP_MAX_SEEDS=1` limits the run to a single seed
+/// (2 experiments: 2pc + paxos).  The truncate-vs-append property does not
+/// need 15 seeds; it needs two consecutive runs into the same tmp files.
+///
 /// Single-N mode does not reach `fs::rename` (the guard `if ns == SWEEP_NS`
 /// prevents it), so the `*_tmp.csv` files are the direct output of the
 /// writer.  If the writer appends instead of truncating, the second run
@@ -2318,9 +2322,10 @@ fn sweep_writer_does_not_append() {
     let prov_tmp = data_dir.join("graph_provenance_dense_tmp.csv");
     let sweep_tmp = data_dir.join("n_sweep_tmp.csv");
 
-    // Run 1: single-N mode (N=60).
+    // Run 1: single-N mode (N=60), 1 seed only for speed.
     let s1 = Command::new(binary)
         .arg("60")
+        .env("N_SWEEP_MAX_SEEDS", "1")
         .current_dir(&tmp)
         .stdout(std::process::Stdio::piped())
         .stderr(std::process::Stdio::piped())
@@ -2334,6 +2339,7 @@ fn sweep_writer_does_not_append() {
     // Run 2: same N, same directory — tmp files must be truncated, not appended.
     let s2 = Command::new(binary)
         .arg("60")
+        .env("N_SWEEP_MAX_SEEDS", "1")
         .current_dir(&tmp)
         .stdout(std::process::Stdio::piped())
         .stderr(std::process::Stdio::piped())
@@ -2360,10 +2366,10 @@ fn sweep_writer_does_not_append() {
         sweep2.lines().count()
     );
 
-    // Single-N mode: 15 seeds = 15 provenance rows + 1 header = 16.
-    assert_eq!(prov1.lines().count(), 16, "expected 16 prov tmp lines");
-    // 15 seeds * 2 arms = 30 sweep rows + 1 header = 31.
-    assert_eq!(sweep1.lines().count(), 31, "expected 31 sweep tmp lines");
+    // 1 seed = 1 provenance row + 1 header = 2.
+    assert_eq!(prov1.lines().count(), 2, "expected 2 prov tmp lines");
+    // 1 seed * 2 arms = 2 sweep rows + 1 header = 3.
+    assert_eq!(sweep1.lines().count(), 3, "expected 3 sweep tmp lines");
 
     fs::remove_dir_all(&tmp).ok();
 }

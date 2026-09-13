@@ -200,7 +200,15 @@ fn main() {
         let (min_deg, max_deg) = solve_window(n).unwrap_or_else(|| {
             panic!("N={n}: no generator window satisfies the fixed acceptance criterion")
         });
-        let seeds: &[u64] = if mode == "cost" { &SEEDS[..1] } else { &SEEDS };
+        let seeds: &[u64] = if mode == "cost" {
+            &SEEDS[..1]
+        } else {
+            let max = env::var("N_SWEEP_MAX_SEEDS")
+                .ok()
+                .and_then(|s| s.parse::<usize>().ok())
+                .unwrap_or(SEEDS.len());
+            &SEEDS[..max.min(SEEDS.len())]
+        };
         for &seed in seeds {
             let graph = generate(n, min_deg, max_deg, seed).unwrap();
             let (edges, mean, variance, min_real, max_real, diameter) = graph_stats(&graph);
