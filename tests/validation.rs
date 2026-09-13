@@ -2290,3 +2290,34 @@ fn step_27r_assertions() {
         "420330edbd2721dd41114c1a8c7653c395a4c7af",
     );
 }
+
+/// Regression test: the sweep writer must replace (not append to) the committed
+/// CSVs.  After the generator runs, both files must have exactly one header plus
+/// the expected data rows — never more.  A doubled file would still pass value-
+/// based assertions because the first N rows remain correct, so this test checks
+/// **line counts** only.
+#[test]
+fn sweep_writer_does_not_append() {
+    use std::fs;
+    use std::path::Path;
+
+    let data_dir = Path::new("docs/validation/addition15/data");
+
+    // 6 N values × 15 seeds = 90 provenance rows + 1 header = 91
+    let prov = fs::read_to_string(data_dir.join("graph_provenance_dense.csv")).unwrap();
+    assert_eq!(
+        prov.lines().count(),
+        91,
+        "graph_provenance_dense.csv must have exactly 91 lines (1 header + 90 data) — \
+         append bug detected"
+    );
+
+    // 6 N values × 15 seeds × 2 arms = 180 sweep rows + 1 header = 181
+    let sweep = fs::read_to_string(data_dir.join("n_sweep.csv")).unwrap();
+    assert_eq!(
+        sweep.lines().count(),
+        181,
+        "n_sweep.csv must have exactly 181 lines (1 header + 180 data) — \
+         append bug detected"
+    );
+}
