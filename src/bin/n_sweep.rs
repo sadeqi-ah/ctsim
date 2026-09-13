@@ -229,8 +229,6 @@ fn main() {
     drop(provenance);
     drop(rows);
 
-    if ns == SWEEP_NS {
-        fs::rename(&prov_tmp, out.join("graph_provenance_dense.csv")).unwrap();
-        fs::rename(&rows_tmp, out.join("n_sweep.csv")).unwrap();
-    }
+    fs::rename(&prov_tmp, out.join("graph_provenance_dense.csv")).unwrap();
+    fs::rename(&rows_tmp, out.join("n_sweep.csv")).unwrap();
 }
