@@ -11,7 +11,6 @@ use std::io::{BufWriter, Write};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
-const NS: [usize; 8] = [60, 90, 120, 150, 180, 188, 240, 2];
 const SWEEP_NS: [usize; 6] = [60, 90, 120, 150, 180, 240];
 const SEEDS: [u64; 15] = [2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47];
 const MAX_GENERATION_ATTEMPTS: usize = 100;
@@ -162,35 +161,33 @@ fn main() {
     println!("search: sweep min_deg to minimize density error across seeds, width W=10. Requires density error <= 1%.");
 
     if mode == "search" {
-        for n in NS {
+        for n in SWEEP_NS {
             println!("N={n} selected={:?}", solve_window(n));
         }
         return;
     }
 
-    let prov_exists = out.join("graph_provenance_dense.csv").exists();
+    let prov_tmp = out.join("graph_provenance_dense_tmp.csv");
     let mut provenance = BufWriter::new(
         OpenOptions::new()
             .create(true)
-            .append(true)
-            .open(out.join("graph_provenance_dense.csv"))
+            .truncate(true)
+            .write(true)
+            .open(&prov_tmp)
             .unwrap(),
     );
-    if !prov_exists {
-        writeln!(provenance, "n,seed,min_deg_arg,max_deg_arg,edges,mean_degree,degree_variance,min_degree,max_degree,diameter,graph_file").unwrap();
-    }
+    writeln!(provenance, "n,seed,min_deg_arg,max_deg_arg,edges,mean_degree,degree_variance,min_degree,max_degree,diameter,graph_file").unwrap();
 
-    let rows_exists = out.join("n_sweep.csv").exists();
+    let rows_tmp = out.join("n_sweep_tmp.csv");
     let mut rows = BufWriter::new(
         OpenOptions::new()
             .create(true)
-            .append(true)
-            .open(out.join("n_sweep.csv"))
+            .truncate(true)
+            .write(true)
+            .open(&rows_tmp)
             .unwrap(),
     );
-    if !rows_exists {
-        writeln!(rows, "n,arm,seed,mean_round_slots,mean_decision_latency_slots,committed,proposals,elapsed_seconds").unwrap();
-    }
+    writeln!(rows, "n,arm,seed,mean_round_slots,mean_decision_latency_slots,committed,proposals,elapsed_seconds").unwrap();
 
     let ns: Vec<usize> = if mode == "cost" {
         vec![240]
@@ -199,11 +196,19 @@ fn main() {
     } else {
         SWEEP_NS.to_vec()
     };
-    for n in ns {
+    for &n in &ns {
         let (min_deg, max_deg) = solve_window(n).unwrap_or_else(|| {
             panic!("N={n}: no generator window satisfies the fixed acceptance criterion")
         });
-        let seeds: &[u64] = if mode == "cost" { &SEEDS[..1] } else { &SEEDS };
+        let seeds: &[u64] = if mode == "cost" {
+            &SEEDS[..1]
+        } else {
+            let max = env::var("N_SWEEP_MAX_SEEDS")
+                .ok()
+                .and_then(|s| s.parse::<usize>().ok())
+                .unwrap_or(SEEDS.len());
+            &SEEDS[..max.min(SEEDS.len())]
+        };
         for &seed in seeds {
             let graph = generate(n, min_deg, max_deg, seed).unwrap();
             let (edges, mean, variance, min_real, max_real, diameter) = graph_stats(&graph);
@@ -225,5 +230,15 @@ fn main() {
                 rows.flush().unwrap();
             }
         }
+    }
+
+    provenance.flush().unwrap();
+    rows.flush().unwrap();
+    drop(provenance);
+    drop(rows);
+
+    if ns == SWEEP_NS {
+        fs::rename(&prov_tmp, out.join("graph_provenance_dense.csv")).unwrap();
+        fs::rename(&rows_tmp, out.join("n_sweep.csv")).unwrap();
     }
 }

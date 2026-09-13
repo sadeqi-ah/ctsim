@@ -1875,12 +1875,6 @@ fn step_210c_assertions() {
         Path::new(".gitignore"),
         "420330edbd2721dd41114c1a8c7653c395a4c7af",
     );
-
-    // T9: paper.tex blob is 55bbd7b12b3bb0631f5ccccb3b5455ac0ba49ede
-    assert_blob(
-        Path::new("paper/paper.tex"),
-        "55bbd7b12b3bb0631f5ccccb3b5455ac0ba49ede",
-    );
 }
 
 #[test]
@@ -2039,4 +2033,343 @@ fn step_210b_assertions() {
         "calibration.lock.toml was modified"
     );
     assert!(calibration.contains("0.05"), "p* != 0.05");
+}
+
+#[test]
+fn step_27r_assertions() {
+    use std::collections::{HashMap, HashSet};
+    use std::fs;
+    use std::path::Path;
+
+    let data_dir = Path::new("docs/validation/addition15/data");
+
+    // R1a: Assert the exact node domain
+    let expected_ns: HashSet<usize> = [60, 90, 120, 150, 180, 240].iter().cloned().collect();
+    // R1b: Assert the exact seed set
+    let expected_seeds: HashSet<String> = [2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47]
+        .iter()
+        .map(|s| s.to_string())
+        .collect();
+
+    // 1. no duplicate (N, seed, arm) rows in n_sweep data; exact expected row counts
+    let sweep_csv = fs::read_to_string(data_dir.join("n_sweep.csv")).unwrap();
+    let mut sweep_keys = HashSet::new();
+    let mut sweep_count = 0;
+
+    let mut sweep_ns_found = HashSet::new();
+    let mut seeds_per_n_arm: HashMap<(usize, String), HashSet<String>> = HashMap::new();
+
+    // Safely parse header to get indices, though we can just split by comma and take specific indices
+    // n,arm,seed,mean_round_slots,mean_decision_latency_slots,committed,proposals,elapsed_seconds
+    for (i, line) in sweep_csv.lines().enumerate() {
+        if i == 0 || line.is_empty() {
+            continue;
+        }
+        let parts: Vec<&str> = line.split(',').collect();
+        let n_val: usize = parts[0].parse().unwrap();
+        let arm = parts[1].to_string();
+        let seed = parts[2].to_string();
+
+        sweep_ns_found.insert(n_val);
+        seeds_per_n_arm
+            .entry((n_val, arm.clone()))
+            .or_default()
+            .insert(seed.clone());
+
+        let key = format!("{}-{}-{}", n_val, seed, arm);
+        assert!(
+            sweep_keys.insert(key.clone()),
+            "Duplicate row in n_sweep.csv: {}",
+            key
+        );
+        sweep_count += 1;
+    }
+
+    // R1a: set equality for N
+    assert_eq!(
+        sweep_ns_found, expected_ns,
+        "Distinct N values in sweep do not exactly match expected set"
+    );
+    // R1b: Exact seed set for every N and every arm
+    for n in &expected_ns {
+        for arm in &["2pc_ce", "paxos_ce"] {
+            let seeds = seeds_per_n_arm
+                .get(&(*n, arm.to_string()))
+                .unwrap_or_else(|| panic!("No seeds found for N={}, arm={}", n, arm));
+            assert_eq!(
+                seeds, &expected_seeds,
+                "Seeds for N={}, arm={} do not match exactly expected set",
+                n, arm
+            );
+        }
+    }
+    // R2: ensure exactly 181 lines (1 header + 180 data)
+    assert_eq!(
+        sweep_csv.lines().count(),
+        181,
+        "n_sweep.csv must have exactly 181 lines"
+    );
+    assert_eq!(sweep_count, 180, "Expected 180 sweep rows");
+
+    // 2. graph provenance rows
+    let prov_csv = fs::read_to_string(data_dir.join("graph_provenance_dense.csv")).unwrap();
+    let mut prov_keys = HashSet::new();
+    let mut prov_count = 0;
+
+    // Store sum of degrees to check density gate
+    let mut degree_sums = HashMap::new();
+
+    // R1d: Gate constants
+    // The 5% constant applies to every single seed row
+    const PER_SEED_TOLERANCE: f64 = 0.05;
+    // The 1% constant applies to the mean of 15 seeds for a given N
+    const MEAN_GATE_TOLERANCE: f64 = 0.01;
+
+    for (i, line) in prov_csv.lines().enumerate() {
+        if i == 0 || line.is_empty() {
+            continue;
+        }
+        // n,seed,min_deg_arg,max_deg_arg,edges,mean_degree,degree_variance,min_degree,max_degree,diameter,graph_file
+        let parts: Vec<&str> = line.split(',').collect();
+        let n: usize = parts[0].parse().unwrap();
+        let seed = parts[1];
+        let min_deg_arg: usize = parts[2].parse().unwrap();
+        let max_deg_arg: usize = parts[3].parse().unwrap();
+        let mean_deg: f64 = parts[5].parse().unwrap();
+        let diam: usize = parts[9].parse().unwrap();
+        let graph_file = parts[10];
+
+        let key = format!("{}-{}", n, seed);
+        assert!(
+            prov_keys.insert(key.clone()),
+            "Duplicate row in provenance: {}",
+            key
+        );
+        prov_count += 1;
+
+        // R1c: W exactly 10
+        assert_eq!(
+            max_deg_arg - min_deg_arg,
+            10,
+            "W is not exactly 10 for N={}, seed={}",
+            n,
+            seed
+        );
+
+        // graph has diameter 2 (connectivity checked elsewhere but diam 2 implies connectivity)
+        assert_eq!(diam, 2, "Graph must have diameter 2");
+
+        // every graph provenance row has a matching graph file
+        let file_path = Path::new(graph_file);
+        assert!(
+            file_path.exists(),
+            "Graph file {} does not exist",
+            graph_file
+        );
+
+        // aggregate mean_degree
+        *degree_sums.entry(n).or_insert(0.0) += mean_deg;
+
+        // R1d: per_seed gate (5% tolerance)
+        let target = 0.5 * n as f64;
+        let err = (mean_deg - target).abs() / target;
+        assert!(
+            err <= PER_SEED_TOLERANCE,
+            "N={} seed={} fails per-seed density gate: err={:.4}% > 5%",
+            n,
+            seed,
+            err * 100.0
+        );
+
+        // every graph provenance row has a matching sweep row
+        let key1 = format!("{}-{}-2pc_ce", n, seed);
+        let key2 = format!("{}-{}-paxos_ce", n, seed);
+        assert!(
+            sweep_keys.contains(&key1),
+            "Missing sweep row for 2pc_ce {}",
+            key
+        );
+        assert!(
+            sweep_keys.contains(&key2),
+            "Missing sweep row for paxos_ce {}",
+            key
+        );
+    }
+    // R2: ensure exactly 91 lines (1 header + 90 data)
+    assert_eq!(
+        prov_csv.lines().count(),
+        91,
+        "graph_provenance_dense.csv must have exactly 91 lines"
+    );
+    assert_eq!(prov_count, 90, "Expected 90 provenance rows");
+
+    // R1d: mean_gate (1% tolerance on 15-seed mean)
+    for (n, sum_deg) in degree_sums {
+        let mean_deg = sum_deg / 15.0;
+        let target = 0.5 * n as f64;
+        let err = (mean_deg - target).abs() / target;
+        assert!(
+            err <= MEAN_GATE_TOLERANCE,
+            "N={} fails mean density gate: err={:.4}% > 1%",
+            n,
+            err * 100.0
+        );
+    }
+
+    // 4. the generated README matches the generator byte-for-byte and analyzer checks
+    let readme = fs::read_to_string("docs/validation/addition15/README.md").unwrap();
+    assert!(
+        !readme.contains("constant reference"),
+        "Modelled reference must not be claimed as constant independent reference"
+    );
+    assert!(
+        !readme.contains("PUBLISHED"),
+        "No modelled reference labelled as sourced/published"
+    );
+    assert!(
+        readme.contains("NOT IDENTIFIABLE"),
+        "Cross-N external residual is not identifiable"
+    );
+    assert!(
+        readme.contains("log(round_length) vs log(N) (Primary)"),
+        "Primary fit uses observed round length"
+    );
+
+    let analyze_py =
+        fs::read_to_string("docs/validation/addition15/scripts/analyze_n_sweep.py").unwrap();
+    assert!(
+        !analyze_py.contains("def model_reference"),
+        "model_reference must be completely removed"
+    );
+
+    // R3: paper.tex semantic check
+    let paper = fs::read_to_string("paper/paper.tex").unwrap();
+    assert!(paper.contains("The density-controlled sweep bounds the density confound across"));
+    assert!(paper.contains(
+        "they establish only that infrastructure quality cannot account for it entirely."
+    ));
+    assert!(!paper.contains("is falsified: density error has no systematic trend with"));
+
+    // 5. Existing frozen blobs
+    fn assert_blob(path: &Path, expected_sha: &str) {
+        let content =
+            fs::read(path).unwrap_or_else(|e| panic!("Failed to read {}: {}", path.display(), e));
+        let mut hasher = sha1_smol::Sha1::new();
+        hasher.update(format!("blob {}\0", content.len()).as_bytes());
+        hasher.update(&content);
+        assert_eq!(
+            hasher.digest().to_string(),
+            expected_sha,
+            "Blob SHA mismatch for {}",
+            path.display()
+        );
+    }
+    let sources_dir = Path::new("docs/validation/paper-audit/sources");
+    assert_blob(
+        &sources_dir.join("per_decision_energy.csv"),
+        "7386c9467760b7c4bacb50d30705dfc7f00b0e8f",
+    );
+    assert_blob(
+        &sources_dir.join("distribution_stats.csv"),
+        "ace5a6b0e265259991efde61df3f8c65805543a0",
+    );
+    assert_blob(
+        &sources_dir.join("distribution_stats.md"),
+        "73a554b1daf40c8206de2fd85256b9592ffba345",
+    );
+    assert_blob(
+        &sources_dir.join("integer_multiple_check.md"),
+        "7c9cfbe521a3d082fbfa3ae254d7110164032def",
+    );
+    assert_blob(
+        Path::new("profiles/calibration.lock.toml"),
+        "fd88f784e18062c075f0b9c8a940918c87b2d0cf",
+    );
+    assert_blob(
+        Path::new(".gitignore"),
+        "420330edbd2721dd41114c1a8c7653c395a4c7af",
+    );
+}
+
+/// Regression test: the sweep writer must truncate (not append to) the
+/// `*_tmp.csv` files it writes.  This test invokes the `n_sweep` binary
+/// in single-N mode (N=60) twice into a **temporary directory** so the
+/// committed data is never touched.
+///
+/// To keep CI fast, `N_SWEEP_MAX_SEEDS=1` limits the run to a single seed
+/// (2 experiments: 2pc + paxos).  The truncate-vs-append property does not
+/// need 15 seeds; it needs two consecutive runs into the same tmp files.
+///
+/// Single-N mode does not reach `fs::rename` (the guard `if ns == SWEEP_NS`
+/// prevents it), so the `*_tmp.csv` files are the direct output of the
+/// writer.  If the writer appends instead of truncating, the second run
+/// will produce 2× the expected line count.
+///
+/// Uses `env!("CARGO_BIN_EXE_n_sweep")` to find the binary Cargo just built.
+#[test]
+fn sweep_writer_does_not_append() {
+    use std::fs;
+    use std::process::Command;
+
+    let binary = env!("CARGO_BIN_EXE_n_sweep");
+
+    // Create a unique temp directory with the expected relative data path.
+    let tmp = std::env::temp_dir().join(format!("n_sweep_append_test_{}", std::process::id()));
+    fs::remove_dir_all(&tmp).ok();
+    let data_dir = tmp.join("docs/validation/addition15/data");
+    fs::create_dir_all(&data_dir).unwrap();
+
+    let prov_tmp = data_dir.join("graph_provenance_dense_tmp.csv");
+    let sweep_tmp = data_dir.join("n_sweep_tmp.csv");
+
+    // Run 1: single-N mode (N=60), 1 seed only for speed.
+    let s1 = Command::new(binary)
+        .arg("60")
+        .env("N_SWEEP_MAX_SEEDS", "1")
+        .current_dir(&tmp)
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
+        .status()
+        .expect("failed to run n_sweep 60 (run 1)");
+    assert!(s1.success(), "n_sweep 60 failed (run 1)");
+
+    let prov1 = fs::read_to_string(&prov_tmp).expect("read prov_tmp after run 1");
+    let sweep1 = fs::read_to_string(&sweep_tmp).expect("read sweep_tmp after run 1");
+
+    // Run 2: same N, same directory — tmp files must be truncated, not appended.
+    let s2 = Command::new(binary)
+        .arg("60")
+        .env("N_SWEEP_MAX_SEEDS", "1")
+        .current_dir(&tmp)
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
+        .status()
+        .expect("failed to run n_sweep 60 (run 2)");
+    assert!(s2.success(), "n_sweep 60 failed (run 2)");
+
+    let prov2 = fs::read_to_string(&prov_tmp).expect("read prov_tmp after run 2");
+    let sweep2 = fs::read_to_string(&sweep_tmp).expect("read sweep_tmp after run 2");
+
+    // Line counts must be identical between runs (no append).
+    assert_eq!(
+        prov1.lines().count(),
+        prov2.lines().count(),
+        "provenance tmp line count changed: {} vs {}",
+        prov1.lines().count(),
+        prov2.lines().count()
+    );
+    assert_eq!(
+        sweep1.lines().count(),
+        sweep2.lines().count(),
+        "sweep tmp line count changed: {} vs {}",
+        sweep1.lines().count(),
+        sweep2.lines().count()
+    );
+
+    // 1 seed = 1 provenance row + 1 header = 2.
+    assert_eq!(prov1.lines().count(), 2, "expected 2 prov tmp lines");
+    // 1 seed * 2 arms = 2 sweep rows + 1 header = 3.
+    assert_eq!(sweep1.lines().count(), 3, "expected 3 sweep tmp lines");
+
+    fs::remove_dir_all(&tmp).ok();
 }

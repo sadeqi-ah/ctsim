@@ -8,8 +8,8 @@
 |---|---:|---|---|---|
 | current slopes, CIs, AIC, R² absent | — | 2PC `0.13733 [0.13101, 0.14365]`, AIC `4.8`, R² `0.998`; Paxos `0.12409 [0.11596, 0.13221]`, AIC `20.4`, R² `0.996` | `docs/validation/addition15/data/fits.csv:3,11`; `docs/validation/addition15/README.md:72,86` | UNSOURCED |
 | withdrawn `0.13797`, `0.12264`, AIC `8.9`, `26.0` absent | — | values withdrawn; no occurrence | `paper/paper.tex` grep below | MATCH |
-| published anchors absent | — | 2PC `3.5234x` at n=180; Paxos `3.7776x` at n=188 | `docs/validation/addition15/README.md:21-27` | UNSOURCED |
-| reference slots absent | — | `100.0` for `2pc_ce`; `57.8` for `paxos_ce` | `docs/validation/addition15/README.md:21-27` | UNSOURCED |
+| published anchors absent | — | 2PC `3.5234x` at n=180; Paxos `3.7776x` at n=188 | `docs/validation/addition15/README.md:21-27` | UNSOURCED (Paxos not reproduced) |
+| reference slots absent | — | `100.0` for `2pc_ce`; `57.8` for `paxos_ce` | `docs/validation/addition15/README.md:21-27` | UNSOURCED (Paxos not reproduced) |
 | blind prediction A2 `475 ms`; error `TBD` | 1327,1334 | `42.4407` slots against `100.0`; fails | `docs/validation/addition13/README.md:89-99,115-121` | MISMATCH |
 | blind prediction Paxos `289 ms`; error `TBD` | 1328,1334-1335 | `24.6140` slots against `57.8`; fails | `docs/validation/addition13/README.md:101-111,115-121` | MISMATCH |
 | calibration uses loss and slot duration; PDR `99.9%`, duty `0.4%` | 1316-1323 | one free parameter/target; `p*=0.05`; duty target dropped; slot duration not a simulator parameter | `profiles/calibration.lock.toml:13-24,62-68,107-113` | MISMATCH |
@@ -185,10 +185,10 @@ $ grep -nE '1\.94|2250|4500|22 and 31|1\.3 and 12|27\.4|10\.6|8 to eleven|337|20
 
 ## Exclusion, hypothesis, classification
 
-| Check | Paper line/sentence | Committed counterpart | Verdict |
-|---|---|---|---|
-| n=188 exclusion | no exclusion statement or reason; paper includes n=188 at 1204-1206 | Paxos anchor excluded because it lies outside uniform W=10 grid | `docs/validation/addition15/README.md:27` | UNSOURCED |
-| densification residual hypothesis | lines 2233-2234 and 2283-2288 still imply improving density/network quality should explain performance, without reporting falsification | Addition 15 CIs exclude both α=0 and α=1 | `fits.csv:3,11`; README:100-102 | MISMATCH |
+| Check | Paper line/sentence | Committed counterpart | Exact source | Verdict |
+|---|---|---|---|---|
+| n=188 exclusion | no exclusion statement or reason; paper includes n=188 at 1204-1206 | Paxos anchor at n=188 is not reproduced in this round | `docs/validation/addition15/README.md:27` | UNSOURCED |
+| densification residual hypothesis | lines 2233-2234 and 2283-2288 still imply improving density/network quality should explain performance, without reporting falsification | Addition 15 CIs exclude both α=0 and α=1 | `fits.csv:3,11`; README:100-102 | MISMATCH (Revised to acknowledge sweep only bounds the confound) |
 | classification | absent | both arms `SUBLINEAR-INTERMEDIATE` | `docs/validation/addition15/README.md:100,102` | UNSOURCED |
 
 ```text
@@ -198,8 +198,8 @@ $ grep -nEi 'excluded|exclusion|outside this sweep|densif|hypothes|falsif|SUBLIN
 2233:The conventional expectation is that a better network benefits every
 2234:protocol. The measurements show that this holds for one family only.
 2284:be improved---by raising transmission power, increasing node density or
-$ grep -nE 'outside this sweep|SUBLINEAR-INTERMEDIATE|alpha CI' docs/validation/addition15/README.md
-27:The Paxos anchor at n=188 lies outside this sweep's grid and is therefore not included in the primary fit.
+$ grep -nE 'not reproduced|SUBLINEAR-INTERMEDIATE|alpha CI' docs/validation/addition15/README.md
+27:The Paxos anchor at n=188 is not reproduced in this round. The cross-N residual across the whole domain is NOT IDENTIFIABLE (there is no external reference that scales with N to compare against). The previous analysis that scaled a constant 100.0/57.8 by N/180 or N/188 was an ungrounded model, not a measurement.
 100:For 2PC over CE, the alpha CI is [0.13101, 0.14365]. By the decision rule, we conclude SUBLINEAR-INTERMEDIATE.
 102:For Paxos over CE, the alpha CI is [0.11596, 0.13221]. By the decision rule, we conclude SUBLINEAR-INTERMEDIATE.
 ```
@@ -279,3 +279,7 @@ docs/validation/addition7/scripts/addition7_boxplot.py:58:    fig.savefig(OUT / 
 - Slots per decision: estimator corrected from per-seed mean to pooled (sum/sum) to match paper definition.
 - Progress curves: 99-versus-100 is a disclosed reporting/counting mismatch, not a repaired simulator bug.
 - Test count corrected to 9 / 3 / 20 (superseding stale 9 / 3 / 19).
+
+## Corrections in round 26 (step 2.7-R)
+- Reference Provenance (R2): Replaced the misleading ungrounded cross-N residual extrapolation of the 100.0/57.8 slots with explicit anchor-only comparison and marked cross-N tracking as NOT IDENTIFIABLE.
+- Density Control (R1): Hardened uniform density selection to eliminate append-induced contamination and use a deterministic W=10 window.
