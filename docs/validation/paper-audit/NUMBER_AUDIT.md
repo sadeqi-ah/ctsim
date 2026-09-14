@@ -43,7 +43,7 @@ $ grep -nE '0\.13797|0\.12264|0\.13733|0\.12409|8\.9|26\.0|4\.8|20\.4|0\.998|0\.
 1648:residual ratios 3.5234x at $\Nnodes=180$ for 2PC and 3.7776x at
 1716:(98.9\,\% at 5\,\% loss, per Table~\ref{tab:baseline}, and further
 2293:Full mesh    & 1  & 26.00 \\
-2579:the full and partial meshes and 98.9\,% on the random topology.
+2579:the full and partial meshes and 98.9\,\% on the random topology.
 $ grep -nE '^(2pc_ce|paxos_ce),log_round_length' docs/validation/addition15/data/fits.csv
 2:2pc_ce,log_round_length,constant,0.000000000,0.000000000,0.000000000,39.511348,0.000000
 3:2pc_ce,log_round_length,linear,0.137331411,0.131013055,0.143649766,4.793313,0.997801
@@ -92,7 +92,7 @@ test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; fini
 | random mean `4.20` (range 4–5); scale-free mean `4.13` (range 4–5) | 1303,2285 | random mean 4.20, range 4–5; scale-free 4.13, range 4–5 | `plots/topology/results/sweep_summary.csv:2-451` | MATCH |
 | drain tails `0.09%`, `1.70%`, `3.41%`; max `23.4%` | 1349 | `0.0851%`, `1.6968%`, `3.4105%`; `23.4375%` | `plots/scalability/results/sweep_summary.csv:50-1739` | MATCH |
 | baseline six table rows | 1536,1537,1538,1540,1541,1542 | rounded rows match | `plots/scalability/results/sweep_summary.csv:56-61` (15-seed aggregation) | MATCH |
-| 2PC ratio `4.08x`, commit `98.9%` | 1538,1565,1716,2577 | `4.083x`, `98.9%` | same | MATCH |
+| 2PC ratio `4.08x`, commit `98.9%` | 1538,1565,1716,2579 | `4.083x`, `98.9%` | same | MATCH |
 | N=188 TOM `0.148` vs `0.123`, `20%` | 1628 | 0.1478 vs 0.1232; 19.97% | `plots/scalability/results/sweep_summary.csv:98-1740` | MATCH |
 | loss decline `14.33%, 18.80%, 14.35%` | 1666 | 14.33%, 18.80%, 14.35% | `plots/scalability/results/sweep_summary.csv:50-1740` | MATCH |
 | 2PC-CI `0.107`, down `39%` | 1675 | 0.10699; 39.35% | same | MATCH |
@@ -143,7 +143,7 @@ $ grep -nE 'about 12|about 21|4\.083x|5\.672x|five topologies|15 protocol-topolo
 2285:means of 4.20 and 4.13. The diameters listed here are the modal values.}
 2417:\CE{} protocols on five topologies, a twenty-six-fold range of diameter and a
 2572:26 in a network of 27 nodes, the two end nodes have one neighbour and every
-2579:the full and partial meshes and 98.9\,% on the random topology.
+2579:the full and partial meshes and 98.9\,\% on the random topology.
 2593:only a majority, is unaffected by the same constraint and operates on this
 2652:complete and the cost appears mainly as a longer run, whereas under heavy
 2653:loss the commit rate itself falls (to 70.07\,\% for 2PC over \CI{} at 20\,\%
