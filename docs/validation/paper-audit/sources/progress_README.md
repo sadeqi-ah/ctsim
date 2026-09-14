@@ -23,3 +23,6 @@ Pre-generation source revision: c5e76df6fb05639fc8677c3f89f1bf8a9939497d
 - TOM (CE): snapshot file `results/snapshots_tom_ce.csv` (snapshot slot column `slot`, last snapshot slot=466, progress_count column `progress_count`, progress_count=99) vs run-total file `results/results_tom_ce.csv` (committed-decision column `outcome`, run total committed decisions=100, final end-slot column `end_slot`, value=467). Comparison: final end slot 467 > last snapshot slot 466. Agree: false
 
 Conclusion: the complete run records 100 committed decisions; the progress snapshot/report records 99. This is treated in this round as a known one-count reporting mismatch. No counter, snapshot code, protocol logic, or simulator behavior is changed. The discrepancy does not alter the paper's main performance conclusions, but it is disclosed for reproducibility.
+
+## Disclosed Artifact Note
+Snapshots sample in-flight slot state inside the round loop (`src/phy/ci.rs:67`, `src/phy/ce.rs:51`). The run terminates immediately after the 100th decision is finalised (`src/sim.rs:134-138`, `src/sim/pipeline.rs:145-165`, `src/sim/paxos_pipeline.rs:264-278`) without ticking a further slot; therefore the final snapshot reads 99 decisions while the run totals record 100/100 committed.
