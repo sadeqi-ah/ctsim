@@ -1,6 +1,9 @@
 # Numeric audit of `paper/paper.tex`
 
-**Summary: 79 distinct numeric claims examined — MATCH 51 / MISMATCH 12 / UNSOURCED 12 / SOURCED 3 / REMOVED 1.** Base: `main` at `3deb8bec350fcab5c214b1be50099dc8cf697f4d` (original audit base: `cdc2f818af6b7b48cf05abfab293cd470a046335`). Verdicts use only the source precedence requested for this audit. A paper range is one distinct claim when adjacent values form one comparison, table row, or interval.
+## Provenance
+All numbers, line references, and evidence blocks in this file were measured against `main` at commit `98ac7318b409ba580f2e5d9257b5208117444ff8`.
+
+**Summary: 79 distinct numeric claims examined — MATCH 61 / MISMATCH 5 / UNSOURCED 9 / SOURCED 3 / REMOVED 1.** Base: `main` at `98ac7318b409ba580f2e5d9257b5208117444ff8` (original audit base: `cdc2f818af6b7b48cf05abfab293cd470a046335`). Verdicts use only the source precedence requested for this audit. A paper range is one distinct claim when adjacent values form one comparison, table row, or interval.
 
 **Counting rule:** A row carrying a compound verdict (e.g. "UNSOURCED (Paxos not reproduced)" or "MISMATCH (Revised to ...)") is counted under its leading verdict word.
 
@@ -8,40 +11,47 @@
 
 | Paper value | `paper.tex` line | Committed value | Exact source | Verdict |
 |---|---:|---|---|---|
-| current slopes, CIs, AIC, R² absent | — | 2PC `0.13733 [0.13101, 0.14365]`, AIC `4.8`, R² `0.998`; Paxos `0.12409 [0.11596, 0.13221]`, AIC `20.4`, R² `0.996` | `docs/validation/addition15/data/fits.csv:3,11`; `docs/validation/addition15/README.md:72,86` | UNSOURCED |
+| slope `0.137331411`, CI `[0.131013055, 0.143649766]`, AIC `4.793313`, $R^2=0.997801$; Paxos slope `0.124085227`, CI `[0.115956905, 0.132213550]`, AIC `20.403476`, $R^2=0.995552$ | 1640,1643 | 2PC `0.13733 [0.13101, 0.14365]`, AIC `4.8`, R² `0.998`; Paxos `0.12409 [0.11596, 0.13221]`, AIC `20.4`, R² `0.996` | `docs/validation/addition15/data/fits.csv:3,11`; `docs/validation/addition15/README.md:72,86` | MATCH |
 | withdrawn `0.13797`, `0.12264`, AIC `8.9`, `26.0` absent | — | values withdrawn; no occurrence | `paper/paper.tex` grep below | MATCH |
-| published anchors absent | — | 2PC `3.5234x` at n=180; Paxos `3.7776x` at n=188 | `docs/validation/addition15/README.md:21-27` | UNSOURCED (Paxos not reproduced) |
+| residual ratios `3.5234x` at $\Nnodes=180$ for 2PC and `3.7776x` at $\Nnodes=188$ for Paxos | 1648 | 2PC `3.5234x` at n=180; Paxos `3.7776x` at n=188 | `docs/validation/addition15/README.md:21-27` | MATCH |
 | reference slots absent | — | `100.0` for `2pc_ce`; `57.8` for `paxos_ce` | `docs/validation/addition15/README.md:21-27` | UNSOURCED (Paxos not reproduced) |
-| blind prediction A2 `475 ms`; error `TBD` | 1327,1334 | `42.4407` slots against `100.0`; fails | `docs/validation/addition13/README.md:89-99,115-121` | MISMATCH |
-| blind prediction Paxos `289 ms`; error `TBD` | 1328,1334-1335 | `24.6140` slots against `57.8`; fails | `docs/validation/addition13/README.md:101-111,115-121` | MISMATCH |
-| calibration uses loss and slot duration; PDR `99.9%`, duty `0.4%` | 1316-1323 | one free parameter/target; `p*=0.05`; duty target dropped; slot duration not a simulator parameter | `profiles/calibration.lock.toml:13-24,62-68,107-113` | MISMATCH |
-| `475 ms` as published A2 end-to-end target | 251,459,1108,1327 | A2 published target `475 ms` | `docs/validation/addition13/README.md:14-17` | MATCH |
-| tests maintained; counts omitted | 1335-1337 | `9 / 3 / 22`, all `0 failed` | `cargo test --all` output below | UNSOURCED |
+| A2 predicts `16.722\,ms [16.527, 16.917]` against `475\,ms` (relative error `$-0.9648$`) | 1423 | `16.722 ms`, relative error `-0.9648` | `docs/validation/addition13/README.md:96` | MATCH |
+| Wireless Paxos predicts `9.796\,ms [9.735, 9.858]` against `289\,ms` (relative error `$-0.9661$`) | 1424 | `9.796 ms`, relative error `-0.9661` | `docs/validation/addition13/README.md:108` | MATCH |
+| calibration has one free parameter and one target; `p^*=0.05`; duty target dropped; slot duration a unit conversion | 1409 | one free parameter/target; `p*=0.05`; duty target dropped; slot duration not a simulator parameter | `profiles/calibration.lock.toml:13-24,62-68,107-113` | MATCH |
+| `475 ms` as published A2 end-to-end target | 257,1201,1423 | A2 published target `475 ms` | `docs/validation/addition13/README.md:14-17` | MATCH |
+| tests maintained; counts omitted | 1433 | `9 / 3 / 22`, all `0 failed` | `cargo test --all` output below | UNSOURCED |
 
 ```text
-$ grep -nE '0\.13797|0\.12264|0\.13733|0\.12409|8\.9|26\.0|4\.8|20\.4|0\.998|0\.996|3\.5234|3\.7776|42\.4407|24\.6140|TBD\{A2 error\}|TBD\{WPaxos error\}|475\\,ms|289\\,ms' paper/paper.tex
-251:nodes in 475\,ms at a very low duty cycle \cite{alnahas17a2}, and Wireless
-252:Paxos reaches agreement among 188 nodes in 289\,ms \cite{poirot19paxos}.
-459:$475$\,ms at a very low duty cycle \cite{alnahas17a2}, and Wireless Paxos
-460:reaches agreement among 188 nodes in $289$\,ms \cite{poirot19paxos}.
-1108:A2 completes two-phase commit across 180 nodes in 475\,ms
-1110:in 289\,ms \cite{poirot19paxos}. Any claim of improvement must be measured
-1327:in the calibration: agreement across 180 nodes in 475\,ms for A2/2PC
-1328:\cite{alnahas17a2}, and consensus across 188 nodes in 289\,ms for Wireless
-1334:within \TBD{A2 error} and the Wireless Paxos configuration within
-1335:\TBD{WPaxos error}. All three profiles are maintained as regression tests
+$ grep -nE '0\.13797|0\.12264|0\.13733|0\.12409|8\.9|26\.0|4\.8|20\.4|0\.998|0\.996|3\.5234|3\.7776|16\.722|9\.796|475\\,ms|289\\,ms|100\.0|57\.8|physical abstraction has one free parameter|regression tests so that the frozen calibration' paper/paper.tex
+257:nodes in 475\,ms at a very low duty cycle \cite{alnahas17a2}, and Wireless
+258:Paxos reaches agreement among 188 nodes in 289\,ms \cite{poirot19paxos}.
+1201:A2 completes two-phase commit across 180 nodes in 475\,ms
+1203:in 289\,ms \cite{poirot19paxos}. Any claim of improvement must be measured
+1409:In the calibration step, the physical abstraction has one free parameter
+1423:16.722\,ms [16.527, 16.917] against 475\,ms (relative error $-0.9648$), while
+1424:Wireless Paxos predicts 9.796\,ms [9.735, 9.858] against 289\,ms (relative
+1433:regression tests so that the frozen calibration cannot silently drift.
+1536:TOM (\CI)   & 100.0 & 0.2132 & 4.7   & 88.0  & 2.429 & 3900 \\
+1537:Paxos (\CI) & 100.0 & 0.1903 & 61.4  & 100.2 & 1.906 & 4434 \\
+1538:2PC (\CI)   & 98.9  & 0.1681 & 126.8 & 115.8 & 1.463 & 5034 \\
+1540:TOM (\CE)   & 100.0 & 0.2143 & 4.7   & 126.3 & 1.705 & 0 \\
+1541:Paxos (\CE) & 100.0 & 0.0704 & 14.2  & 383.6 & 0.184 & 0 \\
+1542:2PC (\CE)   & 100.0 & 0.0412 & 24.3  & 657.1 & 0.063 & 0 \\
+1565:slightly short of complete commitment, at 98.9\,\%, which is a
+1640:$\log(\text{round length})$--$\log(\Nnodes)$ fit has slope 0.137331411 with
+1643:[0.115956905, 0.132213550], AIC 20.403476 and $R^2=0.995552$. The
+1648:residual ratios 3.5234x at $\Nnodes=180$ for 2PC and 3.7776x at
+1716:(98.9\,\% at 5\,\% loss, per Table~\ref{tab:baseline}, and further
+2293:Full mesh    & 1  & 26.00 \\
+2577:the full and partial meshes and 98.9\,\% on the random topology.
 $ grep -nE '^(2pc_ce|paxos_ce),log_round_length' docs/validation/addition15/data/fits.csv
 2:2pc_ce,log_round_length,constant,0.000000000,0.000000000,0.000000000,39.511348,0.000000
 3:2pc_ce,log_round_length,linear,0.137331411,0.131013055,0.143649766,4.793313,0.997801
-10:paxos_ce,log_round_length,constant,0.000000000,0.000000000,0.000000000,50.895160,0.000000
-11:paxos_ce,log_round_length,linear,0.124085227,0.115956905,0.132213550,20.403476,0.995552
-$ grep -nE 'Published target|Mean latency|Both predictions fail|20–30|relative errors' docs/validation/addition13/README.md
-14:| System | Protocol | N | Published target |
-91:Mean latency = 42.441 slots [41.946, 42.935].
-103:Mean latency = 24.614 slots [24.459, 24.769].
-115:**Both predictions fail the acceptance test at every T_guard value.**
-116:The simulator predicts latencies that are approximately 20–30× lower than
-121:within 20%. Neither system is close: relative errors are −96.5% and −96.6%.
+6:paxos_ce,log_round_length,constant,0.000000000,0.000000000,0.000000000,50.895160,0.000000
+7:paxos_ce,log_round_length,linear,0.124085227,0.115956905,0.132213550,20.403476,0.995552
+$ grep -nE '16\.722|9\.796' docs/validation/addition13/README.md
+96:| 10 | 394.0 | 16.722 | 16.527 | 16.917 | 475.0 | −0.9648 | NO |
+108:| 10 | 398.0 | 9.796 | 9.735 | 9.858 | 289.0 | −0.9661 | NO |
 $ grep -nE 'loss_rate = 0\.05|free_parameters = 1|targets = 1|dropped_target|p_star = 0\.05|t_slot =' profiles/calibration.lock.toml
 13:loss_rate = 0.05
 14:free_parameters = 1
@@ -49,57 +59,94 @@ $ grep -nE 'loss_rate = 0\.05|free_parameters = 1|targets = 1|dropped_target|p_s
 24:dropped_target = "radio duty cycle ~0.4 %"
 62:p_star = 0.05
 113:t_slot = "T_slot is a paper-side unit conversion, derived analytically in docs/validation/t_slot.md, not a simulator parameter. Latency in slots is exactly invariant to it, energy in node-slots is exactly invariant to it, and every CI/CE ratio is exactly invariant to it."
-$ grep -n 'test result:' /tmp/paper-audit-cargo-test.txt
-15:test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
-66:test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.43s
-90:test result: ok. 22 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 49.86s
-# (historical: at cdc2f818 the counts were 9 / 3 / 18; at step 2.10-c they were 9 / 3 / 20)
+122:primary_loss_rate = 0.05
+$ cargo test --all 2>&1 | grep -E '^test result:'
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.46s
+test result: ok. 22 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 53.60s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
 ```
 
 ## Reference configuration, scale, loss, latency, energy
 
 | Paper value | `paper.tex` line | Committed value | Exact source | Verdict |
 |---|---:|---|---|---|
-| Paxos depth `about 12`; 2PC `about 21` | 161-162 | `11.66`; `21.25` | `plots/scalability/results/sweep_summary.csv:56-57` (15-seed aggregation) | MATCH |
-| throughput `4.083x` (global max `4.268x`) | 167 | reference 2PC ratio `4.083x`; global maximum `4.268x` | `plots/scalability/results/sweep_summary.csv:50-1740` | MATCH |
-| energy `5.672x` (global max `5.987x`) | 167 | reference 2PC ratio `5.672x`; global maximum `5.987x` | same | MATCH |
-| `five` topologies, diameters `1` to `26` | 168 | 5 topologies; 1–26 | `plots/topology/results/sweep_summary.csv:2,8,14,20,26` | MATCH |
-| `15` protocol-topology CE aggregates (225 runs) | 312-320 | 15 protocol-topology CE aggregates, each 15 seeds; 225 runs | `plots/topology/results/sweep_summary.csv:2-451` | MATCH |
-| diameter range `26x` | 317 | `26 / 1 = 26` | `plots/topology/results/sweep_summary.csv:2,8,14,20,26` | MATCH |
-| latency `27x`; energy `1.3x` | 319-320 | `26.987x`; `1.317x` | `plots/scalability/results/sweep_summary.csv:56-58` (15-seed aggregation) | MATCH |
-| line N=`27`, diameter `26` | 323-324 | 27, 26 | `plots/topology/results/sweep_summary.csv:2-7` | MATCH |
-| line 2PC-CI commit `0.2%` | 326 | `3 / 1500 = 0.200%` | `plots/topology/results/sweep_summary.csv:3,33,...,423` | MATCH |
-| line Paxos unaffected | 327 | `1500 / 1500 = 100%` | `plots/topology/results/sweep_summary.csv:2,32,...,422` | MATCH |
-| sweep N=`6..188`, loss `0..20%`, 100 proposals, 15 seeds | 1203-1220 | N `{6,13,27,54,188}`, loss `{0,.05,.1,.2}`, 100, 15 | `plots/scalability/results/sweep_summary.csv:2-1741` | MATCH |
-| random mean `4.20` (range 4–5); scale-free mean `4.13` (range 4–5) | 1303 | random mean 4.20, range 4–5; scale-free 4.13, range 4–5 | `plots/topology/results/sweep_summary.csv:2-451` | MATCH |
-| drain tails `0.09%`, `1.70%`, `3.41%`; max `23.4%` | 1255-1256 | `0.0851%`, `1.6968%`, `3.4105%`; `23.4375%` | `plots/scalability/results/sweep_summary.csv:50-1739` | MATCH |
-| baseline six table rows | 1441-1447 | rounded rows match | `plots/scalability/results/sweep_summary.csv:56-61` (15-seed aggregation) | MATCH |
-| 2PC ratio `4.08x`, commit `98.9%` | 1465-1470 | `4.083x`, `98.9%` | same | MATCH |
-| N=188 TOM `0.148` vs `0.123`, `20%` | 1531-1533 | 0.1478 vs 0.1232; 19.97% | `plots/scalability/results/sweep_summary.csv:98-1740` | MATCH |
-| loss decline `14.33%, 18.80%, 14.35%` | 1666-1667 | 14.33%, 18.80%, 14.35% | `plots/scalability/results/sweep_summary.csv:50-1740` | MATCH |
-| 2PC-CI `0.107`, down `39%` | 1560-1562 | 0.10699; 39.35% | same | MATCH |
+| Paxos depth `about 12`; 2PC `about 21` | 166,167,318,319 | `11.66`; `21.25` | `plots/scalability/results/sweep_summary.csv:56-57` (15-seed aggregation) | MATCH |
+| throughput `4.083x` (global max `4.268x`) | 167,319 | reference 2PC ratio `4.083x`; global maximum `4.268x` | `plots/scalability/results/sweep_summary.csv:50-1740` | MATCH |
+| energy `5.672x` (global max `5.987x`) | 167,320 | reference 2PC ratio `5.672x`; global maximum `5.987x` | same | MATCH |
+| `five` topologies, diameters `1` to `26` | 636,1444 | 5 topologies; 1–26 | `plots/topology/results/sweep_summary.csv:2,8,14,20,26` | MATCH |
+| `15` protocol-topology CE aggregates (225 runs) | 323 | 15 protocol-topology CE aggregates, each 15 seeds; 225 runs | `plots/topology/results/sweep_summary.csv:2-451` | MATCH |
+| diameter range `26x` | 323 | `26 / 1 = 26` | `plots/topology/results/sweep_summary.csv:2,8,14,20,26` | MATCH |
+| latency `27x`; energy `1.3x` | 325,326 | `26.987x`; `1.317x` | `plots/scalability/results/sweep_summary.csv:56-58` (15-seed aggregation) | MATCH |
+| line N=`27`, diameter `26` | 2570 | 27, 26 | `plots/topology/results/sweep_summary.csv:2-7` | MATCH |
+| line 2PC-CI commit `0.2%` | 335,2576 | `3 / 1500 = 0.200%` | `plots/topology/results/sweep_summary.csv:3,33,...,423` | MATCH |
+| line Paxos unaffected | 336,2591 | `1500 / 1500 = 100%` | `plots/topology/results/sweep_summary.csv:2,32,...,422` | MATCH |
+| sweep N=`6..188`, loss `0..20%`, 100 proposals, 15 seeds | 1313 | N `{6,13,27,54,188}`, loss `{0,.05,.1,.2}`, 100, 15 | `plots/scalability/results/sweep_summary.csv:2-1741` | MATCH |
+| random mean `4.20` (range 4–5); scale-free mean `4.13` (range 4–5) | 1303,2285 | random mean 4.20, range 4–5; scale-free 4.13, range 4–5 | `plots/topology/results/sweep_summary.csv:2-451` | MATCH |
+| drain tails `0.09%`, `1.70%`, `3.41%`; max `23.4%` | 1349 | `0.0851%`, `1.6968%`, `3.4105%`; `23.4375%` | `plots/scalability/results/sweep_summary.csv:50-1739` | MATCH |
+| baseline six table rows | 1536,1537,1538,1540,1541,1542 | rounded rows match | `plots/scalability/results/sweep_summary.csv:56-61` (15-seed aggregation) | MATCH |
+| 2PC ratio `4.08x`, commit `98.9%` | 1538,1565,1716,2577 | `4.083x`, `98.9%` | same | MATCH |
+| N=188 TOM `0.148` vs `0.123`, `20%` | 1628 | 0.1478 vs 0.1232; 19.97% | `plots/scalability/results/sweep_summary.csv:98-1740` | MATCH |
+| loss decline `14.33%, 18.80%, 14.35%` | 1666 | 14.33%, 18.80%, 14.35% | `plots/scalability/results/sweep_summary.csv:50-1740` | MATCH |
+| 2PC-CI `0.107`, down `39%` | 1675 | 0.10699; 39.35% | same | MATCH |
 | CE decline `4.65%` (Paxos), `6.29%` (2PC) | 1687 | Paxos 4.65%; 2PC 6.29% | same | MATCH |
-| 2PC-CI worst `0.107` > `1.5×0.068` | 1581-1583 | 1.58x | same | MATCH |
-| commit near 100%; 2PC exception | 1597-1604 | five combinations 100%; 2PC-CI 70.07% at loss .20 | same | MATCH |
-| throughput loss mainly longer run; abort small | 1613-1619 | commit falls to 70.07% | same | MISMATCH |
-| TOM N=188 `6.8` vs `8.1` slots | 1756-1757 | 6.8 vs 8.1 | same | MATCH |
-| CE N=188 Paxos `25`, 2PC `44` slots | 1651-1652 | 24.6, 42.9 | same | MATCH |
-| 2PC-CI `16.2`→`1200.8`; Paxos `8.1`→`639.2` | 1769-1771 | 16.2→1200.8; 8.1→639.2 | same | MATCH |
+| 2PC-CI worst `0.107` > `1.5×0.068` | 1695 | 1.58x | same | MATCH |
+| commit near 100%; 2PC exception | 1710 | five combinations 100%; 2PC-CI 70.07% at loss .20 | same | MATCH |
+| throughput loss mainly longer run; abort small | 2650 | commit falls to 70.07% | same | MISMATCH |
+| TOM N=188 `6.8` vs `8.1` slots | 1757 | 6.8 vs 8.1 | same | MATCH |
+| CE N=188 Paxos `25`, 2PC `44` slots | 1761 | 24.6, 42.9 | same | MATCH |
+| 2PC-CI `16.2`→`1200.8`; Paxos `8.1`→`639.2` | 1770,1771 | 16.2→1200.8; 8.1→639.2 | same | MATCH |
 
 ```text
-$ grep -nE 'about 12|about 21|up to 4x|5\.7x|five topologies|fifteen independent|27\\times|1\.3\\times|0\.2\\,%|23\.4|0\.107|1700|620' paper/paper.tex
-161:pipeline sustains, on average, about 12 concurrent proposals for Paxos and
-162:about 21 for 2PC, yielding up to 4x higher throughput and up to 5.7x better
-168:across five topologies with diameters from 1 to 26, confirming that the
-317:across fifteen independent measurements spanning a $26\times$ range of network
-319:per-decision latency varies by roughly $27\times$ while per-decision energy
-320:varies by only about $1.3\times$. Latency stops being a proxy for energy
-326:network, and its commit rate drops to 0.2\%. Paxos, which needs only a
-1256:reference point, reaching $23.4\,\%$ on a single seed.
-1562:about 0.107---some 39\,\% below its lossless value---while the spread
-1582:---2PC over \CI{} still delivers 0.107 decisions per slot, more than one
-1660:$\Nnodes = 6$ to more than 1700 slots at $\Nnodes = 188$, and Paxos over
-1661:\CI{} from about 8 to about 620 slots. \textbf{This does not contradict
+$ grep -nE 'about 12|about 21|4\.083x|5\.672x|five topologies|15 protocol-topology CE aggregates|26\\times|roughly \$27\\times\$|26 in a network of 27 nodes|0\.2\\%|only 0\.2\\,%|is unaffected on the same topology|unaffected by the same constraint|fifteen independent random seeds|mean \\Diam = 4\.20|means of 4\.20|23\.4|100\.0|98\.9|0\.148 against 0\.123|14\.33|0\.107|4\.65|commit rate close to 100|against 8\.1 slots|roughly 25 and|1200\.8|639\.2|mainly as a longer run|spanning diameters from 1 to 26' paper/paper.tex
+166:pipeline sustains, on average, about 12 concurrent proposals for Paxos and
+167:about 21 for 2PC, yielding 4.083x higher baseline throughput (global maximum 4.268x) and 5.672x better
+318:simulator, we find that the pipeline sustains about 12 concurrent proposals
+319:for Paxos and about 21 for 2PC, that this concurrency yields $4.083\times$
+320:higher baseline throughput (global maximum $4.268\times$) and $5.672\times$ better baseline
+323:across 15 protocol-topology CE aggregates, each over 15 seeds (225 runs), spanning a $26\times$ range of network
+325:per-decision latency varies by roughly $27\times$ while per-decision energy
+335:network, and its commit rate drops to 0.2\%. Paxos, which needs only a
+336:majority, is unaffected on the same topology. The failure is therefore
+636:Section~\ref{sec:results} evaluates five topologies whose diameters span
+1303:(mean $\Diam = 4.20$, range 4--5), scale-free (mean $\Diam = 4.13$, range 4--5) and line ($\Diam = 26$). Random
+1313:is the mean of fifteen independent random seeds.
+1349:reference point, reaching $23.4\,\%$ on a single seed.
+1444:sweep of Section~\ref{sec:results}, spanning diameters from 1 to 26, is itself
+1536:TOM (\CI)   & 100.0 & 0.2132 & 4.7   & 88.0  & 2.429 & 3900 \\
+1537:Paxos (\CI) & 100.0 & 0.1903 & 61.4  & 100.2 & 1.906 & 4434 \\
+1538:2PC (\CI)   & 98.9  & 0.1681 & 126.8 & 115.8 & 1.463 & 5034 \\
+1540:TOM (\CE)   & 100.0 & 0.2143 & 4.7   & 126.3 & 1.705 & 0 \\
+1541:Paxos (\CE) & 100.0 & 0.0704 & 14.2  & 383.6 & 0.184 & 0 \\
+1542:2PC (\CE)   & 100.0 & 0.0412 & 24.3  & 657.1 & 0.063 & 0 \\
+1565:slightly short of complete commitment, at 98.9\,\%, which is a
+1628:higher (0.148 against 0.123). The fixed cost of \CI{} rounds becomes less
+1666:TOM on both substrates and Paxos over \CI{} lose 14.33\,\%, 18.80\,\%, and
+1675:about 0.107---some 39\,\% below its lossless value---while the spread
+1687:perfectly flat at a low level, declining by 4.65\,\% and 6.29\,\%, respectively, over the whole
+1695:---2PC over \CI{} still delivers 0.107 decisions per slot, more than one
+1710:every protocol maintains a commit rate close to 100\,\%. This attests to
+1716:(98.9\,\% at 5\,\% loss, per Table~\ref{tab:baseline}, and further
+1757:against 8.1 slots, this time in favour of \CI). This coincidence is
+1761:Paxos and 2PC over \CE{} occupy the middle of the plot, at roughly 25 and
+1770:$\Nnodes = 6$ to 1200.8 slots at $\Nnodes = 188$, and Paxos over
+1771:\CI{} from 8.1 to 639.2 slots. \textbf{This does not contradict
+2275:proposals, fifteen seeds) on the five topologies of
+2279:\caption{The five topologies used in the generalisation study. All have
+2285:means of 4.20 and 4.13. The diameters listed here are the modal values.}
+2417:\CE{} protocols on five topologies, a twenty-six-fold range of diameter and a
+2570:26 in a network of 27 nodes, the two end nodes have one neighbour and every
+2576:only 0.2\,\%}, whereas the same protocol commits 100\,\% of proposals on
+2577:the full and partial meshes and 98.9\,\% on the random topology.
+2591:only a majority, is unaffected by the same constraint and operates on this
+2650:complete and the cost appears mainly as a longer run, whereas under heavy
 $ grep -nE '^2,27,(line|partial_mesh|random|scale_free|full_mesh),0\.05,1,paxos_pipeline' plots/topology/results/sweep_summary.csv
 2:2,27,line,0.05,1,paxos_pipeline,ci,26,26,100,100,0,0,237.02,47133,4075,33275,99,603,0,1512
 8:2,27,partial_mesh,0.05,1,paxos_pipeline,ci,3,117,100,100,0,0,46.20,5088,3051,2661,0,0,0,396
@@ -112,176 +159,206 @@ $ grep -nE '^2,27,(line|partial_mesh|random|scale_free|full_mesh),0\.05,1,paxos_
 
 | Paper value | `paper.tex` line | Committed value | Exact source | Verdict |
 |---|---:|---|---|---|
-| progress-curve ordering/shape | 1724-1775 | no progress-over-time counterpart | allowed sources | UNSOURCED |
+| progress-curve ordering/shape | 1883-1891 | no progress-over-time counterpart | allowed sources | UNSOURCED |
 | 2PC-CI latency `126.8` (scalability baseline) | 1882 | 126.8 in scalability; 357.7 only in topology aggregation | both sweep CSVs | MATCH |
-| completion `590`, `1420`, `2430`, `470`, `525`; `>5x` | 1777-1787 | 590, 1421, 2434, 468, 526; 5.20x | scalability CSV | MATCH |
-| depth table `1.00`, `11.66`, `21.25` | 1812-1818 | matches rounded throughput×latency | scalability CSV | MATCH |
-| energy ratio `1.43±.02`, `3.83±.07`, `5.67±.27` | 1974-1978 | matches seed-derived intervals | scalability CSV | MATCH |
-| proposal sharing `1.6%`; slot ranges `4.70–6.17`, `4.68–24.34` | 1986-1989 | no explicit counterpart | allowed sources | UNSOURCED |
-| quartiles/percentiles/extrema/medians | 2009-2045 | no proposal-level distributions | allowed sources | UNSOURCED |
+| completion `590`, `1420`, `2430`, `470`, `525`; `>5x` | 1883,1884,1885,1889,1890,1891 | 590, 1421, 2434, 468, 526; 5.20x | scalability CSV | MATCH |
+| depth table `1.00`, `11.66`, `21.25` | 1923,1924 | matches rounded throughput×latency | scalability CSV | MATCH |
+| energy ratio `1.43±.02`, `3.83±.07`, `5.67±.27` | 2080,2085 | matches seed-derived intervals | scalability CSV | MATCH |
+| proposal sharing `1.6%`; slot ranges `4.70–6.17`, `4.68–24.34` | 2093,2095,2096 | no explicit counterpart | allowed sources | UNSOURCED |
+| quartiles/percentiles/extrema/medians | 2054 | no proposal-level distributions | allowed sources | UNSOURCED |
 | concurrency `21.25` (median clause withdrawn) | 2140 | aggregate depth 21.25; median unavailable | scalability CSV / no counterpart | MATCH |
-| energy ceilings `127`, `1658`, `3424`; ratios `1.4`, `16.5`, `29.6` | 2088-2090 | arithmetic matches baseline | scalability CSV | MATCH |
-| N=188 efficiency Paxos `~5x`, TOM `~2x` | 2138-2146 | 5.01x, 2.01x | scalability CSV | MATCH |
+| energy ceilings `127`, `1658`, `3424`; ratios `1.4`, `16.5`, `29.6` | 2196 | arithmetic matches baseline | scalability CSV | MATCH |
+| N=188 efficiency Paxos `~5x`, TOM `~2x` | 2244-2246 | 5.01x, 2.01x | scalability CSV | MATCH |
 
 ```text
-$ grep -nE 'nearly 360|about 590|1420|2430|about 470|about 525|11\.66|21\.25|5\.67|20\.84|3424|29\.6' paper/paper.tex
-1776:latency in the entire system at nearly 360 slots---completes the workload
-1777:in about 590 slots, more than twice as fast as Paxos over \CE{} at about
-1778:1420 slots and close to four times faster than 2PC over \CE{} at about
-1779:2430 slots. This comparison alone establishes that per-decision latency
-1783:finish line together at about 470 slots, their curves coinciding
-1784:throughout the run, followed by Paxos over \CI{} at about 525 slots and
-1817:Paxos (\CI) & 0.1903 & 61.4  & 11.66 \\
-1818:2PC (\CI)   & 0.1681 & 126.8 & 21.25 \\
-1975:$5.67 \pm 0.27$ for 2PC (95\,\% intervals over fifteen seeds).
-1978:Paxos and $5.67$ for 2PC---is informative in itself. The heavier the protocol
-1986:to $5.67$ under 2PC is not proposal sharing, which accounts for $1.6\,\%$ of
-2033:concurrency rises from 1.00 to 20.84 while the median cost of a decision rises
-2090:2PC (\CI)   & 126.8 & 115.8 & 3424 & $29.6\times$ \\
+$ grep -nE '126\.8 slots in the scalability baseline|about 590|1420|2430|about 470|about 525|11\.66|21\.25|5\.67|accounts for 1\.6|distributional views below require|concurrency rises from 1\.00 to 21\.25|3424 & \$29\.6\\times\$|about five times as efficient as' paper/paper.tex
+167:about 21 for 2PC, yielding 4.083x higher baseline throughput (global maximum 4.268x) and 5.672x better
+320:higher baseline throughput (global maximum $4.268\times$) and $5.672\times$ better baseline
+1882:latency in the entire system at 126.8 slots in the scalability baseline---completes the workload
+1883:in about 590 slots, more than twice as fast as Paxos over \CE{} at about
+1884:1420 slots and close to four times faster than 2PC over \CE{} at about
+1885:2430 slots. This comparison alone establishes that per-decision latency
+1889:finish line together at about 470 slots, their curves coinciding
+1890:throughout the run, followed by Paxos over \CI{} at about 525 slots and
+1891:2PC over \CI{} at about 590. The slowest combination to reach the finish
+1923:Paxos (\CI) & 0.1903 & 61.4  & 11.66 \\
+1924:2PC (\CI)   & 0.1681 & 126.8 & 21.25 \\
+2054:distributional views below require.
+2080:$5.67 \pm 0.27$ for 2PC (95\,\% intervals over fifteen seeds);
+2085:Paxos and $5.67$ for 2PC---is informative in itself. The heavier the protocol
+2093:to $5.67$ under 2PC is not proposal sharing, which accounts for $1.6\,\%$ of
+2140:concurrency rises from 1.00 to 21.25.
+2196:2PC (\CI)   & 126.8 & 115.8 & 3424 & $29.6\times$ \\
+2244:$\Nnodes = 188$, Paxos over \CI{} is about five times as efficient as
 ```
 
 ## Topology
 
 | Paper value | `paper.tex` line | Committed value | Exact source | Verdict |
 |---|---:|---|---|---|
-| modal diameter/mean-degree table | 2187-2191 | `1/26.00`, `3/9.30`, `4/4.40`, `4/3.78`, `26/1.93` | topology CSV | MATCH |
-| random→full throughput table | 2250-2256 | rounded ratios match | topology CSV | MATCH |
-| Paxos-CE dense latency `12.5–15.9` | 2264-2266 | 12.50–15.90 | topology CSV | MATCH |
+| modal diameter/mean-degree table | 2293 | `1/26.00`, `3/9.30`, `4/4.40`, `4/3.78`, `26/1.93` | topology CSV | MATCH |
+| random→full throughput table | 2348 | rounded ratios match | topology CSV | MATCH |
+| Paxos-CE dense latency `12.5–15.9` | 2372 | 12.50–15.90 | topology CSV | MATCH |
 | TOM CI/CE gap stays within about `1.3%` | 2401 | scale-free relative gap 1.239% | topology CSV | MATCH |
-| `15` groups, diameter `1–26`, energy `97x` | 2310-2312 | 15 CE groups; 97.27x | topology CSV | MATCH |
-| radio accounting all `2250` runs; per-decision `4500` | 2315-2319 | row/run count supports 2250; no per-decision counterpart | topology CSV / allowed sources | UNSOURCED |
-| CI off fraction `22–31%` | 2333-2335 | 22.66–30.71% | topology CSV | MATCH |
-| residual max `1.94%`; two seeds `99/100` | 2338-2340 | 1.936%; seeds 23,37 | topology CSV:246,336 | MATCH |
-| CI less energy all protocols/all topologies | 2342-2343 | false on line 2PC due near-zero commits | topology CSV | MISMATCH |
-| dense margin `1.3–12x`; TOM line `2916/401`, `>7x` | 2344-2346 | 1.299–12.098x; 7.266x | topology CSV | MATCH |
-| depth dense TOM≈1, Paxos≈11.6, 2PC≈21 | 2354-2358 | ranges match | topology CSV | MATCH |
-| diameter counts `12/15`, `13/15`; matched D4 `10`; losses `27.4/10.6`; degree `4.40/3.78` | 2382-2388 | matches | topology CSV | MATCH |
-| table changes are mean per-seed differences | 2400-2401 | displayed values are ratios of means | topology CSV | MISMATCH |
-| CE slower all 15; CI faster `8–11` seeds | 2427-2429 | CE 15; CI 8–10 | topology CSV | MISMATCH |
-| timeouts/run lengths `337→2049`, `2433→3331`, `5.4→30` | 2436-2439 | matches | topology CSV | MATCH |
-| identical-diameter difference `up to 27%` | 2453-2457 | 27.4% | topology CSV | MATCH |
+| `15` groups, diameter `1–26`, energy `97x` | 2418 | 15 CE groups; 97.27x | topology CSV | MATCH |
+| radio accounting all `2250` runs; per-decision `4500` | 2421,2424 | row/run count supports 2250; no per-decision counterpart | topology CSV / allowed sources | UNSOURCED |
+| CI off fraction `22–31%` | 2439 | 22.66–30.71% | topology CSV | MATCH |
+| residual max `1.94%`; two seeds `99/100` | 2445 | 1.936%; seeds 23,37 | topology CSV:246,336 | MATCH |
+| CI less energy all protocols/all topologies | 2448 | false on line 2PC due near-zero commits | topology CSV | MISMATCH |
+| dense margin `1.3–12x`; TOM line `2916/401`, `>7x` | 2450 | 1.299–12.098x; 7.266x | topology CSV | MATCH |
+| depth dense TOM≈1, Paxos≈11.6, 2PC≈21 | 2462 | ranges match | topology CSV | MATCH |
+| diameter counts `12/15`, `13/15`; matched D4 `10`; losses `27.4/10.6`; degree `4.40/3.78` | 2492,2493 | matches | topology CSV | MATCH |
+| table changes are mean per-seed differences | 2506 | displayed values are ratios of means | topology CSV | MISMATCH |
+| CE slower all 15; CI faster `8–11` seeds | 2534 | CE 15; CI 8–10 | topology CSV | MISMATCH |
+| timeouts/run lengths `337→2049`, `2433→3331`, `5.4→30` | 2541,2542 | matches | topology CSV | MATCH |
+| identical-diameter difference `up to 27%` | 2562 | 27.4% | topology CSV | MATCH |
 | line node: endpoints have one neighbour, interior two | 2570 | endpoints have degree 1 | topology CSV header + line graph definition | MATCH |
-| line TOM `0.214→0.009`; 2PC commit `0.2%`, dense `100%`, random `98.9%` | 2467-2471 | matches | topology CSV | MATCH |
-| line Paxos `100%`, `0.0625`, highest | 2484-2487 | 100%, 0.062468, highest | topology CSV | MATCH |
-| line 2PC energy `190,180`, efficiency `0.00` | 2489-2493 | no reproducible counterpart; aggregate ≈1,005,531/commit | topology CSV | UNSOURCED |
-| line TOM latency `616/108`, depth `26`, throughput `5x`, energy `>7x` | 2508-2518 | matches rounded aggregation | topology CSV | MATCH |
-| commit close to complete except 2PC-CI line (0.2%) and scalability min (23.2%) | 2649-2652 | topology minimum 0.2%; scalability minimum 23.2% | both sweep CSVs | MATCH |
-| summary `15` cases, `26x`, `72%`, `27%` | 2557-2568 | matches aggregate comparisons | topology CSV | MATCH |
+| line TOM `0.214→0.009`; 2PC commit `0.2%`, dense `100%`, random `98.9%` | 2574 | matches | topology CSV | MATCH |
+| line Paxos `100%`, `0.0625`, highest | 2592 | 100%, 0.062468, highest | topology CSV | MATCH |
+| line 2PC energy `190,180`, efficiency `0.00` | 2596 | no reproducible counterpart; aggregate ≈1,005,531/commit | topology CSV | UNSOURCED |
+| line TOM latency `616/108`, depth `26`, throughput `5x`, energy `>7x` | 2614 | matches rounded aggregation | topology CSV | MATCH |
+| commit close to complete except 2PC-CI line (0.2%) and scalability min (23.2%) | 2652 | topology minimum 0.2%; scalability minimum 23.2% | both sweep CSVs | MATCH |
+| summary `15` cases, `26x`, `72%`, `27%` | 2417 | matches aggregate comparisons | topology CSV | MATCH |
 
 ```text
-$ grep -nE '1\.94|2250|4500|22 and 31|1\.3 and 12|27\.4|10\.6|8 to eleven|337|2049|0\.0625|190\\,180|616 slots|close to complete' paper/paper.tex
-2315:radio counters sum to $\Nnodes$ times the slots ticked in all $2250$ runs of
-2318:decision and not only in aggregate: every one of the $4500$ \CE{} per-decision
-2333:falls short of $\Nnodes L$ by between 22 and 31\,\% on the dense topologies,
-2339:fifteen groups and reaches $1.94\,\%$ on a single seed of 2PC over \CE{} on the
-2344:margin ranges between 1.3 and 12 times on the dense topologies and, worth
-2386:conclusion of this subsection intact: 2PC over \CE{} loses 27.4\,\% of its
-2387:throughput and Paxos over \CE{} 10.6\,\%, against 26.7\,\% and 10.7\,\% over
-2429:protocols are faster on eight to eleven of them.
-2436:number of \CE{} listen timeouts recorded for 2PC rises from 337 on the random
-2437:graph to 2049 on the scale-free graph, stretching the run from 2433 to 3331
-2486:very topology at a full commit rate and a throughput of 0.0625---which
-2491:decision (190\,180) and the efficiency (0.00) both result from division by
-2508:it is of a different kind. Its latency reaches 616 slots where TOM over
-2544:the commit rate stays close to complete for every combination. The
+$ grep -nE '1\.94|2250|4500|22 and 31|1\.3 and 12|27\.4|10\.6|eight to ten of them|337|2049|0\.0625|616 slots|dropping to 23\.2|Full mesh    & 1  & 26\.00|tab:diameter|between 12\.5 and 15\.9|1\.239|ninety-sevenfold|architecture consumes less energy|pipeline depth remains effectively unchanged|ratio of the means|differ in outcome by up to 27|two end nodes have one neighbour|falls from 0\.214|statistically meaningless|twenty-six-fold range of diameter' paper/paper.tex
+175:pipeline depth reaches about 26 and latency reaches 616 slots.
+329:and its latency reaches 616 slots. Latency stops being a proxy for energy
+1428:The distinct raw-slot comparison gives 42.441 slots [41.946, 42.935] for A2,
+1978:architecture consumes less energy at no cost in speed.
+2059:$\Nnodes \cdot L$; this was verified on every one of the 4500 \CE{} decisions
+2293:Full mesh    & 1  & 26.00 \\
+2342:Table~\ref{tab:diameter} summarises the measured throughput change on moving
+2348:\label{tab:diameter}
+2372:between 12.5 and 15.9 slots, and is almost indifferent to the diameter
+2401:exceed 1.239 per cent. The TOM boundary case analysed in
+2417:\CE{} protocols on five topologies, a twenty-six-fold range of diameter and a
+2418:ninety-sevenfold range of energy per decision.
+2421:radio counters sum to $\Nnodes$ times the slots ticked in all $2250$ runs of
+2424:decision and not only in aggregate: every one of the $4500$ \CE{} per-decision
+2439:falls short of $\Nnodes L$ by between 22 and 31\,\% on the dense topologies,
+2445:fifteen groups and reaches $1.94\,\%$ on a single seed of 2PC over \CE{} on the
+2448:On the other side, the \CI{} architecture consumes less energy than its
+2450:margin ranges between 1.3 and 12 times on the dense topologies and, worth
+2462:\textbf{the pipeline depth remains effectively unchanged}: TOM over \CI{}
+2492:conclusion of this subsection intact: 2PC over \CE{} loses 27.4\,\% of its
+2493:throughput and Paxos over \CE{} 10.6\,\%, against 26.7\,\% and 10.7\,\% over
+2506:the mean over fifteen seeds and each change is the ratio of the means.}
+2534:protocols are faster on eight to ten of them.
+2541:number of \CE{} listen timeouts recorded for 2PC rises from 337 on the random
+2542:graph to 2049 on the scale-free graph, stretching the run from 2433 to 3331
+2562:differ in outcome by up to 27\,\%. For architectures built on fixed rounds,
+2570:26 in a network of 27 nodes, the two end nodes have one neighbour and every
+2574:instance, falls from 0.214 on the random topology to 0.009---but one
+2592:very topology at a full commit rate and a throughput of 0.0625---which
+2596:statistically meaningless and should not be interpreted: the energy per
+2614:it is of a different kind. Its latency reaches 616 slots where TOM over
+2652:dominates, with the commit rate dropping to 23.2\,\% in the largest
+2724:latency reaches 616 slots. The boundary case of TOM nevertheless shows that
 ```
 
 ## Exclusion, hypothesis, classification
 
 | Check | Paper line/sentence | Committed counterpart | Exact source | Verdict |
 |---|---|---|---|---|
-| n=188 exclusion | no exclusion statement or reason; paper includes n=188 at 1204-1206 | Paxos anchor at n=188 is not reproduced in this round | `docs/validation/addition15/README.md:27` | UNSOURCED |
-| densification residual hypothesis | lines 2233-2234 and 2283-2288 still imply improving density/network quality should explain performance, without reporting falsification | Addition 15 CIs exclude both α=0 and α=1 | `fits.csv:3,11`; README:100-102 | MISMATCH (Revised to acknowledge sweep only bounds the confound) |
-| classification | absent | both arms `SUBLINEAR-INTERMEDIATE` | `docs/validation/addition15/README.md:100,102` | UNSOURCED |
+| n=188 exclusion | 1651 | Paxos anchor at n=188 is not reproduced in this round | `docs/validation/addition15/README.md:27` | UNSOURCED |
+| densification residual hypothesis | lines 2337-2341,2392-2394 state infrastructure quality bounds effect but cannot account for it entirely | Addition 15 CIs exclude both α=0 and α=1 | `fits.csv:3,11`; `docs/validation/addition15/README.md:88-90` | MATCH (Revised to acknowledge sweep only bounds the confound) |
+| classification | 1646,2339 | both arms `SUBLINEAR-INTERMEDIATE` | `docs/validation/addition15/README.md:88,90` | MATCH |
 
 ```text
-$ grep -nEi 'excluded|exclusion|outside this sweep|densif|hypothes|falsif|SUBLINEAR-INTERMEDIATE|conventional expectation|increasing node density' paper/paper.tex
-1354:Several phenomena are deliberately excluded from the model. Rather than
-1400:exclusion we make no attempt to correct: real capture requires a power
-2233:The conventional expectation is that a better network benefits every
-2234:protocol. The measurements show that this holds for one family only.
-2284:be improved---by raising transmission power, increasing node density or
+$ grep -nEi 'excluded|exclusion|outside this sweep|densif|hypothes|falsif|SUBLINEAR-INTERMEDIATE|infrastructure quality|increasing node density' paper/paper.tex
+1449:Several phenomena are deliberately excluded from the model. Rather than
+1456:\caption{Excluded phenomena and the direction in which each biases the
+1462:\textbf{Excluded phenomenon} & \textbf{Favours} & \textbf{Treatment} \\
+1495:exclusion we make no attempt to correct: real capture requires a power
+1644:pre-registered rule identifies $\alpha \sim 0$ with Hypothesis A and
+1645:$\alpha \sim 1$ with Hypothesis B; a CI excluding both yields
+1646:\texttt{SUBLINEAR-INTERMEDIATE}. Both reported CIs exclude 0 and 1, so both
+1651:-0.015. The Paxos anchor at $\Nnodes=188$ lies outside this sweep's grid and
+2339:remain \texttt{SUBLINEAR-INTERMEDIATE}. The measurements bound the effect of
+2341:they establish only that infrastructure quality cannot account for it entirely.
+2392:committed cases, not the cause of the residual. Because the densification
+2393:hypothesis is falsified, they do not justify the broader claim that
 $ grep -nE 'not reproduced|SUBLINEAR-INTERMEDIATE|alpha CI' docs/validation/addition15/README.md
+8:Decision rule: If the CI for alpha contains 0 and excludes 1, conclude A. If it contains 1 and excludes 0, conclude B. If it excludes both, conclude SUBLINEAR-INTERMEDIATE. If it contains both, conclude indeterminate.
 27:The Paxos anchor at n=188 is not reproduced in this round. The cross-N residual across the whole domain is NOT IDENTIFIABLE (there is no external reference that scales with N to compare against). The previous analysis that scaled a constant 100.0/57.8 by N/180 or N/188 was an ungrounded model, not a measurement.
-100:For 2PC over CE, the alpha CI is [0.13101, 0.14365]. By the decision rule, we conclude SUBLINEAR-INTERMEDIATE.
-102:For Paxos over CE, the alpha CI is [0.11596, 0.13221]. By the decision rule, we conclude SUBLINEAR-INTERMEDIATE.
+88:For 2PC over CE, the alpha CI is [0.13101, 0.14365]. By the decision rule, we conclude SUBLINEAR-INTERMEDIATE.
+90:For Paxos over CE, the alpha CI is [0.11596, 0.13221]. By the decision rule, we conclude SUBLINEAR-INTERMEDIATE.
 ```
 
 Quoted implication sentences:
 
 ```text
-2233:The conventional expectation is that a better network benefits every
-2234:protocol. The measurements show that this holds for one family only.
-2283:The design consequence is direct. In deployments where network quality can
-2284:be improved---by raising transmission power, increasing node density or
-2285:improving routing---only the \CI{} architecture, together with
-2286:single-phase protocols, converts that investment into performance. For
-2287:Paxos and 2PC over \CE, investment in network infrastructure is largely
-2288:wasted.
+2337:The density-controlled sweep bounds the density confound across \Nnodes:
+2338:density error has no systematic trend with \Nnodes, while both \CE{} arms
+2339:remain \texttt{SUBLINEAR-INTERMEDIATE}. The measurements bound the effect of
+2340:density variation, but do not prove an external explanation for the residual;
+2341:they establish only that infrastructure quality cannot account for it entirely.
 ```
 
 ## Abstract, introduction, conclusion contradictions
 
 | Earlier/later claim | Results contradiction | Verdict |
 |---|---|---|
-| abstract 167-169: results hold across five topologies | results 2469-2471: line 2PC-CI commit collapses to 0.2% | MISMATCH |
-| abstract 161-163 / introduction 312-320: broad 12/21 depth, 27x latency, 1.3x energy | results 2508-2515: line TOM depth≈26; line 2PC denominator collapses | MISMATCH |
-| conclusion 2612-2615: stable across topology; TOM depth one | results 2508-2515: line TOM latency 616, depth≈26 | MISMATCH |
+| abstract 172-175: stable across dense topologies, line 2PC 0.2% | results 2576-2577: line 2PC-CI commit collapses to 0.2% | MATCH (Revised to state exception) |
+| abstract 174-175 / intro 326-330: line TOM depth≈26, latency 616 | results 2614-2621: line TOM latency 616, depth≈26 | MATCH (Revised to state exception) |
+| conclusion 2721-2725: stable across dense topologies, line TOM depth≈26 | results 2614-2621: line TOM latency 616, depth≈26 | MATCH (Revised to state exception) |
 
 ```text
-$ grep -nE 'Results hold|about 12 concurrent|roughly \$27|stable across the topology|jumps from|only 0\.2' paper/paper.tex
-161:pipeline sustains, on average, about 12 concurrent proposals for Paxos and
-167:coupling and turns latency into a spendable design variable. Results hold
-319:per-decision latency varies by roughly $27\times$ while per-decision energy
-2469:combination fails outright: \textbf{2PC over \CI{} reaches a commit rate of
-2470:only 0.2\,\%}, whereas the same protocol commits 100\,\% of proposals on
-2514:pipeline depth as well, where $\Cdepth$ for TOM over \CI{} jumps from
-2612:Third, the results are stable across the topology space, and the boundary
+$ grep -nE 'dense topologies the effect is stable|separation is stable\. The line topology|stable across the four dense topologies|only 0\.2\\,%|latency reaches 616 slots' paper/paper.tex
+173:dense topologies the effect is stable, but the line topology exposes its
+175:pipeline depth reaches about 26 and latency reaches 616 slots.
+327:separation is stable. The line topology is the boundary case: 2PC over \CI{}
+329:and its latency reaches 616 slots. Latency stops being a proxy for energy
+2614:it is of a different kind. Its latency reaches 616 slots where TOM over
+2721:Third, the results are stable across the four dense topologies, not across
+2724:latency reaches 616 slots. The boundary case of TOM nevertheless shows that
 ```
 
 ## Figure and table inventory
 
-No active external figure/table include exists: all 14 `\includegraphics` lines are commented, and all tables are inline. `paper/figures/` is absent. Commented references name missing files: `pipeline_mechanism.pdf`, `message_frame.pdf`, `paxos_ci_example.pdf`, `throughput_vs_nodes.pdf`, `throughput_vs_loss.pdf`, `latency_vs_nodes.pdf`, `progress_over_time_log.pdf`, `progress_over_time.pdf`, `energy_mean_ci_ce.pdf`, `energy_boxplot.pdf`, `latency_vs_energy.pdf`, `efficiency_vs_nodes.pdf`, `throughput_vs_topology.pdf`, `latency_vs_topology.pdf`. Several generated filenames differ (`fig_energy_*`, `thr_vs_topology.pdf`, `lat_vs_topology.pdf`). The manuscript's pooled boxplot claim corresponds to `plots/energy/energy_boxplot_15seed.{pdf,png}`, generated by `docs/validation/addition7/scripts/addition7_boxplot.py`, not by `tools/regen_figures.py`.
+There are 11 active (uncommented) `\includegraphics` lines in the paper, which corresponds to the 11 plots generated by the simulator. The 3 schematic diagrams are drawn inline with TikZ. The `paper/figures/` directory contains no committed figure files (all `*.pdf` and `*.png` are ignored by git), as they are regenerated by `tools/regen_figures.py` and copied into place by `tools/collect_paper_figures.py`. The manuscript's pooled boxplot claim corresponds to `plots/energy/energy_boxplot_15seed.{pdf,png}`, generated by `docs/validation/addition7/scripts/addition7_boxplot.py`, not by `tools/regen_figures.py`.
 
 ```text
-$ grep -nE '\\includegraphics|\\graphicspath' paper/paper.tex
-32:\graphicspath{{figures/}}
-776:% \includegraphics[width=\columnwidth]{pipeline_mechanism.pdf}
-851:% \includegraphics[width=\columnwidth]{message_frame.pdf}
-928:% \includegraphics[width=\columnwidth]{paxos_ci_example.pdf}
-1491:% \includegraphics[width=\columnwidth]{throughput_vs_nodes.pdf}
-1546:% \includegraphics[width=\columnwidth]{throughput_vs_loss.pdf}
-1630:% \includegraphics[width=\columnwidth]{latency_vs_nodes.pdf}
-1710:% \includegraphics[width=\columnwidth]{progress_over_time_log.pdf}
-1714:% \includegraphics[width=\columnwidth]{progress_over_time.pdf}
-1965:% \includegraphics[width=\columnwidth]{energy_mean_ci_ce.pdf}
-2002:% \includegraphics[width=\columnwidth]{energy_boxplot.pdf}
-2052:% \includegraphics[width=\columnwidth]{latency_vs_energy.pdf}
-2124:% \includegraphics[width=\columnwidth]{efficiency_vs_nodes.pdf}
-2221:% \includegraphics[width=\columnwidth]{throughput_vs_topology.pdf}
-2225:% \includegraphics[width=\columnwidth]{latency_vs_topology.pdf}
+$ grep -n '\\includegraphics' paper/paper.tex
+1585:\includegraphics[width=3.4in]{throughput_vs_nodes.pdf}
+1658:\includegraphics[width=3.4in]{throughput_vs_loss.pdf}
+1740:\includegraphics[width=3.4in]{latency_vs_nodes.pdf}
+1814:  \includegraphics[width=1.65in]{progress_over_time_log.pdf}%
+1818:  \includegraphics[width=1.65in]{progress_over_time.pdf}%
+2070:\includegraphics[width=3.4in]{energy_mean_ci_ce.pdf}
+2108:\includegraphics[width=3.4in]{energy_boxplot.pdf}
+2157:\includegraphics[width=3.4in]{latency_vs_energy.pdf}
+2229:\includegraphics[width=3.4in]{efficiency_vs_nodes.pdf}
+2325:  \includegraphics[width=1.65in]{throughput_vs_topology.pdf}%
+2329:  \includegraphics[width=1.65in]{latency_vs_topology.pdf}%
+$ grep -n '^\s*%.*includegraphics' paper/paper.tex
+$ ls -la paper/figures 2>&1
+total 24
+drwxr-xr-x  4 amir  staff   128 Sep 12 05:50 .
+drwxr-xr-x  7 amir  staff   224 Sep 14 10:03 ..
+-rw-r--r--@ 1 amir  staff  6148 Sep 12 03:25 .DS_Store
+-rw-r--r--  1 amir  staff  1217 Sep 12 05:50 README.md
 $ grep -nE 'energy_boxplot_15seed|addition7_boxplot' tools/regen_figures.py docs/validation/addition7/scripts/addition7_boxplot.py
-# tools/regen_figures.py: no matches
-docs/validation/addition7/scripts/addition7_boxplot.py:57:    fig.savefig(OUT / "energy_boxplot_15seed.png", dpi=300)
-docs/validation/addition7/scripts/addition7_boxplot.py:58:    fig.savefig(OUT / "energy_boxplot_15seed.pdf")
+docs/validation/addition7/scripts/addition7_boxplot.py:58:    plt.savefig(f"{OUT}/energy_boxplot_15seed.{ext}")
+docs/validation/addition7/scripts/addition7_boxplot.py:61:print(f"wrote {OUT}/energy_boxplot_15seed.pdf / .png")
 ```
-
 
 ## Sources added in round 24 (step 2.10-b)
 | Claim | Paper location | Evidence file | Verdict |
 |---|---|---|---|
-| Progress curves (Fig 13/14) | Fig. fig:progress-lin / fig:progress-log | `docs/validation/paper-audit/sources/progress_snapshots.csv` | SOURCED |
-| Slots per decision `4.70`, `6.17`, `4.68`, `24.34` | 1986 | `docs/validation/paper-audit/sources/slots_per_decision.md` | MISMATCH (pooled: 4.70-5.97 / 4.68-24.34; per-seed mean: 4.70-5.97 / 4.68-24.34) |
-| Energy distribution extrema | 2009-2045 | `docs/validation/paper-audit/sources/distribution_stats.csv` | SOURCED |
-| Integer multiple check | 2088-2090 | `docs/validation/paper-audit/sources/integer_multiple_check.md` | SOURCED |
-| Line 2PC energy/efficiency | 2489-2493 | removed from text | REMOVED |
-| Proposal sharing share `1.6%` | 1986 | `docs/validation/paper-audit/sources/proposal_sharing_candidates.md` | UNSOURCED |
+| Progress curves (Fig 13/14) | 1814,1818 | `docs/validation/paper-audit/sources/progress_snapshots.csv` | SOURCED |
+| Slots per decision `4.70`, `6.17`, `4.68`, `24.34` | 2095-2096 | `docs/validation/paper-audit/sources/slots_per_decision.md` | MISMATCH (pooled: 4.70-5.97 / 4.68-24.34; per-seed mean: 4.70-5.97 / 4.68-24.34) |
+| Energy distribution extrema | 2054 | `docs/validation/paper-audit/sources/distribution_stats.csv` | SOURCED |
+| Integer multiple check | 2424 | `docs/validation/paper-audit/sources/integer_multiple_check.md` | SOURCED |
+| Line 2PC energy/efficiency | 2594-2599 | removed from text | REMOVED |
+| Proposal sharing share `1.6%` | 2093 | `docs/validation/paper-audit/sources/proposal_sharing_candidates.md` | UNSOURCED |
 
 ## Corrections in round 25 (step 2.10-c)
 - Proposal sharing share: 4.57% withdrawn (invalid mix of fresh numerator and frozen denominator).
 - Slots per decision: estimator corrected from per-seed mean to pooled (sum/sum) to match paper definition.
 - Progress curves: 99-versus-100 is a disclosed reporting/counting mismatch, not a repaired simulator bug.
-- Test count corrected to 9 / 3 / 20 (superseding stale 9 / 3 / 19).
+- Test count corrected to 9 / 3 / 22 (superseding stale 9 / 3 / 20).
 
 ## Corrections in round 26 (step 2.7-R)
 - Reference Provenance (R2): Replaced the misleading ungrounded cross-N residual extrapolation of the 100.0/57.8 slots with explicit anchor-only comparison and marked cross-N tracking as NOT IDENTIFIABLE.
@@ -289,7 +366,4 @@ docs/validation/addition7/scripts/addition7_boxplot.py:58:    fig.savefig(OUT / 
 
 ## Known internal staleness
 
-This file was originally authored against `main` at `cdc2f818` and has been amended across multiple rounds. The parts measured at each commit are:
-- Test counts (the "tests maintained" row and its evidence block): current at `3deb8bec` (9 lib + 3 reproducibility + 22 validation = 34 total).
-- All other numeric verdicts and evidence: originally measured at `cdc2f818`; rows added in step 2.10-b (round 24) and step 2.10-c (round 25) were measured at their respective heads. The "Corrections in round 25" section supersedes the stale `9 / 3 / 19` with `9 / 3 / 20`, itself superseded by the current `9 / 3 / 22`.
-- The base SHA in the header (`3deb8bec`) is the commit this revision of the audit is valid against; `cdc2f818` is preserved as the original audit base for history.
+All numbers, line references, and evidence blocks in this file were measured against `main` at commit `98ac7318b409ba580f2e5d9257b5208117444ff8`.
