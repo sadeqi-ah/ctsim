@@ -22,13 +22,14 @@ From the repository root:
 
        python3 tools/collect_paper_figures.py
 
-3. Verify that all eleven generated figures are in place:
+3. Build the paper (checks figures, then runs pdflatex -> bibtex -> pdflatex -> pdflatex):
+
+       ./paper/build.sh
+
+   or manually from the repository root:
 
        python3 tools/collect_paper_figures.py --check
-
-4. Build the paper:
-
-       cd paper && pdflatex paper.tex && pdflatex paper.tex
+       cd paper && pdflatex paper.tex && bibtex paper && pdflatex paper.tex && pdflatex paper.tex
 
 ## Mapping
 

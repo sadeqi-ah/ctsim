@@ -45,7 +45,7 @@ def build_release():
 def run_config(toml_path) -> None:
     """Run one simulation config. Output CSVs land in ``<repo>/results``."""
     subprocess.run(
-        ["cargo", "run", "--release", "--", str(toml_path)],
+        ["cargo", "run", "--release", "--bin", "ctsim", "--", str(toml_path)],
         cwd=REPO_ROOT,
         check=True,
         stdout=subprocess.DEVNULL,
@@ -56,7 +56,7 @@ def run_config(toml_path) -> None:
 def run_sweep(toml_path) -> None:
     """Run a parameter sweep config (writes its own output_dir)."""
     subprocess.run(
-        ["cargo", "run", "--release", "--", str(toml_path)],
+        ["cargo", "run", "--release", "--bin", "ctsim", "--", str(toml_path)],
         cwd=REPO_ROOT,
         check=True,
     )
