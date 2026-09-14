@@ -152,12 +152,12 @@ Decision rule: If the CI for alpha contains 0 and excludes 1, conclude A. If it 
 
 ## T1 Rule: Dense Admissibility 
 
-A dense graph at node count N is admissible iff BOTH hold:
-1. `abs(mean_degree - 0.5*N) <= 0.05 * (0.5*N)`
+A dense graph at node count N is admissible iff BOTH hold for each individual seed graph (the 5% per-seed admissibility gate):
+1. `abs(mean_degree - 0.5*N) <= 0.05 * (0.5*N)` (per-seed tolerance: 5%)
 2. `diameter == 2`
 
 **Search Procedure:**
-To remove the density confound, the procedure minimizes `abs(mean_degree - 0.5*N)` using a fixed window width W=10, identical at every N, searching only the window centre. W=10 is the smallest width where the minimum error over seeds reliably stays under the 1% gate for all tested N.
+To remove the density confound, the procedure minimizes `abs(mean_degree - 0.5*N)` across seeds using a fixed window width W=10, identical at every N, searching only the window centre. W=10 is the smallest width where the 15-seed mean density error reliably stays under the 1% across-seed mean gate for all tested N.
 
 ## Anchor Comparison
 

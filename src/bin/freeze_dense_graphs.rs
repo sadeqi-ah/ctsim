@@ -1,5 +1,9 @@
 //! Freeze dense random topologies to deterministic adjacency files.
 //!
+//! Historical Note: This binary is an Addition 14 artifact generator (emitting to
+//! `docs/validation/addition14/data/` and `profiles/graphs/`), superseded by
+//! `src/bin/n_sweep.rs` (which uses a uniform W=10 window across all N) for Addition 15.
+//!
 //! For each (n, seed) triple this binary:
 //! 1. Builds the graph in-memory with dense degree parameters (0.5 * n ± 5%).
 //! 2. Writes it to `profiles/graphs/random_n{n}_dense_seed{seed}.txt`.
