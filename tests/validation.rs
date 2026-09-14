@@ -2166,6 +2166,19 @@ fn step_27r_assertions() {
             "Graph file {} does not exist",
             graph_file
         );
+        let loaded = NetworkGraph::from_file(file_path)
+            .unwrap_or_else(|e| panic!("failed to load {graph_file}: {e}"));
+        let comp_sizes = component_sizes(&loaded);
+        assert_eq!(
+            comp_sizes.len(),
+            1,
+            "Graph {graph_file} is disconnected: components={comp_sizes:?}"
+        );
+        assert_eq!(
+            loaded.diameter(),
+            2,
+            "Graph {graph_file} recomputed diameter is not 2"
+        );
 
         // aggregate mean_degree
         *degree_sums.entry(n).or_insert(0.0) += mean_deg;
