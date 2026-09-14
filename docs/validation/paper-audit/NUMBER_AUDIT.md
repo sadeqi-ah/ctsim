@@ -85,9 +85,9 @@ test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; fini
 | `15` protocol-topology CE aggregates (225 runs) | 323 | 15 protocol-topology CE aggregates, each 15 seeds; 225 runs | `plots/topology/results/sweep_summary.csv:2-451` | MATCH |
 | diameter range `26x` | 323 | `26 / 1 = 26` | `plots/topology/results/sweep_summary.csv:2,8,14,20,26` | MATCH |
 | latency `27x`; energy `1.3x` | 325,326 | `26.987x`; `1.317x` | `plots/scalability/results/sweep_summary.csv:56-58` (15-seed aggregation) | MATCH |
-| line N=`27`, diameter `26` | 2570 | 27, 26 | `plots/topology/results/sweep_summary.csv:2-7` | MATCH |
-| line 2PC-CI commit `0.2%` | 335,2576 | `3 / 1500 = 0.200%` | `plots/topology/results/sweep_summary.csv:3,33,...,423` | MATCH |
-| line Paxos unaffected | 336,2591 | `1500 / 1500 = 100%` | `plots/topology/results/sweep_summary.csv:2,32,...,422` | MATCH |
+| line N=`27`, diameter `26` | 2572 | 27, 26 | `plots/topology/results/sweep_summary.csv:2-7` | MATCH |
+| line 2PC-CI commit `0.2%` | 335,2578 | `3 / 1500 = 0.200%` | `plots/topology/results/sweep_summary.csv:3,33,...,423` | MATCH |
+| line Paxos unaffected | 336,2594 | `1500 / 1500 = 100%` | `plots/topology/results/sweep_summary.csv:2,32,...,422` | MATCH |
 | sweep N=`6..188`, loss `0..20%`, 100 proposals, 15 seeds | 1313 | N `{6,13,27,54,188}`, loss `{0,.05,.1,.2}`, 100, 15 | `plots/scalability/results/sweep_summary.csv:2-1741` | MATCH |
 | random mean `4.20` (range 4–5); scale-free mean `4.13` (range 4–5) | 1303,2285 | random mean 4.20, range 4–5; scale-free 4.13, range 4–5 | `plots/topology/results/sweep_summary.csv:2-451` | MATCH |
 | drain tails `0.09%`, `1.70%`, `3.41%`; max `23.4%` | 1349 | `0.0851%`, `1.6968%`, `3.4105%`; `23.4375%` | `plots/scalability/results/sweep_summary.csv:50-1739` | MATCH |
@@ -300,8 +300,8 @@ Quoted implication sentences:
 
 | Earlier/later claim | Results contradiction | Verdict |
 |---|---|---|
-| abstract 172-175: stable across dense topologies, line 2PC 0.2% | results 2576-2577: line 2PC-CI commit collapses to 0.2% | MATCH (Revised to state exception) |
-| abstract 174-175 / intro 326-330: line TOM depth≈26, latency 616 | results 2614-2621: line TOM latency 616, depth≈26 | MATCH (Revised to state exception) |
+| abstract 172-175: stable across dense topologies, line 2PC 0.2% | results 2578-2579: line 2PC-CI commit collapses to 0.2% | MATCH (Revised to state exception) |
+| abstract 174-175 / intro 326-330: line TOM depth≈26, latency 616 | results 2616-2623: line TOM latency 616, depth≈26 | MATCH (Revised to state exception) |
 | conclusion 2724-2728: stable across dense topologies, line TOM depth≈26 | results 2616-2623: line TOM latency 616, depth≈26 | MATCH (Revised to state exception) |
 
 ```text
@@ -351,7 +351,7 @@ docs/validation/addition7/scripts/addition7_boxplot.py:61:print(f"wrote {OUT}/en
 | Slots per decision `4.70`, `5.97`, `4.68`, `24.34` | 2095-2096 | `docs/validation/paper-audit/sources/slots_per_decision.md` | SOURCED |
 | Energy distribution extrema | 2054 | `docs/validation/paper-audit/sources/distribution_stats.csv` | SOURCED |
 | Integer multiple check | 2424 | `docs/validation/paper-audit/sources/integer_multiple_check.md` | SOURCED |
-| Line 2PC energy/efficiency | 2596-2601 | removed from text | REMOVED |
+| Line 2PC energy/efficiency | 2598-2603 | removed from text | REMOVED |
 | Proposal sharing share (1.6% removed from paper) | 2093 | `docs/validation/paper-audit/sources/proposal_sharing_candidates.md` | REMOVED |
 
 ## Corrections in round 25 (step 2.10-c)
