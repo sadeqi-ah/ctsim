@@ -2090,10 +2090,10 @@ cycling}: the measured radio duty cycle of $0.69$ predicts $1/0.69 = 1.443$,
 which accounts for the measured ratio to within $0.6\,\%$. The number $1.43$
 therefore marks the floor of the saving offered by the \CI{} architecture---the
 part available even in the complete absence of concurrency. The rise from there
-to $5.67$ under 2PC is not proposal sharing, which accounts for $1.6\,\%$ of
-it; it is the number of slots a decision occupies, measured as total simulated
-slots per committed decision and summed over seeds, which runs from $4.70$ to
-$6.17$ under \CI{} against $4.68$ to $24.34$ under \CE.
+to $5.67$ under 2PC is not driven by proposal sharing; it is the number of slots
+a decision occupies, measured as total simulated slots per committed decision
+and summed over seeds, which runs from $4.70$ to $5.97$ under \CI{} against
+$4.68$ to $24.34$ under \CE.
 
 It must be stressed that this advantage is \textbf{intra-protocol} and
 does not amount to a claim that \CI{} dominates \CE{} across protocols.
@@ -2446,7 +2446,9 @@ fifteen groups and reaches $1.94\,\%$ on a single seed of 2PC over \CE{} on the
 line topology, where two of the fifteen seeds commit 99 proposals of 100.
 
 On the other side, the \CI{} architecture consumes less energy than its
-\CE{} counterpart for all three protocols on the four dense topologies. The
+\CE{} counterpart for all three protocols on the four dense topologies; on
+the line topology this holds for TOM and Paxos, while 2PC is an exception
+because near-zero commits render its per-decision energy meaningless. The
 margin ranges between 1.3 and 12 times on the dense topologies and, worth
 noting, reaches its largest value for TOM on the line, at 2916 against 401
 ---more than seven times. The worse the network and the longer the rounds,
@@ -2648,7 +2650,8 @@ mainly the throughput of 2PC over \CI, because unanimity within a fixed
 pipeline window is fragile; that instability shows up in two
 regimes: at low loss and in small networks the commit rate stays close to
 complete and the cost appears mainly as a longer run, whereas under heavy
-loss, at scale, or on large-diameter topologies the loss of decisions itself
+loss the commit rate itself falls (to 70.07\,\% for 2PC over \CI{} at 20\,\%
+loss), and at scale or on large-diameter topologies the loss of decisions
 dominates, with the commit rate dropping to 23.2\,\% in the largest
 scalability network and 0.2\,\% for 2PC on the line topology. The cumulative
 progress view then shows that the high latency of \CI{} is misleading: all
