@@ -370,6 +370,11 @@ docs/validation/addition7/scripts/addition7_boxplot.py:61:print(f"wrote {OUT}/en
 - The TOM piggyback path only calls `insert_message` (`src/sim/tom_pipeline.rs:195`) and performs no quorum evaluation.
 - The affected row set is therefore `protocol=paxos_pipeline, phy=ci` only: **158 rows** in `plots/scalability/results/sweep_summary.csv` and **31 rows** in `plots/topology/results/sweep_summary.csv`, i.e. **189 rows total** — not the 489 + 98 rows that have `piggybacks > 0`.
 
+## Issue 256 external diagram note
+- The Figma diagram lives outside the repository and cannot be verified or corrected by CI.
+- It depicts multiple bitmaps, which does not match the code model established in ITEM 1.
+- Fixing the diagram is an author action item, tracked outside the repository.
+
 ## Known internal staleness
 
 This file was originally authored against `main` at `cdc2f818` and updated across multiple audit rounds. As of Step 2.13 (wave C), all line numbers, claim wording, and evidence blocks have been re-measured and reconciled against `main` at commit `21ed3cad190270d8e25094cc89b5d5eafd98d575`.
