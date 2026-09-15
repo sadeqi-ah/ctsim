@@ -76,10 +76,10 @@ def collect(run_sims: bool) -> pd.DataFrame:
             with open(toml_path, "w") as f:
                 f.write(generate_toml(proto, phy))
             subprocess.run(
-                ["cargo", "run", "--release", "--", toml_path],
+                ["cargo", "run", "--release", "--bin", "ctsim", "--", toml_path],
                 cwd=ROOT,
+                check=True,
                 stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
             )
 
         if not os.path.exists(path):

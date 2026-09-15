@@ -2,6 +2,7 @@
 name = "ctsim"
 version = "0.1.0"
 edition = "2021"
+default-run = "ctsim"
 rust-version = "1.74"
 description = "Slot-based simulator for consensus over concurrent transmissions (CI/CE) in low-power wireless networks"
 license = "MIT"

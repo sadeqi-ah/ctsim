@@ -80,7 +80,7 @@ def run_sweep_if_needed():
     print("Running topology sweep (may take a few minutes)...")
     CSV.parent.mkdir(parents=True, exist_ok=True)
     subprocess.run(
-        ["cargo", "run", "--release", "--", str(SWEEP_TOML)],
+        ["cargo", "run", "--release", "--bin", "ctsim", "--", str(SWEEP_TOML)],
         cwd=ROOT,
         check=True,
     )
