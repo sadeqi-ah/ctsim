@@ -241,10 +241,12 @@ impl CiProtocol for PaxosCi {
                 if !state.log.iter().any(|(lt, _)| *lt == pt)
                     && !state.pending.iter().any(|p| p.term == pt)
                 {
+                    let mut bitmap = vec![false; num_nodes];
+                    bitmap[i] = true; // only the receiving node's own vote
                     state.pending.push(PendingProposal {
                         term: pt,
                         data: received_pkt.piggyback_data.clone(),
-                        bitmap: vec![true; num_nodes],
+                        bitmap,
                     });
                 }
             }
@@ -303,5 +305,121 @@ impl CiProtocol for PaxosCi {
 
     fn should_stop(&self, _core: &CiPipelineCore) -> bool {
         self.stop
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::config::{CiConfig, NetworkConfig, SimConfig};
+    use crate::network::NetworkGraph;
+    use crate::node::NodeState;
+
+    /// Regression test for issue 257: the piggyback-recovery insertion at
+    /// lines 240-252 must NOT create a PendingProposal with an all-ones
+    /// bitmap.
+    ///
+    /// Strategy: construct a minimal PaxosCi + CiPipelineCore, inject a
+    /// serialized PaxosPacket carrying piggyback_term = Some(7) into one
+    /// node's payload, call process_round, then inspect the bitmap of the
+    /// PendingProposal that was created for term 7.
+    ///
+    /// With the old bug (bitmap: vec![true; num_nodes]), check_quorum
+    /// returns true and the vote count equals num_nodes. This test catches
+    /// both.
+    #[test]
+    fn piggyback_bitmap_does_not_grant_instant_quorum() {
+        let num_nodes = 5;
+
+        // Build a full-mesh graph so every node participates in every
+        // flood round.
+        let graph = NetworkGraph::full_mesh(num_nodes);
+
+        let config = SimConfig {
+            seed: 1,
+            phy_mode: "ci".to_string(),
+            protocol: "paxos_pipeline".to_string(),
+            network: NetworkConfig {
+                num_nodes,
+                topology: "full_mesh".to_string(),
+                loss_rate: 0.0,
+                graph_file: None,
+            },
+            ci: Some(CiConfig {
+                flood_repeats: 1,
+                round_slots: Some(10),
+            }),
+            ce: None,
+            num_proposals: 10,
+            snapshot_interval: 50,
+            max_slots: 100_000,
+            abort_probability: 0.0,
+            quiet: true,
+        };
+
+        let mut core = CiPipelineCore::new(config, graph);
+
+        let mut proto = PaxosCi {
+            states: vec![NodePaxosState::new(); num_nodes],
+            term_counter: 0,
+            proposals_generated: 0,
+            num_proposals: 10,
+            proposal_starts: HashMap::new(),
+            globally_committed: HashSet::new(),
+            piggyback_term: None,
+            piggyback_data: Vec::new(),
+            stop: false,
+        };
+
+        // Craft a PaxosPacket that carries a piggybacked term 7.
+        // Node 2 will receive this packet.
+        let receiving_node: usize = 2;
+        let piggyback_term: u64 = 7;
+        let pkt = PaxosPacket {
+            current_term: 0,
+            last_accepted_term: None,
+            flags_bitmap: vec![false; num_nodes],
+            nack_term: 0,
+            sender: 0,
+            proposal_data: Vec::new(),
+            piggyback_term: Some(piggyback_term),
+            piggyback_data: b"tx7".to_vec(),
+        };
+
+        // Place the crafted packet into the receiving node's payload and
+        // mark it as having participated (Sleep = finished flood round).
+        core.nodes[receiving_node].payload = serialize_packet(&pkt);
+        core.nodes[receiving_node].state = NodeState::Sleep;
+
+        // Run process_round -- this executes the piggyback-insertion path.
+        proto.process_round(&mut core);
+
+        // Inspect the PendingProposal created for the piggybacked term.
+        let state = &proto.states[receiving_node];
+        let pp = state
+            .pending
+            .iter()
+            .find(|p| p.term == piggyback_term)
+            .expect("piggyback term 7 must appear in pending");
+
+        // REGRESSION ASSERTION 1: bitmap must NOT be all-true.
+        let vote_count: usize = pp.bitmap.iter().filter(|&&b| b).count();
+        assert_eq!(
+            vote_count, 1,
+            "piggyback bitmap must have exactly 1 vote (the receiver's), \
+             got {vote_count} out of {num_nodes}"
+        );
+        assert!(
+            pp.bitmap[receiving_node],
+            "the set bit must be the receiving node's (index {receiving_node})"
+        );
+
+        // REGRESSION ASSERTION 2: check_quorum must return false.
+        assert!(
+            !state.check_quorum(piggyback_term),
+            "piggyback proposal must NOT have quorum with 1/{num_nodes} \
+             votes (majority = {})",
+            num_nodes / 2 + 1
+        );
     }
 }
