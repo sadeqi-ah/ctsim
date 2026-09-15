@@ -241,10 +241,12 @@ impl CiProtocol for PaxosCi {
                 if !state.log.iter().any(|(lt, _)| *lt == pt)
                     && !state.pending.iter().any(|p| p.term == pt)
                 {
+                    let mut bitmap = vec![false; num_nodes];
+                    bitmap[i] = true; // only the receiving node's own vote
                     state.pending.push(PendingProposal {
                         term: pt,
                         data: received_pkt.piggyback_data.clone(),
-                        bitmap: vec![true; num_nodes],
+                        bitmap,
                     });
                 }
             }
