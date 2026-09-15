@@ -70,9 +70,7 @@ bitmap grants instant quorum without any real vote. (`src/protocol/paxos.rs:98�
 Yes. A term that arrives via piggyback with instant quorum commits on the same
 slot it enters `pending`, instead of waiting for votes to accumulate through
 subsequent floods. The latency recorded via `record_proposal`
-(`src/sim/paxos_pipeline.rs:125–129`) uses `core.current_slot - start`, and the
-start may not even exist in `proposal_starts` (returning 0), which would report
-the latency as the full elapsed slot count.
+(`src/sim/paxos_pipeline.rs:125–129`) uses `core.current_slot - start`.
 
 **(c) Can it change energy counters?**
 Yes, indirectly. If the defect reduces `end_slot` by completing the workload
@@ -85,8 +83,8 @@ node-slots) and denominator (potentially fewer legitimate commits).
 `piggybacks_sent` is incremented at `src/sim/paxos_pipeline.rs:230` in the
 NACK-response path, which runs independently of the bitmap value used by the
 receiver. So `piggybacks_sent` itself is unaffected by the bitmap bug; it counts
-correctly how many piggyback responses were prepared. `nacks` is incremented at
-`src/sim/paxos_pipeline.rs:155` and is similarly unaffected.
+correctly how many piggyback responses were prepared. `nacks_sent` is incremented at
+`src/sim/paxos_pipeline.rs:87` (inside `prepare_round`) and is similarly unaffected.
 
 
 ## 2. Blast Radius in the Committed Data
@@ -182,7 +180,7 @@ output is not committed in the repository.
 | Published quantity | paper.tex line | Figure/Table | Script:line that computes it | Consumes exposed rows? | Exposed rows in input |
 |---|---|---|---|---|---|
 | Table I Paxos(CI) row: thr 0.1903 | 1537 | Table I | `plots/scalability/plot_summary_commit.py:63` | YES | 5 of 15 at baseline (N=27, loss=0.05) |
-| Table I Paxos(CI) row: E/dec 100.2 | 1537 | Table I | `plots/scalability/plot_summary_commit.py:64` | YES | 5 of 15 at baseline |
+| Table I Paxos(CI) row: E/dec 100.2 | 1537 | Table I | `plots/scalability/plot_summary_commit.py:64,80` | YES | 5 of 15 at baseline |
 | Table I Paxos(CI) row: Eff 1.906 | 1537 | Table I | `plots/scalability/plot_summary_commit.py:65` | YES | 5 of 15 at baseline |
 | Table II Paxos(CI) depth 11.66 | 1923 | Table II | Derived: thr × lat (Little's law) | YES | 5 of 15 at baseline |
 | "roughly 2.7 times" Paxos thr ratio | 1611 | — | Paxos(CI)/Paxos(CE) from same CSV | YES | 5 of 15 at baseline |
@@ -190,11 +188,11 @@ output is not committed in the repository.
 | Paxos on line: "thr 0.0625" | 2594 | — | `plots/topology/plot_topology.py:94` | YES | 15 of 15 on line |
 | Paxos on line: "highest among all" | 2594 | — | — | YES | 15 of 15 on line |
 | Fig 3a throughput_vs_nodes Paxos(CI) | 1585 | Fig. 3a | `plots/scalability/plot_scalability.py:65` | YES | 158 total across all (N, loss) |
-| Fig 3b throughput_vs_loss Paxos(CI) | 1658 | Fig. 3b | `plots/scalability/plot_scalability.py:65` | YES | exposed N=27 rows |
-| Fig 4 latency_vs_nodes Paxos(CI) | 1740 | Fig. 4 | `plots/scalability/plot_scalability.py:117` | NO (latency is read, not derived from committed) | 0 |
+| Fig 3b throughput_vs_loss Paxos(CI) | 1658 | Fig. 3b | `plots/scalability/plot_scalability.py:65` | YES | 30 exposed rows (N=27, loss > 0) |
+| Fig 4 latency_vs_nodes Paxos(CI) | 1740 | Fig. 4 | `plots/scalability/plot_scalability.py:117` | YES* | 158 total across all (N, loss) |
 | Fig 10 efficiency_vs_nodes Paxos(CI) | 2229 | Fig. 10 | `plots/scalability/plot_efficiency.py:60,66` | YES | 158 total |
 | Fig 12a thr_vs_topology Paxos(CI) | 2325 | Fig. 12a | `plots/topology/plot_topology.py:94` | YES | 31 total |
-| Fig 12b lat_vs_topology Paxos(CI) | 2329 | Fig. 12b | `plots/topology/plot_topology.py:95` | NO (latency read directly) | 0 |
+| Fig 12b lat_vs_topology Paxos(CI) | 2329 | Fig. 12b | `plots/topology/plot_topology.py:95` | YES* | 31 total |
 | Table I 2PC(CI) row (all columns) | 1538 | Table I | same script | NO | 0 |
 | "4.083× throughput" 2PC ratio | 167, 319 | — | 2PC(CI)/2PC(CE) | NO | 0 |
 | "5.672× energy" 2PC ratio | 167, 320 | — | 2PC(CE)/2PC(CI) E/dec | NO | 0 |
@@ -204,6 +202,8 @@ output is not committed in the repository.
 | "0.2% commit rate" (2PC on line) | 2578, 2726 | — | 2PC(CI) on line | NO | 0 |
 | Energy identity E = N×L | 2024–2026 | — | CE protocols only | NO | 0 |
 | "616 slots" TOM latency on line | 175, 329, 2616 | — | TOM(CI) on line | NO | 0 |
+
+\* Note on latency figures: Latency is read directly from `avg_latency` (not arithmetically derived from `committed`), but it is measured inside simulation runs where the defect fabricated quorums; thus the plotted Paxos(CI) data points consume exposed runs.
 
 
 ## 4. Worst-Case Analytical Bounds
@@ -242,7 +242,7 @@ Original mean throughput: 0.1903
 Adjusted mean throughput: 0.1680
 ```
 
-**Energy/dec arithmetic** (`plots/scalability/plot_summary_commit.py:64`):
+**Energy/dec arithmetic** (`plots/scalability/plot_summary_commit.py:64` per-row definition, line 80 mean aggregation):
 
 `energy_per_dec = (listen + flood) / committed` per row, then averaged.
 
@@ -310,24 +310,32 @@ The committed count **cannot** exceed `proposals` because `commit_up_to`
 (`src/protocol/paxos.rs:126–135`) only commits terms that exist in `pending`,
 and each term can appear in `pending` at most once.
 
-Therefore the **tight bound on the committed count is: no change**. The
-distortion, if any, is in **latency** (the defect may cause earlier commits,
-reducing `avg_latency` and `end_slot`), which in turn affects **throughput**
-(`committed / end_slot`) and **energy per decision** (`(listen + flood) / committed`
-through the numerator, since fewer slots means less total listen+flood time).
+Therefore the **tight bound establishes that upward inflation beyond 100 is
+impossible, but downward movement is UNKNOWN — REQUIRES A RUN**. The
+distortion in committed counts is bounded from above by the ceiling, but the
+true bug-free commit count could be lower if certain proposals only succeeded
+due to fabricated quorums. Distortion is also present in **latency** (the defect
+causes earlier commits, reducing `avg_latency` and `end_slot`), which in turn
+affects **throughput** (`committed / end_slot`) and **energy per decision**
+(`(listen + flood) / committed` through the numerator, since fewer slots means
+less total listen+flood time).
 
-Whether `committed` would remain at 100 without the bug cannot be proven from
-the CSVs alone. However, `paxos_ce` (which has no bug and uses the harder
-serial-execution model) also achieves `committed = proposals = 100` in every row
-of both sweeps. Since Paxos requires only majority quorum (easier than CE's
-serial completion), there is no evidence that the committed count depends on the
-bug. This observation is suggestive but not a proof.
+This specific cell matters because Paxos(CI) reports 100.0% commit at loss=0.20
+(`plots/scalability/results/sweep_summary.csv` rows 68, 188, 308, 428, 548, 668,
+788, 908, 1028, 1148, 1268, 1388, 1508, 1628, 1748) where 2PC(CI) reports
+70.07% (`paper/paper.tex:1728, 2653`), and 100% on the `line` topology
+(`plots/topology/results/sweep_summary.csv` rows 2, 32, 62, 92, 122, 152, 182,
+212, 242, 272, 302, 332, 362, 392, 422; `paper/paper.tex:2594`) where 2PC(CI)
+reports 0.2% (`paper/paper.tex:174, 328, 335, 2578, 2726`). These are exactly the
+values most plausibly propped up by free quorum. We do not claim the 100% figure
+is wrong (since majority consensus is structurally more resilient than unanimity),
+only that it is unverified and that its verification requires a simulation run.
 
 #### Tight-bound summary table
 
 | Published quantity | Published value | Tight-bound value | Reasoning |
 |---|---|---|---|
-| Table I Paxos(CI) committed/commit% | 100 / 100.0% | 100 / 100.0% (no change) | committed = proposals = ceiling in all rows |
+| Table I Paxos(CI) committed/commit% | 100 / 100.0% | <= 100 (inflation impossible); downward movement UNKNOWN — REQUIRES A RUN | Ceiling prevents inflation above 100; downward sensitivity unverified |
 | Table I Paxos(CI) throughput | 0.1903 | UNKNOWN — REQUIRES A RUN | Depends on end_slot, which may decrease with bug |
 | Table I Paxos(CI) E/dec | 100.2 | UNKNOWN — REQUIRES A RUN | Depends on total listen+flood, which changes with end_slot |
 | Table I Paxos(CI) latency | 61.4 | UNKNOWN — REQUIRES A RUN | Directly affected by instant-quorum commits |
@@ -363,11 +371,9 @@ rows should be re-run for consistency (same binary).
   `docs/validation/paper-audit/sources/per_decision_energy.csv` — only if the
   energy figures are re-generated from the corrected single-run data.
 
-**Wall-clock cost:** COST UNKNOWN. The CI workflow comment at
-`.github/workflows/ci.yml:69` says "The scalability sweep includes N=188 and
-takes minutes" but gives no precise timing. The Addition 14 dense block took
-756.57 s (documented in `docs/validation/addition14/data/run_provenance.md:15`),
-but that is a different sweep configuration and not directly comparable.
+**Wall-clock cost:** Split estimate based on committed repository and CI evidence:
+- *Topology sweep (75 paxos-ci configs):* Cheap (< 1 minute). In CI (`.github/workflows/ci.yml:58–64`), the entire 450-configuration topology sweep is executed twice consecutively for byte-identity checks, and the entire `rust` CI job (including compilation, all 34 tests, smoke runs, and both sweeps) completed in ~2 minutes in PR #53.
+- *Scalability sweep (300 paxos-ci configs):* The expensive portion. CI notes at `.github/workflows/ci.yml:69` that "The scalability sweep includes N=188 and takes minutes". For calibration, `docs/validation/addition14/data/run_provenance.md:15` records a dense-block wall clock of 756.57 s (~12.6 minutes) for a multi-configuration sweep. The 300 paxos-ci configurations span 5 network sizes ($N \in \{6, 13, 27, 54, 188\}$), 4 loss rates, and 15 seeds. Small-$N$ runs execute in fractions of a second to low seconds, while $N=188$ dominates. On a modern multi-core machine with parallel execution, this subset is bounded in the range of ~5 to 20 minutes (~10 to 30 minutes single-threaded). Any exact per-configuration timing not documented in committed logs remains UNKNOWN — REQUIRES A RUN.
 
 ### Option B: Fix the code and re-run the full sweeps
 
@@ -407,12 +413,4 @@ the full `NUMBER_AUDIT.md` tally would need re-verification.
 
 ### Recommendation
 
-Option A is the correct choice. The defect is a genuine quorum fabrication:
-a node that has never seen a term can commit it instantly without any real vote
-(Section 1 above). This is not a cosmetic issue that can be safely documented
-away — a reviewer would reasonably reject Option C because the paper claims
-Paxos results are valid but the simulator grants free quorum. The fix is a
-one-line change, and the headline 2PC claims (4.083×, 5.672×) are structurally
-unaffected regardless. The tight bound (Section 4) shows that committed counts
-are at the ceiling in every row, suggesting the real movement may be small,
-but only a re-run can confirm this.
+Option A is the correct choice. Option C alone is no longer defensible now that the guard condition is settled: because `vec![true; num_nodes]` is admitted precisely when the node has never seen the proposal in `log` or `pending` (`src/sim/paxos_pipeline.rs:241–242`), the simulator fabricates unanimous consent for entirely unobserved proposals, converting an unverified consensus protocol into an unsound artifact that cannot be defended as a mere modeling approximation. A reviewer would reasonably reject Option C because the paper claims Paxos results are valid while the simulator grants free quorum without observed votes. The code fix is a single line, the headline 2PC claims (4.083×, 5.672×) are structurally unaffected, and the re-run wall-clock time is bounded to minutes.
