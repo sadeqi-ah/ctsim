@@ -87,7 +87,7 @@ test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; fini
 | latency `27x`; energy `1.3x` | 325,326 | `26.987x`; `1.317x` | `plots/scalability/results/sweep_summary.csv:56-58` (15-seed aggregation) | MATCH |
 | line N=`27`, diameter `26` | 2572 | 27, 26 | `plots/topology/results/sweep_summary.csv:2-7` | MATCH |
 | line 2PC-CI commit `0.2%` | 335,2578 | `3 / 1500 = 0.200%` | `plots/topology/results/sweep_summary.csv:3,33,...,423` | MATCH |
-| line Paxos unaffected | 336,2594 | `1500 / 1500 = 100%` | `plots/topology/results/sweep_summary.csv:2,32,...,422` | MATCH |
+| line Paxos unaffected | 336,2593 | `1500 / 1500 = 100%` | `plots/topology/results/sweep_summary.csv:2,32,...,422` | MATCH |
 | sweep N=`6..188`, loss `0..20%`, 100 proposals, 15 seeds | 1313 | N `{6,13,27,54,188}`, loss `{0,.05,.1,.2}`, 100, 15 | `plots/scalability/results/sweep_summary.csv:2-1741` | MATCH |
 | random mean `4.20` (range 4–5); scale-free mean `4.13` (range 4–5) | 1303,2285 | random mean 4.20, range 4–5; scale-free 4.13, range 4–5 | `plots/topology/results/sweep_summary.csv:2-451` | MATCH |
 | drain tails `0.09%`, `1.70%`, `3.41%`; max `23.4%` | 1349 | `0.0851%`, `1.6968%`, `3.4105%`; `23.4375%` | `plots/scalability/results/sweep_summary.csv:50-1739` | MATCH |
