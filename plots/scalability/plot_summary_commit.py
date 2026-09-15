@@ -156,9 +156,10 @@ def plot_commit_rate_vs_loss(df: pd.DataFrame) -> None:
     ax.set_xticks(sorted(sub["loss_rate"].unique()))
     ax.set_xlabel("Link loss rate")
     ax.set_ylabel("Commit rate (\\% of proposals)")
+    n_seeds = int(sub["seed"].nunique())
     ax.set_title(
         "Decision Success Rate under Packet Loss\n"
-        r"$N{=}27$, random topology, 100 proposals, 3 seeds (mean $\pm$ sd)"
+        rf"$N{{=}}27$, random topology, 100 proposals, {n_seeds} seeds (mean $\pm$ sd)"
     )
     ax.legend(title="Protocol", bbox_to_anchor=(1.02, 1), loc="upper left", frameon=True)
     fig.tight_layout()
@@ -192,9 +193,10 @@ def plot_commit_rate_vs_nodes(df: pd.DataFrame) -> None:
     ax.set_xticks(sorted(sub["nodes"].unique()))
     ax.set_xlabel("Number of nodes ($N$)")
     ax.set_ylabel("Commit rate (\\% of proposals)")
+    n_seeds = int(sub["seed"].nunique())
     ax.set_title(
         "Decision Success Rate vs. Network Size\n"
-        r"Loss $=5\%$, random topology, 100 proposals, 3 seeds (mean $\pm$ sd)"
+        rf"Loss $=5\%$, random topology, 100 proposals, {n_seeds} seeds (mean $\pm$ sd)"
     )
     ax.legend(title="Protocol", bbox_to_anchor=(1.02, 1), loc="upper left", frameon=True)
     fig.tight_layout()
