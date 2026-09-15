@@ -46,7 +46,7 @@ When the initiator's turn comes in the round-robin schedule, the commit path at
 `commit_up_to(t)` (`src/protocol/paxos.rs:126–135`), which commits the piggybacked
 term and all lower terms that are in `pending`. The term is then recorded via
 `record_proposal` with `ProposalOutcome::Committed`
-(`src/sim/paxos_pipeline.rs:125–129`).
+(`src/sim/paxos_pipeline.rs:125–130`).
 
 A node that has never observed a single real vote for a term can therefore commit
 it immediately through this path.
@@ -70,7 +70,7 @@ bitmap grants instant quorum without any real vote. (`src/protocol/paxos.rs:98�
 Yes. A term that arrives via piggyback with instant quorum commits on the same
 slot it enters `pending`, instead of waiting for votes to accumulate through
 subsequent floods. The latency recorded via `record_proposal`
-(`src/sim/paxos_pipeline.rs:125–129`) uses `core.current_slot - start`.
+(`src/sim/paxos_pipeline.rs:125–130`) uses `core.current_slot - start`.
 
 **(c) Can it change energy counters?**
 Yes, indirectly. If the defect reduces `end_slot` by completing the workload
@@ -372,8 +372,8 @@ rows should be re-run for consistency (same binary).
   energy figures are re-generated from the corrected single-run data.
 
 **Wall-clock cost:** Split estimate based on committed repository and CI evidence:
-- *Topology sweep (75 paxos-ci configs):* Cheap (< 1 minute). In CI (`.github/workflows/ci.yml:58–64`), the entire 450-configuration topology sweep is executed twice consecutively for byte-identity checks, and the entire `rust` CI job (including compilation, all 34 tests, smoke runs, and both sweeps) completed in ~2 minutes in PR #53.
-- *Scalability sweep (300 paxos-ci configs):* The expensive portion. CI notes at `.github/workflows/ci.yml:69` that "The scalability sweep includes N=188 and takes minutes". For calibration, `docs/validation/addition14/data/run_provenance.md:15` records a dense-block wall clock of 756.57 s (~12.6 minutes) for a multi-configuration sweep. The 300 paxos-ci configurations span 5 network sizes ($N \in \{6, 13, 27, 54, 188\}$), 4 loss rates, and 15 seeds. Small-$N$ runs execute in fractions of a second to low seconds, while $N=188$ dominates. On a modern multi-core machine with parallel execution, this subset is bounded in the range of ~5 to 20 minutes (~10 to 30 minutes single-threaded). Any exact per-configuration timing not documented in committed logs remains UNKNOWN — REQUIRES A RUN.
+- *Topology sweep (75 paxos-ci configs):* Cheap (< 1 minute). In CI (`.github/workflows/ci.yml:48–55`), the entire 450-configuration topology sweep is executed twice consecutively for byte-identity checks, and the entire `rust` CI job (including compilation, all 34 tests, smoke runs, and both sweeps) completed in ~2 minutes in PR #53, which provides an upper bound for a single run.
+- *Scalability sweep (300 paxos-ci configs):* The expensive portion. CI notes at `.github/workflows/ci.yml:69` that "The scalability sweep includes N=188 and takes minutes", and `docs/validation/addition14/data/run_provenance.md:15` records a dense-block wall clock of 756.57 s (~12.6 minutes) for a multi-configuration sweep. However, because the 300 paxos-ci configurations span 5 network sizes ($N \in \{6, 13, 27, 54, 188\}$) and $N=188$ dominates execution time with no documented per-configuration breakdown in the repository, any wall-clock estimate for this sweep is UNKNOWN — REQUIRES A RUN.
 
 ### Option B: Fix the code and re-run the full sweeps
 
@@ -413,4 +413,4 @@ the full `NUMBER_AUDIT.md` tally would need re-verification.
 
 ### Recommendation
 
-Option A is the correct choice. Option C alone is no longer defensible now that the guard condition is settled: because `vec![true; num_nodes]` is admitted precisely when the node has never seen the proposal in `log` or `pending` (`src/sim/paxos_pipeline.rs:241–242`), the simulator fabricates unanimous consent for entirely unobserved proposals, converting an unverified consensus protocol into an unsound artifact that cannot be defended as a mere modeling approximation. A reviewer would reasonably reject Option C because the paper claims Paxos results are valid while the simulator grants free quorum without observed votes. The code fix is a single line, the headline 2PC claims (4.083×, 5.672×) are structurally unaffected, and the re-run wall-clock time is bounded to minutes.
+Option A is the correct choice. Option C alone is no longer defensible now that the guard condition is settled: because `vec![true; num_nodes]` is admitted precisely when the node has never seen the proposal in `log` or `pending` (`src/sim/paxos_pipeline.rs:241–242`), the simulator fabricates unanimous consent for entirely unobserved proposals, converting an unverified consensus protocol into an unsound artifact that cannot be defended as a mere modeling approximation. A reviewer would reasonably reject Option C because the paper claims Paxos results are valid while the simulator grants free quorum without observed votes. The code fix is a single line, and the headline 2PC claims (4.083×, 5.672×) are structurally unaffected.
