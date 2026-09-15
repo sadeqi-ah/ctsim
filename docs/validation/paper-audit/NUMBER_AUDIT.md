@@ -369,6 +369,7 @@ docs/validation/addition7/scripts/addition7_boxplot.py:61:print(f"wrote {OUT}/en
 - The 2PC piggyback path applies the sender's own finalised state through `finalize_tx` (`src/sim/two_pc_pipeline.rs:264`) and performs no quorum fabrication.
 - The TOM piggyback path only calls `insert_message` (`src/sim/tom_pipeline.rs:195`) and performs no quorum evaluation.
 - The affected row set is therefore `protocol=paxos_pipeline, phy=ci` only: **158 rows** in `plots/scalability/results/sweep_summary.csv` and **31 rows** in `plots/topology/results/sweep_summary.csv`, i.e. **189 rows total** — not the 489 + 98 rows that have `piggybacks > 0`.
+- Full impact analysis: `docs/validation/paper-audit/ISSUE_257_IMPACT.md`.
 
 ## Issue 256 external diagram note
 - The Figma diagram lives outside the repository and cannot be verified or corrected by CI.
