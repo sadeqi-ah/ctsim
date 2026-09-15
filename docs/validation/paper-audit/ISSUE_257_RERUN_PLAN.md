@@ -142,19 +142,48 @@ git add plots/topology/results/sweep_summary.csv
 Do NOT use `git add -f`.  If `git add` refuses, the file is
 gitignored and must not be committed -- investigate first.
 
-### Step 9 -- Regenerate derived audit sources
+### Step 9 -- Regenerate derived audit sources (CAUTION)
 
 The file `docs/validation/paper-audit/sources/per_decision_energy.csv`
-is generated from `plots/scalability/results/sweep_summary.csv` by
-`tools/audit_sources_210b.py:72` (reads the sweep CSV) and `:112`
-(writes the derived CSV).  After the sweep CSV changes:
+is NOT derived from the committed sweep CSV.  Its provenance
+(`tools/audit_sources_210b.py`):
+
+  Line 72: `df_sweep = pd.read_csv(... sweep_summary.csv)`
+    -> feeds ONLY `slots_per_decision.csv` (line 78) and
+       `slots_per_decision.md`.
+  Line 107: `df_energy = plot_stacked_bar
+       .run_simulation_and_extract_per_proposal(...)`
+    -> a FRESH SIMULATOR RUN via the `plots/energy` path,
+       not a read of the committed sweep CSV.
+  Line 112: `df_energy -> per_decision_energy.csv`
+
+Therefore re-running the two sweeps (Steps 4-5) is NOT sufficient
+to refresh `per_decision_energy.csv`, `distribution_stats.*`, or
+`integer_multiple_check.md`.  Those require running the
+energy/progress path via `tools/audit_sources_210b.py`, which
+executes the simulator internally.
+
+WARNING: mixing a fresh-run numerator with a frozen-sweep
+denominator is the exact error this repository already rejected.
+`docs/validation/paper-audit/sources/proposal_sharing_candidates.md:19`
+states: "The withdrawn 4.57% calculation must not be used because
+it divided a fresh-run numerator by a frozen-sweep denominator."
+The same principle applies here: Step 9 must run AFTER Steps 4-5
+have regenerated the sweep CSVs, never against stale sweep data.
+
+Running this step:
 
 ```bash
 python3 tools/audit_sources_210b.py
 ```
 
-Then verify or update the assert_blob SHA in `tests/validation.rs`
-(see section 5 below).
+This step RUNS THE SIMULATOR (plots/progress and plots/energy
+paths).  It writes into `docs/validation/paper-audit/sources/`,
+which is hashed by `assert_blob` in `tests/validation.rs`.
+Updating those expected hashes is a SEPARATE, OWNER-APPROVED
+round and must not be done in this PR.
+
+Wall-clock cost: UNKNOWN - REQUIRES A RUN
 
 ### Step 10 -- Regenerate figures
 
@@ -183,7 +212,7 @@ fails, update the expected value and document the change.
 > allowance.
 
 This refers to one execution of the disabled `regeneration` job
-(`.github/workflows/ci.yml:85-86`, guarded by `if: false`), which
+(`.github/workflows/ci.yml:86`, guarded by `if: false`), which
 runs on a GitHub-hosted runner.  This is NOT an estimate for a
 local machine and NOT an estimate for the individual scalability or
 topology sweeps.
@@ -204,7 +233,8 @@ Every `assert_blob` call in `tests/validation.rs` and the file
 it hashes, with rerun impact:
 
 Lines 1850, 2281: `sources/per_decision_energy.csv`
-  SHA1 `7386c946...` -- YES, changes (derived from sweep CSV)
+  SHA1 `7386c946...` -- YES, changes (fresh simulator run
+  via `tools/audit_sources_210b.py:107,112`; see Step 9)
 
 Lines 1854, 2285: `sources/distribution_stats.csv`
   SHA1 `ace5a6b0...` -- UNKNOWN - REQUIRES A RUN
