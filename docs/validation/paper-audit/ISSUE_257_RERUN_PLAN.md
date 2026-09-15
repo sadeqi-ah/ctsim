@@ -180,8 +180,19 @@ python3 tools/audit_sources_210b.py
 This step RUNS THE SIMULATOR (plots/progress and plots/energy
 paths).  It writes into `docs/validation/paper-audit/sources/`,
 which is hashed by `assert_blob` in `tests/validation.rs`.
+
+Files hashed by assert_blob and their Step 9 impact
+(line numbers from `grep -n assert_blob tests/validation.rs`):
+
+  1850, 2281: per_decision_energy.csv     -- YES, changes
+  1854, 2285: distribution_stats.csv      -- UNKNOWN - REQUIRES A RUN
+  1858, 2289: distribution_stats.md       -- UNKNOWN - REQUIRES A RUN
+  1862, 2293: integer_multiple_check.md   -- UNKNOWN - REQUIRES A RUN
+  1868, 2297: calibration.lock.toml       -- NO (pins PHY)
+  1874, 2301: .gitignore                  -- NO
+
 Updating those expected hashes is a SEPARATE, OWNER-APPROVED
-round and must not be done in this PR.
+round.  Do not modify `tests/validation.rs` in this PR.
 
 Wall-clock cost: UNKNOWN - REQUIRES A RUN
 
