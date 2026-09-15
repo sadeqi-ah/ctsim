@@ -372,8 +372,16 @@ docs/validation/addition7/scripts/addition7_boxplot.py:61:print(f"wrote {OUT}/en
 
 ## Issue 256 external diagram note
 - The Figma diagram lives outside the repository and cannot be verified or corrected by CI.
-- It depicts multiple bitmaps, which does not match the code model established in ITEM 1.
-- Fixing the diagram is an author action item, tracked outside the repository.
+- It depicts multiple bitmaps, contradicting the codebase: `PendingProposal` holds a single `bitmap` field
+  (`src/protocol/paxos.rs:62-66`), merged in-flight via `merge_votes_up_to` (`src/protocol/paxos.rs:85-95`).
+- On decision, `commit_term` (`src/protocol/paxos.rs:113-118`) pushes only `(term, data)` to `log`, dropping bitmaps.
+- Fixing the external diagram to match this code model is an author action item, tracked outside the repository.
+
+## Paper section map (Step 2.21)
+- Lines 1045/1050 are in Section 4.5.1 (IV-E.1) "Paxos" (lines 985-1068).
+- Lines 1087-1115 are in Section 4.5.2 (IV-E.2) "Non-Blocking Two-Phase Commit" (lines 1069-1125).
+- Line 1399 is in Section 6.4.1 (VI-D.1) "Layer 1: internal and analytical consistency" (lines 1389-1403).
+- Section 4.6 does not exist; Section 4 ends at 4.5.3 (line 1168) and Section 5 starts at line 1169.
 
 ## Known internal staleness
 
