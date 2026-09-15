@@ -364,6 +364,12 @@ docs/validation/addition7/scripts/addition7_boxplot.py:61:print(f"wrote {OUT}/en
 - Reference Provenance (R2): Replaced the misleading ungrounded cross-N residual extrapolation of the 100.0/57.8 slots with explicit anchor-only comparison and marked cross-N tracking as NOT IDENTIFIABLE.
 - Density Control (R1): Hardened uniform density selection to eliminate append-induced contamination and use a deterministic W=10 window.
 
+## Issue 257 exposure scope
+- `vec![true; num_nodes]` occurs only at `src/sim/paxos_pipeline.rs:247`, inside the `piggyback_term` branch that constructs `PendingProposal`.
+- The 2PC piggyback path applies the sender's own finalised state through `finalize_tx` (`src/sim/two_pc_pipeline.rs:264`) and performs no quorum fabrication.
+- The TOM piggyback path only calls `insert_message` (`src/sim/tom_pipeline.rs:195`) and performs no quorum evaluation.
+- The affected row set is therefore `protocol=paxos_pipeline, phy=ci` only: **158 rows** in `plots/scalability/results/sweep_summary.csv` and **31 rows** in `plots/topology/results/sweep_summary.csv`, i.e. **189 rows total** — not the 489 + 98 rows that have `piggybacks > 0`.
+
 ## Known internal staleness
 
 This file was originally authored against `main` at `cdc2f818` and updated across multiple audit rounds. As of Step 2.13 (wave C), all line numbers, claim wording, and evidence blocks have been re-measured and reconciled against `main` at commit `21ed3cad190270d8e25094cc89b5d5eafd98d575`.
