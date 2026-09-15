@@ -192,7 +192,8 @@ Files hashed by assert_blob and their Step 9 impact
   1874, 2301: .gitignore                  -- NO
 
 Updating those expected hashes is a SEPARATE, OWNER-APPROVED
-round.  Do not modify `tests/validation.rs` in this PR.
+round (see Step 11 and Section 5).  Do not modify
+`tests/validation.rs` in this PR.
 
 Wall-clock cost: UNKNOWN - REQUIRES A RUN
 
@@ -212,8 +213,18 @@ content has changed.
 cargo test --all
 ```
 
-All tests must pass.  If any assert_blob or numeric assertion
-fails, update the expected value and document the change.
+Unit, reproducibility, and regression tests must pass.  However, an
+`assert_blob` failure after regenerating the sources directory
+(Step 9) is EXPECTED, not a defect, because the derived audit
+sources in `docs/validation/paper-audit/sources/` were recomputed.
+
+When an `assert_blob` failure occurs:
+- Record the verbatim failure output (test name, expected hash,
+  actual hash) into the round report.
+- Defer every hash update to a separate, owner-approved round,
+  as required by Step 9.
+- `tests/validation.rs` MUST NOT be edited in the rerun described
+  by this document.
 
 ## 4. Timing Constraint from CI Configuration
 
@@ -271,8 +282,10 @@ git hash-object docs/validation/paper-audit/sources/distribution_stats.md
 git hash-object docs/validation/paper-audit/sources/integer_multiple_check.md
 ```
 
-Update the corresponding `assert_blob` calls at lines 1852, 1856,
+In the separate, owner-approved round (see Step 9 and Step 11),
+update the corresponding `assert_blob` calls at lines 1852, 1856,
 1860, 1864, 2283, 2287, 2291, 2295 in `tests/validation.rs`.
+`tests/validation.rs` must NOT be edited during this rerun.
 
 ## 6. Paper Numbers to Check After the Rerun
 
@@ -285,9 +298,9 @@ sections 3 and 4):
 - Paxos on line topology: throughput "0.0625"
 - Fig 3b, Fig 4, Fig 12b: plotted data points
 
-The headline 2PC ratios (4.083x throughput, 5.672x energy) are
-structurally unaffected -- they compare `2pc_pipeline` vs `2pc_ce`
-with no `paxos_pipeline` data involved.
+The headline 2PC ratios (throughput and energy) are structurally
+unaffected -- they compare `2pc_pipeline` vs `2pc_ce` with no
+`paxos_pipeline` data involved.
 
 ## 7. What NOT to Change
 
