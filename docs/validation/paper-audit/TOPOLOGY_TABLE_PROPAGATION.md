@@ -31,7 +31,7 @@ and records baseline preservation and patch prediction conflicts.
   - `docs/validation/addition6_energy_paths.md:236` (records old vs new)
   - `docs/validation/amortised_and_step1b.md:182,188` (records old vs new)
   - `docs/validation/addition10_withdrawn_energy_artefacts.md:23,67`
-  - `docs/validation/NUMBER_AUDIT.md:163` (audits 126.8 vs 357.7)
+  - `docs/validation/paper-audit/NUMBER_AUDIT.md:163` (audits 126.8 vs 357.7)
   - `docs/validation/addition7/scripts/make_patch_spec.py:155`
   - `docs/validation/addition7/scripts/make_patch_spec_v3.py:153`
 - Patch document prescriptions:
@@ -60,7 +60,7 @@ and records baseline preservation and patch prediction conflicts.
 - Statistical meaninglessness:
   For 2PC (CI) on the line topology, the commit rate is `0.2%` (only 3
   committed proposals out of 1500 across 15 seeds). Fourteen seeds had zero
-  commits; only seed 3 had 3 commits. As established in `paper/paper.tex:2598-
+  commits; only seed 29 had 3 commits. As established in `paper/paper.tex:2598-
   2603` and `docs/validation/addition1_addition3_patch_list.md:318-330`,
   averaging latency over zero-commit runs produces division by near-zero.
   The latency mean (diluted to 23.1 by zero-padding across uncommitted seeds)

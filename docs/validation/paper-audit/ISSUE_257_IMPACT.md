@@ -281,7 +281,7 @@ seed 31 at 50.0%. Mean: 88.0%.
 | Paxos CI/CE thr ratio "~2.7×" | 2.703× | 2.386× | −0.317 | −11.7% |
 | Table I Paxos(CI) Eff | 1.906 | UNKNOWN — REQUIRES A RUN | — | — |
 | Pipeline depth "about 12" (11.66) | 11.66 | UNKNOWN — REQUIRES A RUN | — | — |
-| Paxos on line thr "0.0625" | 0.0625 | 0.0611 | −0.0014 | −2.24% (measured, `4895efeb`) |
+| Paxos on line thr "0.0625" | 0.0625 | 0.0611 | −0.0014 | −2.24% (rounded table basis; full: −2.27%, `4895efeb`) |
 | Paxos on line thr (superseded estimate: total loss) | 0.0625 | 0.0000 | −0.0625 | −100% (superseded by measurement in `4895efeb`) |
 | Energy identity E=N×L | exact | exact (CE only) | 0 | 0% |
 | 70.07% 2PC commit rate | 70.07% | 70.07% | 0 | 0% |
@@ -341,7 +341,7 @@ only that it is unverified and that its verification requires a simulation run.
 | Table I Paxos(CI) E/dec | 100.2 | UNKNOWN — REQUIRES A RUN | Depends on total listen+flood, which changes with end_slot |
 | Table I Paxos(CI) latency | 61.4 | UNKNOWN — REQUIRES A RUN | Directly affected by instant-quorum commits |
 | Pipeline depth "about 12" | 11.66 | UNKNOWN — REQUIRES A RUN | Product of throughput and latency |
-| Paxos on line thr "0.0625" | 0.0625 | 0.0611 | Measured in `4895efeb`: −2.24% (−0.0014); committed=100 stays, end_slot increased |
+| Paxos on line thr "0.0625" | 0.0625 | 0.0611 | Measured in `4895efeb`: −2.24% (rounded table basis; full: −2.27%); end_slot increased |
 | Paxos on line thr (superseded) | 0.0625 | UNKNOWN — REQUIRES A RUN | Superseded: measured value is 0.0611 in `4895efeb` |
 | All 2PC and TOM quantities | various | No change | Different protocol, not affected by defect |
 | All CE quantities | various | No change | Different PHY, not affected by defect |
