@@ -112,7 +112,34 @@ reproducibility comparisons remain verifiable.
 `scale_free`/Paxos(CI) latency would remain at `59.6`:
 - `addition1_addition3_patch_list.md:267`: predicted `59.6` (delta `-2.9%`).
 - Authoritative regenerated table (`4895efeb`): actual latency is `59.8`
-  (delta `-2.6%`).
+  (raw delta `-2.5%`; rounded basis gave `-2.6%`).
 That prediction is now superseded by the regenerated table. Per instructions,
 existing patch documents are left unmodified; this entry serves as the official
 gap record.
+
+---
+
+## 5. Basis Convention for Table IV Change Percentages
+Table IV (`tab:degree`) change percentages are ratios of raw per-seed means
+(as defined in the table caption: "each change is the ratio of the means").
+Recomputing these changes from the rounded (1-decimal or 4-decimal) values in
+`table_topology_N27_loss05.csv` gives different results due to rounding
+truncation; the printed table is therefore NOT a valid basis for calculating the
+percentage change columns.
+
+### Worked Example: Paxos (CI) Latency Change
+Per `plots/topology/plot_topology.py:94,143-145`, the raw per-seed means over
+the 15 seeds are:
+- Scale-free: `mean_lat = 59.85000000` slots
+- Random: `mean_lat = 61.39400000` slots
+
+1. Raw basis (authoritative):
+   `(59.85000000 / 61.39400000 - 1) * 100 = -2.5149% -> -2.5%`
+2. Rounded table basis (deprecated):
+   Using 1-decimal table values (`59.8` vs `61.4`):
+   `(59.8 / 61.4 - 1) * 100 = -2.6058% -> -2.6%`
+
+Commit `a22d5bc` briefly introduced the rounded basis value (`-2.6%`), making
+the Paxos (CI) row inconsistent with the other five rows of Table IV.
+Commit 5 in PR #59 corrected it to `-2.5%` to restore uniform raw-basis
+convention across the entire table.
