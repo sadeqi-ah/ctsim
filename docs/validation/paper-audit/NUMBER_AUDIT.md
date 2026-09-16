@@ -3,7 +3,7 @@
 ## Provenance
 All numbers, line references, and evidence blocks in this file were measured against `main` at commit `21ed3cad190270d8e25094cc89b5d5eafd98d575`.
 
-**Summary: 79 distinct numeric claims examined — MATCH 67 / MISMATCH 0 / UNSOURCED 0 / SOURCED 8 / REMOVED 3 / RETIRED 1.** Base: `main` at `21ed3cad190270d8e25094cc89b5d5eafd98d575` (original audit base: `cdc2f818af6b7b48cf05abfab293cd470a046335`). Verdicts use only the source precedence requested for this audit. A paper range is one distinct claim when adjacent values form one comparison, table row, or interval.
+**Summary: 79 distinct numeric claims examined — MATCH 66 / MISMATCH 1 / UNSOURCED 0 / SOURCED 8 / REMOVED 3 / RETIRED 1.** Base: `main` at `21ed3cad190270d8e25094cc89b5d5eafd98d575` (original audit base: `cdc2f818af6b7b48cf05abfab293cd470a046335`). Verdicts use only the source precedence requested for this audit. A paper range is one distinct claim when adjacent values form one comparison, table row, or interval.
 
 **Counting rule:** A row carrying a compound verdict (e.g. "UNSOURCED (Paxos not reproduced)" or "MISMATCH (Revised to ...)") is counted under its leading verdict word.
 
@@ -214,7 +214,7 @@ $ grep -nE '126\.8 slots in the scalability baseline|about 590|1420|2430|about 4
 | identical-diameter difference `up to 27%` | 2564 | 27.4% | topology CSV | MATCH |
 | line node: endpoints have one neighbour, interior two | 2572 | endpoints have degree 1 | topology CSV header + line graph definition | MATCH |
 | line TOM `0.214→0.009`; 2PC commit `0.2%`, dense `100%`, random `98.9%` | 2576-2579 | matches | topology CSV | MATCH |
-| line Paxos `100%`, `0.0625`, highest | 2594 | 100%, 0.062468, highest | topology CSV | MATCH |
+| line Paxos `100%`, `0.0625`, highest | 2594 | 100%, 0.061051, highest | topology CSV (committed in 4895efeb) | MISMATCH |
 | line 2PC energy `190,180`, efficiency `0.00` | 2598-2601 | values withdrawn and explained as statistically meaningless | `paper/paper.tex:2598-2603` | REMOVED |
 | line TOM latency `616/108`, depth `26`, throughput `5x`, energy `>7x` | 2616 | matches rounded aggregation | topology CSV | MATCH |
 | commit close to complete except 2PC-CI line (0.2%) and scalability min (23.2%) | 2655 | topology minimum 0.2%; scalability minimum 23.2% | both sweep CSVs | MATCH |
