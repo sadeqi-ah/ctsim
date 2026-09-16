@@ -20,6 +20,14 @@ def main():
     ref_op = f"N={t['network']['num_nodes']}, topology={t['network']['topology']}, loss_rate={t['network']['loss_rate']}, num_proposals={t['num_proposals']}"
 
     sha = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT).decode().strip()
+    # Preserve the original source revision from the evidence file if it exists,
+    # so re-runs do not produce a diff on the SHA line alone.
+    progress_readme = SOURCES / "progress_README.md"
+    if progress_readme.exists():
+        for line in progress_readme.read_text().splitlines():
+            if line.startswith("Pre-generation source revision:"):
+                sha = line.split(":", 1)[1].strip()
+                break
     
     # Run progress generators
     subprocess.run(["python3", "plots/progress/plot_progress.py"], cwd=ROOT, check=True, env=env)
@@ -67,6 +75,8 @@ def main():
             f.write(line)
             
         f.write("\nConclusion: the complete run records 100 committed decisions; the progress snapshot/report records 99. This is treated in this round as a known one-count reporting mismatch. No counter, snapshot code, protocol logic, or simulator behavior is changed. The discrepancy does not alter the paper's main performance conclusions, but it is disclosed for reproducibility.\n")
+        f.write("\n## Disclosed Artifact Note\n")
+        f.write("Snapshots sample in-flight slot state inside the round loop (`src/phy/ci.rs:67`, `src/phy/ce.rs:51`). The run terminates immediately after the 100th decision is finalised (`src/sim.rs:134-138`, `src/sim/pipeline.rs:145-165`, `src/sim/paxos_pipeline.rs:264-278`) without ticking a further slot; therefore the final snapshot reads 99 decisions while the run totals record 100/100 committed.\n")
 
     print("Running A2...")
     df_sweep = pd.read_csv(ROOT / "plots/scalability/results/sweep_summary.csv")
@@ -127,17 +137,20 @@ def main():
 
     print("Running B2...")
     with open(SOURCES / "proposal_sharing_candidates.md", "w") as f:
+        f.write("# Archive Note: Withdrawn Claim (kept only for provenance)\n\n")
         f.write("Reference operating point: N=27, random topology, loss_rate=0.05, 15 seeds.\n")
         f.write("Source path: plots/scalability/results/sweep_summary.csv\n\n")
-        f.write("Paper text:\n")
+        f.write("Former paper text (removed in step 2.13):\n")
         f.write("> The rise from there to $5.67$ under 2PC is not proposal sharing, which\n")
         f.write("> accounts for $1.6\\,\\%$ of it; it is the number of slots a decision\n")
         f.write("> occupies, measured as total simulated slots per committed decision and\n")
         f.write("> summed over seeds, which runs from $4.70$ to $6.17$ under \\CI{} against\n")
         f.write("> $4.68$ to $24.34$ under \\CE.\n\n")
+        f.write("Current accepted manuscript text:\n")
+        f.write("The manuscript now says \"is not driven by proposal sharing\", and the pooled slots-per-decision range is 4.70-5.97 under CI against 4.68-24.34 under CE, per docs/validation/paper-audit/sources/slots_per_decision.md.\n\n")
         f.write("The available paper text plus the named CSV columns do not define two defensible arithmetic candidates for the antecedent of 'it'.\n")
         f.write("No preferred candidate is selected.\n")
-        f.write("The claim 1.6% remains UNSOURCED.\n")
+        f.write("The claim 1.6% was withdrawn as UNSOURCED and no longer appears in the manuscript.\n")
         f.write("The withdrawn 4.57% calculation must not be used because it divided a fresh-run numerator by a frozen-sweep denominator.\n")
 
     print("Running A3...")
