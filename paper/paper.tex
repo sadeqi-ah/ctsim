@@ -1899,17 +1899,17 @@ boundary case}
 The preceding analyses attributed the advantage of the pipeline to the
 overlap of proposals, and the equivalence of the two architectures under
 TOM to the absence of any overlappable phase. Both claims can be extracted
-directly and quantitatively from Little's law, Equation~\eqref{eq:depth}:
-the throughput and latency columns are the means over the fifteen seeds,
-while the depth column is the mean over the fifteen seeds of the per-seed
-product of throughput and latency, so it is not the product of the two
-printed columns. The result is Table~\ref{tab:depth}.
+directly and quantitatively by computing the effective pipeline depth from
+Little's law, Equation~\eqref{eq:depth}, as the mean over the fifteen seeds
+of the per-seed product of throughput and latency. The result is
+Table~\ref{tab:depth}.
 
 \begin{table}[!t]
 \caption{Effective pipeline depth. Throughput and latency columns are the
-means over the fifteen seeds; depth is the mean over the fifteen seeds of
-the per-seed product of throughput and latency, so it is not the product of
-the two printed columns.}
+means over the fifteen seeds; depth is computed from Little's law
+(Equation~\eqref{eq:depth}) as the mean over the fifteen seeds of the
+per-seed product of throughput and latency, so it is not the product of the
+two printed columns.}
 \label{tab:depth}
 \centering
 \footnotesize
