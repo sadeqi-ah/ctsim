@@ -239,9 +239,15 @@ awk -F, 'NR>1 && $2==27 && $4==0.05 && \
 Protocol row counts from direct inspection of evidence files:
 - `per_decision_energy.csv`: 1500 2PC (CE), 1484 2PC (CI), 1500 Paxos (CE),
   1500 Paxos (CI), 1500 TOM (CE), 1500 TOM (CI).
+- `progress_snapshots.csv`: 2372 2PC (CE), 588 2PC (CI), 1384 Paxos (CE),
+  516 Paxos (CI), 467 TOM (CE), 455 TOM (CI).
+- `slots_per_decision.csv`: 15 rows each for 2pc_ce, 2pc_pipeline, paxos_ce,
+  paxos_pipeline, tom_ce, tom_pipeline.
+- `distribution_stats.csv`: 1 row Paxos CE, 1 row Pooled CI.
 
-Block map (step 2.35; contiguous file-line blocks per protocol, line 1 is the
-header, file total 8985 lines):
+### Block Map and the 1484-vs-1500 Asymmetry (step 2.35)
+Block map (contiguous file-line blocks per protocol, line 1 is the header,
+file total 8985 lines):
 ```text
 CI,Paxos (CI): 2-1501
 CI,2PC (CI): 1502-2985
@@ -265,11 +271,30 @@ matching the committed counts for `2pc_pipeline` in
 (aborted proposal), confirming row-per-committed-decision semantics. The
 concurrency IQR row cites Paxos (CI) and TOM (CI) slices only, so the 1484
 count does not enter any published number.
-- `progress_snapshots.csv`: 2372 2PC (CE), 588 2PC (CI), 1384 Paxos (CE),
-  516 Paxos (CI), 467 TOM (CE), 455 TOM (CI).
-- `slots_per_decision.csv`: 15 rows each for 2pc_ce, 2pc_pipeline, paxos_ce,
-  paxos_pipeline, tom_ce, tom_pipeline.
-- `distribution_stats.csv`: 1 row Paxos CE, 1 row Pooled CI.
+
+### Claimed vs Unclaimed Values of `distribution_stats.csv` (step 2.36)
+The file publishes 14 numbers. Grep against `paper/paper.tex` at manuscript
+precision classifies each:
+
+| Value | In manuscript? | Evidence |
+|---|---|---|
+| Pooled CI min 70.0 | NOT CLAIMED | only 70.07% commit rate (1728, 2656) |
+| Pooled CI p1 77.0 | NOT CLAIMED | no match |
+| Pooled CI q1 85.7 | NOT CLAIMED | no match |
+| Pooled CI median 89.3 | NOT CLAIMED | no match |
+| Pooled CI q3 94.5 | CLAIMED at 2121 | grep 2121 |
+| Pooled CI p99 269.9 | CLAIMED at 2124 | grep 2124 |
+| Pooled CI max 369.3 | CLAIMED at 2126 | grep 2126 |
+| Paxos CE min 297.0 | CLAIMED at 2126 | grep 2126 |
+| Paxos CE p1 324.0 | CLAIMED at 2125 | grep 2125 |
+| Paxos CE q1 351 | CLAIMED at 2122 | grep 2122 |
+| Paxos CE median 378 | NOT CLAIMED | no match |
+| Paxos CE q3 405 | NOT CLAIMED | no match |
+| Paxos CE p99 459 | NOT CLAIMED | no match |
+| Paxos CE max 594 | NOT CLAIMED | only inside unrelated [500, 726] at 1430 |
+
+6 of 14 values are claimed (2121, 2122, 2124, 2125, 2126); 8 are provenance
+information only and are not audit defects.
 
 ### Disposition of Unreferenced Evidence Files (Task 3)
 1. `distribution_stats.md`:
