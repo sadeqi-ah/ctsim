@@ -171,11 +171,11 @@ $ grep -nE '^2,27,(line|partial_mesh|random|scale_free|full_mesh),0\.05,1,paxos_
 | depth 2PC (CI) `21.25` | 1927 | 21.2547 (mean of per-seed products) | `plots/topology/results/sweep_summary.csv` (`86db41eb`) | MATCH |
 | energy ratio `1.43±.02`, `3.83±.07`, `5.67±.27` | 2080,2085 | matches seed-derived intervals | scalability CSV | MATCH |
 | proposal sharing removed; slot ranges `4.70–5.97`, `4.68–24.34` | 2093,2095,2096 | 1.6% removed; pooled slots: 4.70-5.97 CI, 4.68-24.34 CE | `docs/validation/paper-audit/sources/slots_per_decision.md` | SOURCED |
-| quartiles/percentiles/extrema/medians | 2054 | per-proposal distribution extrema and percentiles | `docs/validation/paper-audit/sources/distribution_stats.csv` | SOURCED |
-| energy distribution bulk separation: Q3 `94.5`, Q1 `351`, ratio `3.7x`, P99 `269.9`, P1 `324.0` | 2121-2125 | Q3 94.5, Q1 351.0, ratio 3.71, P99 269.9, P1 324.0 | `docs/validation/paper-audit/sources/distribution_stats.md` | SOURCED |
-| TOM-CE median `135` node-slots (exact $\Nnodes\times 5$) | 2130 | 135.0 node-slots ($27\times 5.0$ slots) | `docs/validation/paper-audit/sources/per_decision_energy.csv:2713-4212` | SOURCED |
+| quartiles/percentiles/extrema/medians | 2054 | per-proposal distribution extrema and percentiles | `docs/validation/paper-audit/sources/distribution_stats.csv` | SOURCED (covers line 2054 only; 2121-2125 in next row; source PRE-FIX, last writer 913ea33) |
+| energy distribution bulk separation: Q3 `94.5`, Q1 `351`, ratio `3.7x`, P99 `269.9`, P1 `324.0` | 2121-2125 | Q3 94.5, Q1 351.0, ratio 3.71, P99 269.9, P1 324.0 | `docs/validation/paper-audit/sources/distribution_stats.md` | SOURCED (covers lines 2121-2125 only; source PRE-FIX, last writer 913ea33) |
+| TOM-CE median `135` node-slots (exact $\Nnodes\times 5$) | 2130 | 135.0 node-slots ($27\times 5.0$ slots) | `docs/validation/paper-audit/sources/per_decision_energy.csv:7486-8985` | SOURCED |
 | concurrency `21.25` (median clause withdrawn) | 2140 | aggregate depth 21.25; median unavailable | scalability CSV / no counterpart | MATCH |
-| concurrency IQR `7.2` (Paxos) vs `9.0` (TOM) | 2140 | 7.1731 (Paxos) vs 9.0000 (TOM) | `docs/validation/paper-audit/sources/per_decision_energy.csv:1-1500,2713-4212` | SOURCED |
+| concurrency IQR `7.2` (Paxos) vs `9.0` (TOM) | 2140 | 7.1731 (Paxos) vs 9.0000 (TOM) | `docs/validation/paper-audit/sources/per_decision_energy.csv:2-1501,2986-4485` | SOURCED (Paxos slice = rows 2-1501, TOM slice = rows 2986-4485; file contains 1500 Paxos (CI) rows, slice verified) |
 | energy ceilings `127`, `1658`, `3424`; ratios `1.4`, `16.5`, `29.6` | 2196 | arithmetic matches baseline | scalability CSV | MATCH |
 | latency grows `27x`, energy about `1.3x` | 2206 | 26.987x latency; 1.317x energy | `plots/scalability/results/sweep_summary.csv:56-58` | MATCH |
 | N=188 efficiency Paxos `~5x`, TOM `~2x` | 2244-2246 | 5.01x, 2.01x | scalability CSV | MATCH |
@@ -360,7 +360,7 @@ docs/validation/addition7/scripts/addition7_boxplot.py:61:print(f"wrote {OUT}/en
 | Progress curves (Fig 13/14) | 1814,1818 | `docs/validation/paper-audit/sources/progress_snapshots.csv` | SOURCED |
 | Slots per decision `4.70`, `5.97`, `4.68`, `24.34` | 2095-2096 | `docs/validation/paper-audit/sources/slots_per_decision.md` | SOURCED |
 | Energy distribution extrema | 2054 | `docs/validation/paper-audit/sources/distribution_stats.csv` | SOURCED |
-| Integer multiple check | 2424 | `docs/validation/paper-audit/sources/integer_multiple_check.md` | SOURCED |
+| Integer multiple check | 2424 | `docs/validation/paper-audit/sources/integer_multiple_check.md` | SOURCED (covers line 2424 only; line 2421 claim covered in Topology row 214) |
 | Line 2PC energy/efficiency | 2598-2603 | removed from text | REMOVED |
 | Proposal sharing share (1.6% removed from paper) | 2093 | `docs/validation/paper-audit/sources/proposal_sharing_candidates.md` | REMOVED |
 
@@ -393,6 +393,12 @@ docs/validation/addition7/scripts/addition7_boxplot.py:61:print(f"wrote {OUT}/en
 - Lines 1087-1115 are in Section 4.5.2 (IV-E.2) "Non-Blocking Two-Phase Commit" (lines 1069-1125).
 - Line 1399 is in Section 6.4.1 (VI-D.1) "Layer 1: internal and analytical consistency" (lines 1389-1403).
 - Section 4.6 does not exist; Section 4 ends at 4.5.3 (line 1168) and Section 5 starts at line 1169.
+
+## Corrections in round 27 (step 2.34)
+- Rows "quartiles/percentiles/extrema/medians" (2054) and "energy distribution bulk separation" (2121-2125): distinct rows retained (2121-2125 cites `distribution_stats.md`, 2054 cites `distribution_stats.csv`); each now states exactly which manuscript lines it covers. Note: both source files are PRE-FIX (last writer 913ea33, pre-`cf05dd8`).
+- Row "TOM-CE median `135`": evidence slice corrected from `per_decision_energy.csv:2713-4212` to `:7486-8985` (the actual TOM (CE) block, 1500 rows; slice 2713-4212 contains 2PC (CI) and TOM (CI) rows).
+- Row "concurrency IQR": evidence slice corrected from `per_decision_energy.csv:1-1500,2713-4212` to `:2-1501,2986-4485` (Paxos (CI) block and TOM (CI) block). The file contains 1500 Paxos (CI) rows (rows 2-1501); any "0 Paxos CI rows" phrasing was wrong and is replaced by this slice statement.
+- Row "Integer multiple check" (line 363): annotated to state it covers paper line 2424 only.
 
 ## Known internal staleness
 

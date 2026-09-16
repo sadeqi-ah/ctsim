@@ -70,20 +70,31 @@ Evidence file key:
 | 166 | 1883-1891 | progress-curve shape | F1 | All | UNKNOWN - REQUIRES A RUN |
 | 173 | 2093-2096 | 4.70-5.97 slots | F2 | CI/CE | UNAFFECTED (MEASURED) |
 | 174 | 2054 | quartiles/percentiles | F3 | Pooled | UNKNOWN - REQUIRES A RUN |
-| 175 | 2130 | median 135 (N*5) | F4 | TOM CE | UNAFFECTED (MEASURED) (N=0) |
+| 175 | 2130 | median 135 (N*5) | F4 | TOM CE | UNAFFECTED (CODE PATH) |
 | 177 | 2140 | concurrency IQR 7.2/9.0 | F4 | Paxos | UNKNOWN - REQUIRES A RUN |
-| 213 | 2421,2424 | radio 2250/4500 | F5 | CE | UNAFFECTED (MEASURED) (N=0) |
+| 213 | 2421,2424 | radio 2250/4500 | F5 | CE | UNAFFECTED (CODE PATH) |
 | 359 | 1814,1818 | Progress curves | F1 | All | UNKNOWN - REQUIRES A RUN |
 | 360 | 2095-2096 | Slots/dec ranges | F2 | CI/CE | UNAFFECTED (MEASURED) |
 | 361 | 2054 | Energy extrema | F3 | Pooled | UNKNOWN - REQUIRES A RUN |
-| 362 | 2424 | Integer check | F5 | CE | UNAFFECTED (MEASURED) (N=0) |
-| 364 | 2093 | 1.6% (withdrawn) | F6 | 2PC CI | UNAFFECTED (MEASURED) (N=0) |
+| 362 | 2424 | Integer check | F5 | CE | UNAFFECTED (CODE PATH) |
+| 364 | 2093 | 1.6% (withdrawn) | F6 | 2PC CI | UNAFFECTED (CODE PATH) |
 
 Exposure verdict summary:
 - `CONFIRMED AFFECTED`: 0 rows.
-- `UNAFFECTED (MEASURED)`: 6 rows (audit lines 173, 175, 213, 360, 362, 364).
+- `UNAFFECTED (MEASURED)`: 2 rows (audit lines 173, 360).
   Rows 173 and 360 recomputed from post-fix sweep data; deltas are 0.000.
-  Rows 175, 213, 362, 364 contain zero Paxos CI rows in input/protocol slice.
+  (Extended in step 2.34: the remaining 8 slots_per_decision numbers also
+  recompute IDENTICAL from post-fix data; none is supplied by paxos_pipeline.)
+- `UNAFFECTED (CODE PATH)`: 4 rows (audit lines 175, 213, 362, 364; relabelled
+  from `UNAFFECTED (MEASURED) (N=0)` in step 2.34: no recomputation was run,
+  only the code path was inspected):
+  - 175: checked that TOM (CE) executes via `src/sim/ce.rs`, uncoupled from
+    `src/sim/paxos_pipeline.rs` (relabelled; no simulation was run).
+  - 213: checked that `integer_multiple_check.md` covers CE decisions only
+    (relabelled; no simulation was run).
+  - 362: same file as 213, paper line 2424 (relabelled; no simulation was run).
+  - 364: `proposal_sharing_candidates.md` is static reference text for 2PC (CI),
+    no simulator rows at all (relabelled; no simulation was run).
 - `UNKNOWN - REQUIRES A RUN`: 5 rows (audit lines 166, 174, 177, 359, 361).
   Evidence files have no committed input in repo; derived from runtime runs.
 
@@ -127,16 +138,35 @@ index e46b146..ba2fa28 100644
 
 ### Measured Justification for UNAFFECTED (MEASURED) Rows:
 1. **TOM (CE) Median Cost (line 175):**
-   Protocol slice `per_decision_energy.csv:2713-4212` contains 1500 TOM (CE)
+   Protocol slice `per_decision_energy.csv:7486-8985` contains 1500 TOM (CE)
    decisions and exactly 0 Paxos CI rows. TOM over CE executes via
    `src/sim/ce.rs`, completely uncoupled from `src/sim/paxos_pipeline.rs`.
+   (Correction: the previously cited slice `2713-4212` is the 2PC (CI) and
+   TOM (CI) block; the TOM (CE) block actually spans lines 7486-8985.
+   Separately, the file as a whole contains 1500 Paxos (CI) rows (lines
+   2-1501) and the file-level claim of "0 Paxos CI rows" was never true.)
 2. **Integer Multiple Check (lines 213, 362):**
    `integer_multiple_check.md` checks all CE decisions across 2250 runs
-   (`df_energy[df_energy[\"phy\"] == \"CE\"]`). Contains 0 Paxos CI rows. CE
+   (`df_energy[df_energy["phy"] == "CE"]`). Contains 0 Paxos CI rows. CE
    execution and accounting are unaffected by the CI quorum defect.
 3. **Proposal Sharing Candidates (line 364):**
    `proposal_sharing_candidates.md` documents withdrawn claims for 2PC (CI),
    containing 0 Paxos CI rows.
+
+### Sourcing Note: NUMBER_AUDIT Row Backed by `distribution_stats.md`
+The bulk-separation audit row (`paper.tex:2121-2125`) is backed by
+`sources/distribution_stats.md`. Its last writer is PRE-FIX:
+```bash
+git log -1 --format="%H %cI %s" -- \
+  docs/validation/paper-audit/sources/distribution_stats.md
+# Output: 913ea3333124f4d65b05181cadd0b7271d4fc2a9 2026-09-12T07:24:37+03:30
+# docs(validation): source claims and rewrap
+git merge-base --is-ancestor cf05dd8 \
+  913ea3333124f4d65b05181cadd0b7271d4fc2a9 && echo "POST-FIX" || echo "PRE-FIX"
+# Output: PRE-FIX
+```
+The audit row's claim status is therefore SOURCED, but its source predates the
+issue 257 fix; it is not UNAFFECTED (MEASURED).
 
 ---
 
@@ -271,9 +301,14 @@ git log -1 --format="%H %cI %s" -- \
   plots/scalability/results/sweep_summary.csv
 # Output: cf05dd851855aa2358a4f1a52b4bd8bdf690cee2 2026-09-15T19:57:37+03:30
 # data(sweeps): regenerate sweep_summary.csv after issue 257 quorum fix
-git merge-base --is-ancestor cf05dd8 cf05dd8 && echo "POST-FIX"
+git merge-base --is-ancestor cf05dd8 \
+  "$(git log -1 --format=%H -- plots/scalability/results/sweep_summary.csv)" \
+  && echo "POST-FIX"
 # Output: POST-FIX
 ```
+(The earlier one-argument form `git merge-base --is-ancestor cf05dd8 cf05dd8`
+compared the fix commit with itself and proved nothing; the two-argument form
+above compares the fix commit against the last writer of the file.)
 
 Throwaway script arithmetic execution:
 | phy | protocol | pooled_slots_per_decision |
@@ -347,3 +382,20 @@ Only manuscript lines that remain UNKNOWN - REQUIRES A RUN:
   (currently Q3 94.5, P99 269.9, extreme tail 369.3) (UNKNOWN - REQUIRES A RUN).
 - `paper/paper.tex:2140`: Paxos (CI) per-decision energy interquartile range
   (currently 7.2) (UNKNOWN - REQUIRES A RUN).
+
+---
+
+## 8. File Freshness vs Claim Freshness (step 2.34)
+
+These two judgements are independent and must not be conflated:
+
+- A **manuscript number** is `UNAFFECTED (MEASURED)` only when the
+  recomputation supporting it ran on post-fix committed data.
+- An **evidence file** is `FRESH` only when every number it publishes
+  reproduces from post-fix committed data.
+
+A manuscript number can be proven UNAFFECTED while its backing file stays
+stale or PRE-FIX (e.g. the bulk-separation row is SOURCED from a PRE-FIX
+`distribution_stats.md`), and an evidence file can be fully reproducible
+(`slots_per_decision.csv` = FRESH) while the manuscript numbers it backs were
+never the ones at risk. State each separately, with its own evidence.
