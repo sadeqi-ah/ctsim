@@ -1,0 +1,38 @@
+% N=27, loss=5%, 100 proposals, 15 seeds (mean)
+% Thr=committed/end_slot; Energy/dec=(listen+flood)/committed
+\begin{tabular}{llrrrrr}
+\hline
+Topology & Protocol & Diam. & Thr. & Lat. & Energy/dec & Eff. \\
+\hline
+Line & 2PC (CE) & 26 & 0.0038 & 265.6 & 7190.9 & 0.00 \\
+Line & 2PC (CI) & 26 & 0.0001 & 23.1 & 190180.8 & 0.00 \\
+Line & Paxos (CE) & 26 & 0.0087 & 114.4 & 3089.0 & 0.00 \\
+Line & Paxos (CI) & 26 & 0.0625 & 204.4 & 518.8 & 0.12 \\
+Line & TOM (CE) & 26 & 0.0093 & 108.0 & 2916.0 & 0.00 \\
+Line & TOM (CI) & 26 & 0.0454 & 616.1 & 401.3 & 0.12 \\
+Partial mesh & 2PC (CE) & 3 & 0.0431 & 23.2 & 627.1 & 0.07 \\
+Partial mesh & 2PC (CI) & 3 & 0.2333 & 92.1 & 89.9 & 2.59 \\
+Partial mesh & Paxos (CE) & 3 & 0.0800 & 12.5 & 337.5 & 0.24 \\
+Partial mesh & Paxos (CI) & 3 & 0.2635 & 44.2 & 80.2 & 3.29 \\
+Partial mesh & TOM (CE) & 3 & 0.2940 & 3.4 & 92.0 & 3.20 \\
+Partial mesh & TOM (CI) & 3 & 0.2953 & 3.4 & 70.8 & 4.17 \\
+Random & 2PC (CE) & 4 & 0.0412 & 24.3 & 657.1 & 0.06 \\
+Random & 2PC (CI) & 4 & 0.1681 & 126.8 & 115.8 & 1.46 \\
+Random & Paxos (CE) & 4 & 0.0704 & 14.2 & 383.6 & 0.18 \\
+Random & Paxos (CI) & 4 & 0.1903 & 61.4 & 100.2 & 1.91 \\
+Random & TOM (CE) & 4 & 0.2143 & 4.7 & 126.3 & 1.70 \\
+Random & TOM (CI) & 4 & 0.2132 & 4.7 & 88.0 & 2.43 \\
+Scale-free & 2PC (CE) & 4 & 0.0302 & 33.3 & 899.5 & 0.03 \\
+Scale-free & 2PC (CI) & 4 & 0.1682 & 124.7 & 121.7 & 1.39 \\
+Scale-free & Paxos (CE) & 4 & 0.0629 & 15.9 & 429.3 & 0.15 \\
+Scale-free & Paxos (CI) & 4 & 0.1958 & 59.6 & 106.5 & 1.84 \\
+Scale-free & TOM (CE) & 4 & 0.2170 & 4.6 & 124.6 & 1.75 \\
+Scale-free & TOM (CI) & 4 & 0.2197 & 4.6 & 88.8 & 2.48 \\
+Full mesh & 2PC (CE) & 1 & 0.0324 & 30.9 & 834.3 & 0.04 \\
+Full mesh & 2PC (CI) & 1 & 0.2913 & 73.6 & 69.0 & 4.22 \\
+Full mesh & Paxos (CE) & 1 & 0.0655 & 15.3 & 412.5 & 0.16 \\
+Full mesh & Paxos (CI) & 1 & 0.3272 & 35.4 & 61.4 & 5.33 \\
+Full mesh & TOM (CE) & 1 & 0.3653 & 2.7 & 73.9 & 4.94 \\
+Full mesh & TOM (CI) & 1 & 0.3671 & 2.7 & 54.3 & 6.76 \\
+\hline
+\end{tabular}
