@@ -171,8 +171,8 @@ $ grep -nE '^2,27,(line|partial_mesh|random|scale_free|full_mesh),0\.05,1,paxos_
 | depth 2PC (CI) `21.25` | 1927 | 21.2547 (mean of per-seed products) | `plots/topology/results/sweep_summary.csv` (`86db41eb`) | MATCH |
 | energy ratio `1.43±.02`, `3.83±.07`, `5.67±.27` | 2080,2085 | matches seed-derived intervals | scalability CSV | MATCH |
 | proposal sharing removed; slot ranges `4.70–5.97`, `4.68–24.34` | 2093,2095,2096 | 1.6% removed; pooled slots: 4.70-5.97 CI, 4.68-24.34 CE | `docs/validation/paper-audit/sources/slots_per_decision.md` | SOURCED |
-| quartiles/percentiles/extrema/medians | 2054 | per-proposal distribution extrema and percentiles | `docs/validation/paper-audit/sources/distribution_stats.csv` | SOURCED (covers line 2054 only; 2121-2125 in next row; source PRE-FIX, last writer 913ea33) |
-| energy distribution bulk separation: Q3 `94.5`, Q1 `351`, ratio `3.7x`, P99 `269.9`, P1 `324.0` | 2121-2125 | Q3 94.5, Q1 351.0, ratio 3.71, P99 269.9, P1 324.0 | `docs/validation/paper-audit/sources/distribution_stats.md` | SOURCED (covers lines 2121-2125 only; source PRE-FIX, last writer 913ea33) |
+| quartiles/percentiles/extrema/medians | 2054 | per-proposal distribution extrema and percentiles | `docs/validation/paper-audit/sources/distribution_stats.csv` | SOURCED (claim is the distributional-structure statement at paper.tex:2054; the numeric values from this file are claimed at 2121-2126 under the next row; source PRE-FIX, last writer 913ea33) |
+| energy distribution bulk separation: Q3 `94.5`, Q1 `351`, ratio `3.7x`, P99 `269.9`, P1 `324.0` | 2121-2126 | Q3 94.5, Q1 351.0, ratio 3.71, P99 269.9, P1 324.0; tail 369.3 vs 297.0 | `docs/validation/paper-audit/sources/distribution_stats.md` | SOURCED (covers lines 2121-2126; 369.3 and 297.0 sit on 2126; source PRE-FIX, last writer 913ea33) |
 | TOM-CE median `135` node-slots (exact $\Nnodes\times 5$) | 2130 | 135.0 node-slots ($27\times 5.0$ slots) | `docs/validation/paper-audit/sources/per_decision_energy.csv:7486-8985` | SOURCED |
 | concurrency `21.25` (median clause withdrawn) | 2140 | aggregate depth 21.25; median unavailable | scalability CSV / no counterpart | MATCH |
 | concurrency IQR `7.2` (Paxos) vs `9.0` (TOM) | 2140 | 7.1731 (Paxos) vs 9.0000 (TOM) | `docs/validation/paper-audit/sources/per_decision_energy.csv:2-1501,2986-4485` | SOURCED (Paxos slice = rows 2-1501, TOM slice = rows 2986-4485; file contains 1500 Paxos (CI) rows, slice verified) |
@@ -359,7 +359,7 @@ docs/validation/addition7/scripts/addition7_boxplot.py:61:print(f"wrote {OUT}/en
 |---|---|---|---|
 | Progress curves (Fig 13/14) | 1814,1818 | `docs/validation/paper-audit/sources/progress_snapshots.csv` | SOURCED |
 | Slots per decision `4.70`, `5.97`, `4.68`, `24.34` | 2095-2096 | `docs/validation/paper-audit/sources/slots_per_decision.md` | SOURCED |
-| Energy distribution extrema | 2054 | `docs/validation/paper-audit/sources/distribution_stats.csv` | SOURCED |
+| Energy distribution extrema | 2054 | `docs/validation/paper-audit/sources/distribution_stats.csv` | SOURCED (distributional-structure statement at 2054; the numbers from this file are claimed at 2121-2126, see Dynamics row above) |
 | Integer multiple check | 2424 | `docs/validation/paper-audit/sources/integer_multiple_check.md` | SOURCED (covers line 2424 only; line 2421 claim covered in Topology row 214) |
 | Line 2PC energy/efficiency | 2598-2603 | removed from text | REMOVED |
 | Proposal sharing share (1.6% removed from paper) | 2093 | `docs/validation/paper-audit/sources/proposal_sharing_candidates.md` | REMOVED |
@@ -394,11 +394,17 @@ docs/validation/addition7/scripts/addition7_boxplot.py:61:print(f"wrote {OUT}/en
 - Line 1399 is in Section 6.4.1 (VI-D.1) "Layer 1: internal and analytical consistency" (lines 1389-1403).
 - Section 4.6 does not exist; Section 4 ends at 4.5.3 (line 1168) and Section 5 starts at line 1169.
 
-## Corrections in round 27 (step 2.34)
+## Corrections in step 2.34
 - Rows "quartiles/percentiles/extrema/medians" (2054) and "energy distribution bulk separation" (2121-2125): distinct rows retained (2121-2125 cites `distribution_stats.md`, 2054 cites `distribution_stats.csv`); each now states exactly which manuscript lines it covers. Note: both source files are PRE-FIX (last writer 913ea33, pre-`cf05dd8`).
 - Row "TOM-CE median `135`": evidence slice corrected from `per_decision_energy.csv:2713-4212` to `:7486-8985` (the actual TOM (CE) block, 1500 rows; slice 2713-4212 contains 2PC (CI) and TOM (CI) rows).
 - Row "concurrency IQR": evidence slice corrected from `per_decision_energy.csv:1-1500,2713-4212` to `:2-1501,2986-4485` (Paxos (CI) block and TOM (CI) block). The file contains 1500 Paxos (CI) rows (rows 2-1501); any "0 Paxos CI rows" phrasing was wrong and is replaced by this slice statement.
 - Row "Integer multiple check" (line 363): annotated to state it covers paper line 2424 only.
+
+## Corrections in step 2.35
+- TASK 1 (line-citation settlement): `sed -n '2040,2070p' paper/paper.tex` contains no statistics; the only digit-bearing lines near 2054 are 2062/2065/2066 (4500 decisions, 0.08/1.66/4.57 percent decomposition gaps, already audited elsewhere). The Pooled-CI statistics (Q3 94.5, P99 269.9, tail 369.3, min 70.0, P1 77.0) exist in the manuscript only at 2121-2126. Chosen outcome: OUTCOME A for the line range; rows 174 and 175 are distinct (174 = SOURCED distributional-structure statement at 2054 backed by `distribution_stats.csv`; 175 = numeric values at 2121-2126 backed by `distribution_stats.md`). Not merged, not retired. Total remains 88 (MATCH 72 / MISMATCH 0 / UNSOURCED 0 / SOURCED 12 / REMOVED 3 / RETIRED 1; `grep -c '^| '` = 95).
+- TASK 1e (tail sentence): 369.3 and 297.0 sit on line 2126 (`grep -n -E '94\.5|351|3\.7|269\.9|324\.0|369\.3' paper/paper.tex` hits only 2121, 2122, 2124, 2125, 2126). Row 175's citation widened from 2121-2125 to 2121-2126 so every listed number lies inside the cited range.
+- Row "Energy distribution extrema" (round-24 table): annotated with the same 2054 vs 2121-2126 distinction.
+- Round label renamed from "Corrections in round 27" to "Corrections in step 2.34" to match file convention.
 
 ## Known internal staleness
 

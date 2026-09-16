@@ -136,7 +136,15 @@ index e46b146..ba2fa28 100644
                                  },
 ```
 
-### Measured Justification for UNAFFECTED (MEASURED) Rows:
+### Measured Justification for UNAFFECTED (MEASURED) Rows
+Audit lines 173 and 360. Both rows cite `slots_per_decision.md` /
+`slots_per_decision.csv` and were recomputed from post-fix committed sweep
+data (step 2.33/2.34): all 12 published numbers, and all 90 CSV rows,
+reproduce IDENTICAL. Neither family min nor max is supplied by
+`paxos_pipeline`.
+
+### Code-Path Justification for UNAFFECTED (CODE PATH) Rows
+Audit lines 175, 213, 362, 364.
 1. **TOM (CE) Median Cost (line 175):**
    Protocol slice `per_decision_energy.csv:7486-8985` contains 1500 TOM (CE)
    decisions and exactly 0 Paxos CI rows. TOM over CE executes via
@@ -231,6 +239,32 @@ awk -F, 'NR>1 && $2==27 && $4==0.05 && \
 Protocol row counts from direct inspection of evidence files:
 - `per_decision_energy.csv`: 1500 2PC (CE), 1484 2PC (CI), 1500 Paxos (CE),
   1500 Paxos (CI), 1500 TOM (CE), 1500 TOM (CI).
+
+Block map (step 2.35; contiguous file-line blocks per protocol, line 1 is the
+header, file total 8985 lines):
+```text
+CI,Paxos (CI): 2-1501
+CI,2PC (CI): 1502-2985
+CI,TOM (CI): 2986-4485
+CE,Paxos (CE): 4486-5985
+CE,2PC (CE): 5986-7485
+CE,TOM (CE): 7486-8985
+```
+Cross-check `cut -d, -f1,2 ... | sort | uniq -c`: 1500 CE,2PC (CE) /
+1500 CE,Paxos (CE) / 1500 CE,TOM (CE) / 1484 CI,2PC (CI) / 1500 CI,Paxos (CI)
+/ 1500 CI,TOM (CI).
+
+The 1484-vs-1500 asymmetry for 2PC (CI) is EXPECTED, not a file defect: the
+extractor (`plots/energy/plot_stacked_bar.py:92`) emits a row only when
+`outcome == "committed"`, and 2PC over CI can abort. Per-seed 2PC (CI) row
+counts (awk, sorted) are: 2:100, 3:95, 5:100, 7:98, 11:100, 13:100, 17:100,
+19:100, 23:98, 29:100, 31:95, 37:98, 41:100, 43:100, 47:100 = 1484 total,
+matching the committed counts for `2pc_pipeline` in
+`plots/scalability/results/sweep_summary.csv` (same 15 values, sum 1484). Seed
+3 holds 95 rows with `decision_index` values 0-95 and identifier 77 absent
+(aborted proposal), confirming row-per-committed-decision semantics. The
+concurrency IQR row cites Paxos (CI) and TOM (CI) slices only, so the 1484
+count does not enter any published number.
 - `progress_snapshots.csv`: 2372 2PC (CE), 588 2PC (CI), 1384 Paxos (CE),
   516 Paxos (CI), 467 TOM (CE), 455 TOM (CI).
 - `slots_per_decision.csv`: 15 rows each for 2pc_ce, 2pc_pipeline, paxos_ce,
@@ -378,8 +412,11 @@ from post-fix sweep data in TASK 1 and are settled.
 Only manuscript lines that remain UNKNOWN - REQUIRES A RUN:
 - `paper/paper.tex:1883-1891`: Paxos (CI) completion time (currently "about 525"
   slots) in the progress-curve description (UNKNOWN - REQUIRES A RUN).
-- `paper/paper.tex:2054` / `2121-2125`: Pooled CI distribution percentiles
-  (currently Q3 94.5, P99 269.9, extreme tail 369.3) (UNKNOWN - REQUIRES A RUN).
+- `paper/paper.tex:2121-2126`: Pooled CI distribution percentiles (currently
+  Q3 94.5, P99 269.9, extreme tail 369.3 vs 297.0) (UNKNOWN - REQUIRES A RUN).
+  Line 2054 states the distributional structure without numbers; the values
+  live at 2121-2126 (corrected from the earlier `2054 / 2121-2125` citation,
+  step 2.35).
 - `paper/paper.tex:2140`: Paxos (CI) per-decision energy interquartile range
   (currently 7.2) (UNKNOWN - REQUIRES A RUN).
 
