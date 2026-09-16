@@ -68,22 +68,22 @@ Evidence file key:
 | Line | paper.tex | Claimed value | File | Arm | Exposure |
 |---:|---|---|---|---|---|
 | 166 | 1883-1891 | progress-curve shape | F1 | All | UNKNOWN - REQUIRES A RUN |
-| 173 | 2093-2096 | 4.70-5.97 slots | F2 | CI/CE | CONFIRMED AFFECTED (N=5) |
+| 173 | 2093-2096 | 4.70-5.97 slots | F2 | CI/CE | UNAFFECTED (MEASURED) |
 | 174 | 2054 | quartiles/percentiles | F3 | Pooled | UNKNOWN - REQUIRES A RUN |
 | 175 | 2130 | median 135 (N*5) | F4 | TOM CE | UNAFFECTED (MEASURED) (N=0) |
 | 177 | 2140 | concurrency IQR 7.2/9.0 | F4 | Paxos | UNKNOWN - REQUIRES A RUN |
 | 213 | 2421,2424 | radio 2250/4500 | F5 | CE | UNAFFECTED (MEASURED) (N=0) |
 | 359 | 1814,1818 | Progress curves | F1 | All | UNKNOWN - REQUIRES A RUN |
-| 360 | 2095-2096 | Slots/dec ranges | F2 | CI/CE | CONFIRMED AFFECTED (N=5) |
+| 360 | 2095-2096 | Slots/dec ranges | F2 | CI/CE | UNAFFECTED (MEASURED) |
 | 361 | 2054 | Energy extrema | F3 | Pooled | UNKNOWN - REQUIRES A RUN |
 | 362 | 2424 | Integer check | F5 | CE | UNAFFECTED (MEASURED) (N=0) |
 | 364 | 2093 | 1.6% (withdrawn) | F6 | 2PC CI | UNAFFECTED (MEASURED) (N=0) |
 
 Exposure verdict summary:
-- `CONFIRMED AFFECTED`: 2 rows (audit lines 173 and 360).
-  Input subset contains N=5 rows with piggybacks > 0.
-- `UNAFFECTED (MEASURED)`: 4 rows (audit lines 175, 213, 362, 364).
-  Input subset / protocol slice contains exactly zero Paxos CI rows (N=0).
+- `CONFIRMED AFFECTED`: 0 rows.
+- `UNAFFECTED (MEASURED)`: 6 rows (audit lines 173, 175, 213, 360, 362, 364).
+  Rows 173 and 360 recomputed from post-fix sweep data; deltas are 0.000.
+  Rows 175, 213, 362, 364 contain zero Paxos CI rows in input/protocol slice.
 - `UNKNOWN - REQUIRES A RUN`: 5 rows (audit lines 166, 174, 177, 359, 361).
   Evidence files have no committed input in repo; derived from runtime runs.
 
@@ -119,9 +119,9 @@ index e46b146..ba2fa28 100644
 -                                bitmap: vec![true; num_nodes],
 +                            PendingProposal {
 +                                bitmap: {
-+                                    let mut bitmap = vec![false; num_nodes];
-+                                    bitmap[i] = true;
-+                                    bitmap
+                                     let mut bitmap = vec![false; num_nodes];
+                                     bitmap[i] = true;
+                                     bitmap
                                  },
 ```
 
@@ -210,25 +210,122 @@ Protocol row counts from direct inspection of evidence files:
 ### Disposition of Unreferenced Evidence Files (Task 3)
 1. `distribution_stats.md`:
    Human-readable companion of cited CSV `distribution_stats.csv` (lines
-   178-190). All quantities in it (94.5, 351, 3.7, 269.9, 324.0) support
-   paper lines 2054 / 2120-2125, which are audited under
-   `distribution_stats.csv` in `NUMBER_AUDIT.md:174`. No independent paper
-   number rests on it.
+   178-190). Quantities in it (94.5, 351, 3.7, 269.9, 324.0) support paper
+   lines 2121-2125, audited under row 174 and newly added row in
+   `NUMBER_AUDIT.md` (PR #65).
 2. `progress_README.md`:
    Human-readable companion of cited CSV `progress_snapshots.csv` (lines
    53-80). Discloses configuration parameters and the 99 vs 100 reporting
    mismatch. No manuscript number rests on it.
 3. `slots_per_decision.csv`:
    Raw tabular companion to cited summary markdown `slots_per_decision.md`
-   (lines 82-88). The manuscript numbers (4.70-5.97 CI, 4.68-24.34 CE at
-   lines 2095-2096) are audited under `slots_per_decision.md` in
-   `NUMBER_AUDIT.md:173,360`. No manuscript number rests on it independently.
+   (lines 82-88). Backs manuscript lines 2095-2096 audited under rows 173
+   and 360. No manuscript number rests on it independently.
 
-Conclusion: None of the three files are orphaned. No audit row additions needed.
+Conclusion: None of the three files are orphaned.
 
 ---
 
-## 6. What a Regeneration Would Settle
+## 6. Recomputed Pooled Slots-Per-Decision and Provenance Traps
+
+### Recomputation from Post-Fix Committed Sweep Data (Task 1)
+Generator definition in `tools/audit_sources_210b.py:82-96`:
+```python
+    df_sweep = pd.read_csv(
+        ROOT / "plots/scalability/results/sweep_summary.csv"
+    )
+    df_ref = df_sweep[
+        (df_sweep["nodes"] == 27) & (df_sweep["loss_rate"] == 0.05)
+    ].copy()
+
+    df_ref["slots_per_decision"] = (
+        df_ref["end_slot"] / df_ref["committed"]
+    )
+    cols = ["phy", "protocol", "seed", "end_slot",
+            "committed", "slots_per_decision"]
+    ren = {"end_slot": "total_slots", "committed": "committed_decisions"}
+    df_ref[cols].rename(columns=ren).to_csv(
+        SOURCES / "slots_per_decision.csv", index=False
+    )
+
+    # Calculate pooled estimator: sum(total_slots) / sum(committed_decisions)
+    pooled = df_ref.groupby(["phy", "protocol"]).apply(
+        lambda x: pd.Series({
+            "pooled_slots_per_decision": (
+                x["end_slot"].sum() / x["committed"].sum()
+            )
+        })
+    ).reset_index()
+    pooled.columns = ["phy", "protocol", "pooled_slots_per_decision"]
+    ci_pooled = pooled[pooled["phy"] == "ci"]["pooled_slots_per_decision"]
+    pooled_ci_min = ci_pooled.min()
+    pooled_ci_max = ci_pooled.max()
+    ce_pooled = pooled[pooled["phy"] == "ce"]["pooled_slots_per_decision"]
+    pooled_ce_min = ce_pooled.min()
+    pooled_ce_max = ce_pooled.max()
+```
+
+Input file commit provenance (Task 2):
+```bash
+git log -1 --format="%H %cI %s" -- \
+  plots/scalability/results/sweep_summary.csv
+# Output: cf05dd851855aa2358a4f1a52b4bd8bdf690cee2 2026-09-15T19:57:37+03:30
+# data(sweeps): regenerate sweep_summary.csv after issue 257 quorum fix
+git merge-base --is-ancestor cf05dd8 cf05dd8 && echo "POST-FIX"
+# Output: POST-FIX
+```
+
+Throwaway script arithmetic execution:
+| phy | protocol | pooled_slots_per_decision |
+|---|---|---:|
+| ce | 2pc_ce | 24.335 |
+| ce | paxos_ce | 14.207 |
+| ce | tom_ce | 4.676 |
+| ci | 2pc_pipeline | 5.967 |
+| ci | paxos_pipeline | 5.265 |
+| ci | tom_pipeline | 4.699 |
+
+Recomputed ranges:
+- CI min/max: `4.699` to `5.967` (min: TOM CI, max: 2PC CI)
+- CE min/max: `4.676` to `24.335` (min: TOM CE, max: 2PC CE)
+
+Committed values in `docs/validation/paper-audit/sources/slots_per_decision.md`:
+```text
+Configs: scalability sweep at N=27, random topology, loss_rate=0.05, 15 seeds
+
+pooled (paper definition): sum(total_slots) / sum(committed_decisions)
+CI min: 4.699, CI max: 5.967
+CE min: 4.676, CE max: 24.335
+```
+
+Manuscript values at `paper/paper.tex:2098-2099` (lines 2093-2096):
+```latex
+and summed over seeds, which runs from $4.70$ to $5.97$ under \CI{} against
+$4.68$ to $24.34$ under \CE.
+```
+
+Verdict: **`IDENTICAL`**
+Recomputed values match committed evidence and manuscript at 3 decimals.
+Neither family min nor max is supplied by Paxos. Audit rows 173 and 360 are
+not stale after all.
+
+### Provenance Limitations in Generator Script (Task 3)
+Two provenance traps exist in `tools/audit_sources_210b.py`:
+1. **Sticky revision line (`tools/audit_sources_210b.py:22-29`):**
+   The generator explicitly reads the existing `Pre-generation source
+   revision:` line out of `sources/progress_README.md` and preserves it across
+   runs to avoid diffs on git commit hashes. Consequence: neither file content
+   nor that line can be used to date evidence freshness.
+2. **Hardcoded text in companion document (`tools/audit_sources_210b.py:150`):**
+   The writer for `sources/proposal_sharing_candidates.md` hardcodes the
+   literal string `4.70-5.97 under CI against 4.68-24.34 under CE`. If the
+   range had moved, this companion file would have become stale independently
+   of its own claim. Because TASK 1 confirmed `IDENTICAL`, the text remains
+   accurate.
+
+---
+
+## 7. What a Regeneration Would Settle
 
 In a future owner-approved round, running the single generator script
 `python3 tools/audit_sources_210b.py` would regenerate all derived evidence
@@ -239,13 +336,14 @@ files from the post-fix simulator and sweeps:
 - `distribution_stats.csv` and `distribution_stats.md`
 - `integer_multiple_check.md`
 
+Note: Rows 173 and 360 (`paper.tex:2093,2095,2096`) were proven `IDENTICAL`
+from post-fix sweep data in TASK 1 and are settled.
+
 ### Manuscript Lines Exposed to Potential Numerical Movement:
-Only manuscript lines that are CONFIRMED AFFECTED or UNKNOWN - REQUIRES A RUN:
+Only manuscript lines that remain UNKNOWN - REQUIRES A RUN:
 - `paper/paper.tex:1883-1891`: Paxos (CI) completion time (currently "about 525"
   slots) in the progress-curve description (UNKNOWN - REQUIRES A RUN).
-- `paper/paper.tex:2054`: Pooled CI distribution percentiles (currently Q3
-  94.5, P99 269.9, extreme tail 369.3) (UNKNOWN - REQUIRES A RUN).
-- `paper/paper.tex:2093,2095,2096`: Pooled slots-per-decision range for CI
-  (currently 4.70-5.97) (CONFIRMED AFFECTED, N=5 input rows with piggybacks).
+- `paper/paper.tex:2054` / `2121-2125`: Pooled CI distribution percentiles
+  (currently Q3 94.5, P99 269.9, extreme tail 369.3) (UNKNOWN - REQUIRES A RUN).
 - `paper/paper.tex:2140`: Paxos (CI) per-decision energy interquartile range
   (currently 7.2) (UNKNOWN - REQUIRES A RUN).
