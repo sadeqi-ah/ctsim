@@ -2,9 +2,9 @@
 
 ## Provenance
 All numbers, line references, and evidence blocks in this file were measured against `main` at commit `21ed3cad190270d8e25094cc89b5d5eafd98d575`.
-**Re-measured rows:** the `line Paxos` row (paper line 2594) was re-measured against `main` at `4895efeb` after the issue 257 quorum fix and the topology table regeneration in PR #58; the Table V depth rows (`paper.tex:1921-1925`, `:1926`, `:1927`) and Table I `Sleep` column (`paper.tex:1536-1538`) were measured against `main` at `86db41eb`. All other rows remain at base `21ed3cad`.
+**Re-measured rows:** the `line Paxos` row (paper line 2594) was re-measured against `main` at `4895efeb` after the issue 257 quorum fix and the topology table regeneration in PR #58; the Table V depth rows (`paper.tex:1921-1925`, `:1926`, `:1927`) and Table I `Sleep` column (`paper.tex:1536-1538`) were measured against `main` at `86db41eb`; the global maximum claims (`paper.tex:167,320` and `:168,321`), density anchor residuals (`:1648`), per-decision median relationship (`:2130`), interquartile ranges (`:2140`), and latency-energy divergence (`:2206`) were audited against `main` at `83476871` in PR #62. All other rows remain at base `21ed3cad`.
 
-**Summary: 82 distinct numeric claims examined — MATCH 70 / MISMATCH 0 / UNSOURCED 0 / SOURCED 8 / REMOVED 3 / RETIRED 1.** Base: `main` at `21ed3cad190270d8e25094cc89b5d5eafd98d575` (original audit base: `cdc2f818af6b7b48cf05abfab293cd470a046335`). Verdicts use only the source precedence requested for this audit. A paper range is one distinct claim when adjacent values form one comparison, table row, or interval.
+**Summary: 87 distinct numeric claims examined — MATCH 73 / MISMATCH 0 / UNSOURCED 0 / SOURCED 10 / REMOVED 3 / RETIRED 1.** Base: `main` at `21ed3cad190270d8e25094cc89b5d5eafd98d575` (original audit base: `cdc2f818af6b7b48cf05abfab293cd470a046335`). Verdicts use only the source precedence requested for this audit. A paper range is one distinct claim when adjacent values form one comparison, table row, or interval.
 
 **Counting rule:** A row carrying a compound verdict (e.g. "UNSOURCED (Paxos not reproduced)" or "MISMATCH (Revised to ...)") is counted under its leading verdict word.
 
@@ -80,8 +80,10 @@ test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; fini
 | Paper value | `paper.tex` line | Committed value | Exact source | Verdict |
 |---|---:|---|---|---|
 | Paxos depth `about 12`; 2PC `about 21` | 166,167,318,319 | `11.66`; `21.25` | `plots/scalability/results/sweep_summary.csv:56-57` (15-seed aggregation) | MATCH |
-| throughput `4.083x` (global max `4.268x`) | 167,319 | reference 2PC ratio `4.083x`; global maximum `4.268x` | `plots/scalability/results/sweep_summary.csv:50-1740` | MATCH |
-| energy `5.672x` (global max `5.987x`) | 167,320 | reference 2PC ratio `5.672x`; global maximum `5.987x` | same | MATCH |
+| throughput 2PC baseline `4.083x` | 167,319 | reference 2PC ratio `4.083x` | `plots/scalability/results/sweep_summary.csv:56-57` | MATCH |
+| throughput 2PC global max `4.268x` | 167,320 | 4.268160 (N=27, loss=0.00, random) | `plots/scalability/results/sweep_summary.csv:50-1740` | MATCH |
+| energy 2PC baseline `5.672x` | 167,320 | reference 2PC ratio `5.672x` | `plots/scalability/results/sweep_summary.csv:56-57` | MATCH |
+| energy 2PC global max `5.987x` | 168,321 | 5.987492 (N=27, loss=0.00, random) | `plots/scalability/results/sweep_summary.csv:50-1740` | MATCH |
 | `five` topologies, diameters `1` to `26` | 636,1444 | 5 topologies; 1–26 | `plots/topology/results/sweep_summary.csv:2,8,14,20,26` | MATCH |
 | `15` protocol-topology CE aggregates (225 runs) | 323 | 15 protocol-topology CE aggregates, each 15 seeds; 225 runs | `plots/topology/results/sweep_summary.csv:2-451` | MATCH |
 | diameter range `26x` | 323 | `26 / 1 = 26` | `plots/topology/results/sweep_summary.csv:2,8,14,20,26` | MATCH |
@@ -170,8 +172,11 @@ $ grep -nE '^2,27,(line|partial_mesh|random|scale_free|full_mesh),0\.05,1,paxos_
 | energy ratio `1.43±.02`, `3.83±.07`, `5.67±.27` | 2080,2085 | matches seed-derived intervals | scalability CSV | MATCH |
 | proposal sharing removed; slot ranges `4.70–5.97`, `4.68–24.34` | 2093,2095,2096 | 1.6% removed; pooled slots: 4.70-5.97 CI, 4.68-24.34 CE | `docs/validation/paper-audit/sources/slots_per_decision.md` | SOURCED |
 | quartiles/percentiles/extrema/medians | 2054 | per-proposal distribution extrema and percentiles | `docs/validation/paper-audit/sources/distribution_stats.csv` | SOURCED |
+| TOM-CE median `135` node-slots (exact $\Nnodes\times 5$) | 2130 | 135.0 node-slots ($27\times 5.0$ slots) | `docs/validation/paper-audit/sources/per_decision_energy.csv:2713-4212` | SOURCED |
 | concurrency `21.25` (median clause withdrawn) | 2140 | aggregate depth 21.25; median unavailable | scalability CSV / no counterpart | MATCH |
+| concurrency IQR `7.2` (Paxos) vs `9.0` (TOM) | 2140 | 7.1731 (Paxos) vs 9.0000 (TOM) | `docs/validation/paper-audit/sources/per_decision_energy.csv:1-1500,2713-4212` | SOURCED |
 | energy ceilings `127`, `1658`, `3424`; ratios `1.4`, `16.5`, `29.6` | 2196 | arithmetic matches baseline | scalability CSV | MATCH |
+| latency grows `27x`, energy about `1.3x` | 2206 | 26.987x latency; 1.317x energy | `plots/scalability/results/sweep_summary.csv:56-58` | MATCH |
 | N=188 efficiency Paxos `~5x`, TOM `~2x` | 2244-2246 | 5.01x, 2.01x | scalability CSV | MATCH |
 
 ```text
