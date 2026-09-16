@@ -16,6 +16,9 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
 
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+import _common
+
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 OUT_DIR = os.path.dirname(os.path.abspath(__file__))
 N_NODES = 27
@@ -67,6 +70,8 @@ def collect(run_sims: bool) -> pd.DataFrame:
     rows = []
     if run_sims:
         subprocess.run(["cargo", "build", "--release"], cwd=ROOT, check=True)
+    else:
+        _common.check_provenance("plot_kde_awake.py")
 
     for proto, phy, label in PROTOCOLS:
         path = snap_path(proto)
@@ -75,6 +80,7 @@ def collect(run_sims: bool) -> pd.DataFrame:
             toml_path = os.path.join(OUT_DIR, f"sim_{proto}_awake.toml")
             with open(toml_path, "w") as f:
                 f.write(generate_toml(proto, phy))
+            _common.record_provenance("plot_kde_awake.py", toml_path)
             subprocess.run(
                 ["cargo", "run", "--release", "--bin", "ctsim", "--", toml_path],
                 cwd=ROOT,
