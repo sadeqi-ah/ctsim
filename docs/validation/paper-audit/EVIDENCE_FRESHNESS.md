@@ -273,28 +273,30 @@ concurrency IQR row cites Paxos (CI) and TOM (CI) slices only, so the 1484
 count does not enter any published number.
 
 ### Claimed vs Unclaimed Values of `distribution_stats.csv` (step 2.36)
-The file publishes 14 numbers. Grep against `paper/paper.tex` at manuscript
-precision classifies each:
+The file publishes 14 numbers. Grep against `paper/paper.tex` with
+boundary-anchored patterns (step 2.37) classifies each:
 
-| Value | In manuscript? | Evidence |
+| Value | In manuscript? | Evidence (boundary-safe) |
 |---|---|---|
-| Pooled CI min 70.0 | NOT CLAIMED | only 70.07% commit rate (1728, 2656) |
-| Pooled CI p1 77.0 | NOT CLAIMED | no match |
-| Pooled CI q1 85.7 | NOT CLAIMED | no match |
-| Pooled CI median 89.3 | NOT CLAIMED | no match |
-| Pooled CI q3 94.5 | CLAIMED at 2121 | grep 2121 |
-| Pooled CI p99 269.9 | CLAIMED at 2124 | grep 2124 |
-| Pooled CI max 369.3 | CLAIMED at 2126 | grep 2126 |
-| Paxos CE min 297.0 | CLAIMED at 2126 | grep 2126 |
-| Paxos CE p1 324.0 | CLAIMED at 2125 | grep 2125 |
-| Paxos CE q1 351 | CLAIMED at 2122 | grep 2122 |
-| Paxos CE median 378 | NOT CLAIMED | no match |
-| Paxos CE q3 405 | NOT CLAIMED | no match |
-| Paxos CE p99 459 | NOT CLAIMED | no match |
-| Paxos CE max 594 | NOT CLAIMED | only inside unrelated [500, 726] at 1430 |
+| Pooled CI min 70.0 | NOT CLAIMED | no boundary-safe match |
+| Pooled CI p1 77.0 | NOT CLAIMED | no boundary-safe match |
+| Pooled CI q1 85.7 | NOT CLAIMED | no boundary-safe match |
+| Pooled CI median 89.3 | NOT CLAIMED | no boundary-safe match |
+| Pooled CI q3 94.5 | CLAIMED at 2121 | `94.5 node-slots` |
+| Pooled CI p99 269.9 | CLAIMED at 2124 | `269.9, still lies below` |
+| Pooled CI max 369.3 | CLAIMED at 2126 | `costs 369.3 against 297.0` |
+| Paxos CE min 297.0 | CLAIMED at 2126 | same line as 369.3 |
+| Paxos CE p1 324.0 | CLAIMED at 2125 | `324.0. The extreme tails` |
+| Paxos CE q1 351 | CLAIMED at 2122 | `at 351, a factor of` |
+| Paxos CE median 378 | NOT CLAIMED | no boundary-safe match |
+| Paxos CE q3 405 | NOT CLAIMED | no boundary-safe match |
+| Paxos CE p99 459 | NOT CLAIMED | none; 1430 = substring of 24.459 |
+| Paxos CE max 594 | NOT CLAIMED | no boundary-safe match |
 
-6 of 14 values are claimed (2121, 2122, 2124, 2125, 2126); 8 are provenance
-information only and are not audit defects.
+Digit-substring matching was replaced with boundary-anchored matching in step
+2.37 after a substring false positive (459 inside 24.459) was attributed to
+594. 6 of 14 values are claimed (2121, 2122, 2124, 2125, 2126); 8 are
+provenance information only and are not audit defects.
 
 ### Disposition of Unreferenced Evidence Files (Task 3)
 1. `distribution_stats.md`:
