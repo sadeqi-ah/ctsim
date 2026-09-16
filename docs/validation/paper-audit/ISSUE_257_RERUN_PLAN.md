@@ -295,7 +295,9 @@ sections 3 and 4):
 
 - Table I Paxos(CI): throughput, E/dec, commit rate, latency
 - Pipeline depth "about 12" (= throughput x latency)
-- Paxos on line topology: throughput "0.0625"
+- Paxos on line topology: throughput "0.0625" -- RESOLVED: measured at
+  0.0611 (-2.24% rounded table basis; -2.27% full precision) in 4895efeb
+  (paper text updated to 0.0611)
 - Fig 3b, Fig 4, Fig 12b: plotted data points
 
 The headline 2PC ratios (throughput and energy) are structurally
