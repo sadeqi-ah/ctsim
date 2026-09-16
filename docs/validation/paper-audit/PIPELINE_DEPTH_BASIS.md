@@ -136,24 +136,34 @@ For the manuscript's claim about Table V's derivation to be true:
 
 ---
 
-## 5. Staleness Check for Derived Scalability Table (Report Only)
+## 5. Staleness Check and Regeneration of Derived Scalability Table
 
 `plots/scalability/table_summary_N27_loss05.csv` is a committed derived table,
 the same class of artifact audited for the topology table in issue 350.
 
 Git commit history of the artifact, its raw input CSV, and simulator logic:
 - Derived table:
-  `git log -1 plots/scalability/table_summary_N27_loss05.csv` $\to$ `198ac57`
+  `git log -1 plots/scalability/table_summary_N27_loss05.csv` -> `198ac57`
 - Input sweep CSV:
-  `git log -1 plots/scalability/results/sweep_summary.csv` $\to$ `cf05dd8`
+  `git log -1 plots/scalability/results/sweep_summary.csv` -> `cf05dd8`
   (data(sweeps): regenerate sweep_summary.csv after issue 257 quorum fix)
 - Simulator logic:
-  `git log -1 src/` $\to$ `36c506f` / `d6937dc` (issue 257 fix)
+  `git log -1 src/` -> `36c506f` / `d6937dc` (issue 257 fix)
 
-Commit `198ac57` is an ancestor of `cf05dd8`. The committed derived table
-predates the post-issue-257 sweep regeneration of its input CSV.
+Commit `198ac57` is an ancestor of `cf05dd8` (`git merge-base --is-ancestor
+198ac57 cf05dd8` returned 0, `ANCESTOR=YES`), meaning the committed derived
+table predated the post-issue-257 sweep regeneration of its input CSV.
 
-**Status:**
-**POSSIBLY STALE -- requires a run to confirm.**
-Per project constraints, no sweep is executed and `regeneration` CI job remains
-disabled.
+### Regeneration Verification
+Running the existing generator `plots/scalability/plot_summary_commit.py`
+against the committed `plots/scalability/results/sweep_summary.csv` without
+running any simulation sweeps produced byte-identical output:
+- `git diff --stat -- plots/scalability/` -> empty
+- `git diff -- plots/scalability/table_summary_N27_loss05.csv` -> empty
+- `git status --porcelain -- plots/scalability/` -> empty
+
+**Status:** **NOT STALE -- regeneration is a no-op.**
+The earlier `POSSIBLY STALE` suspicion did not materialise because the post-fix
+data at $N = 27, \text{loss} = 0.05$ on the random topology yields the exact
+same rounded table metrics.
+Manuscript impact: NO.

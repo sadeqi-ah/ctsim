@@ -2,7 +2,7 @@
 
 ## Provenance
 All numbers, line references, and evidence blocks in this file were measured against `main` at commit `21ed3cad190270d8e25094cc89b5d5eafd98d575`.
-**Re-measured rows:** the `line Paxos` row (paper line 2594) was re-measured against `main` at `4895efeb` after the issue 257 quorum fix and the topology table regeneration in PR #58; the Table V depth rows (`paper.tex:1918-1922`, `:1923`, `:1924`) and Table I `Sleep` column (`paper.tex:1536-1538`) were measured against `main` at `86db41eb`. All other rows remain at base `21ed3cad`.
+**Re-measured rows:** the `line Paxos` row (paper line 2594) was re-measured against `main` at `4895efeb` after the issue 257 quorum fix and the topology table regeneration in PR #58; the Table V depth rows (`paper.tex:1921-1925`, `:1926`, `:1927`) and Table I `Sleep` column (`paper.tex:1536-1538`) were measured against `main` at `86db41eb`. All other rows remain at base `21ed3cad`.
 
 **Summary: 82 distinct numeric claims examined — MATCH 70 / MISMATCH 0 / UNSOURCED 0 / SOURCED 8 / REMOVED 3 / RETIRED 1.** Base: `main` at `21ed3cad190270d8e25094cc89b5d5eafd98d575` (original audit base: `cdc2f818af6b7b48cf05abfab293cd470a046335`). Verdicts use only the source precedence requested for this audit. A paper range is one distinct claim when adjacent values form one comparison, table row, or interval.
 
@@ -164,9 +164,9 @@ $ grep -nE '^2,27,(line|partial_mesh|random|scale_free|full_mesh),0\.05,1,paxos_
 | progress-curve ordering/shape | 1883-1891 | completion ordering and times confirmed | `docs/validation/paper-audit/sources/progress_snapshots.csv` | SOURCED |
 | 2PC-CI latency `126.8` (scalability baseline) | 1882 | 126.8 in scalability; 357.7 only in topology aggregation | both sweep CSVs | MATCH |
 | completion `590`, `1420`, `2430`, `470`, `525`; `>5x` | 1883,1884,1885,1889,1890,1891 | 590, 1421, 2434, 468, 526; 5.20x | scalability CSV | MATCH |
-| depth table unit depth `1.00` | 1918-1922 | mean(throughput_i × avg_latency_i) = 1.00000000 exactly on every seed | `plots/topology/results/sweep_summary.csv` (`86db41eb`) | MATCH |
-| depth Paxos (CI) `11.66` | 1923 | 11.6615 (mean of per-seed products) | `plots/topology/results/sweep_summary.csv` (`86db41eb`) | MATCH |
-| depth 2PC (CI) `21.25` | 1924 | 21.2547 (mean of per-seed products) | `plots/topology/results/sweep_summary.csv` (`86db41eb`) | MATCH |
+| depth table unit depth `1.00` | 1921-1925 | mean(throughput_i × avg_latency_i) = 1.00000000 exactly on every seed | `plots/topology/results/sweep_summary.csv` (`86db41eb`) | MATCH |
+| depth Paxos (CI) `11.66` | 1926 | 11.6615 (mean of per-seed products) | `plots/topology/results/sweep_summary.csv` (`86db41eb`) | MATCH |
+| depth 2PC (CI) `21.25` | 1927 | 21.2547 (mean of per-seed products) | `plots/topology/results/sweep_summary.csv` (`86db41eb`) | MATCH |
 | energy ratio `1.43±.02`, `3.83±.07`, `5.67±.27` | 2080,2085 | matches seed-derived intervals | scalability CSV | MATCH |
 | proposal sharing removed; slot ranges `4.70–5.97`, `4.68–24.34` | 2093,2095,2096 | 1.6% removed; pooled slots: 4.70-5.97 CI, 4.68-24.34 CE | `docs/validation/paper-audit/sources/slots_per_decision.md` | SOURCED |
 | quartiles/percentiles/extrema/medians | 2054 | per-proposal distribution extrema and percentiles | `docs/validation/paper-audit/sources/distribution_stats.csv` | SOURCED |
