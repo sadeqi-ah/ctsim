@@ -1870,10 +1870,10 @@ fn step_210c_assertions() {
         "fd88f784e18062c075f0b9c8a940918c87b2d0cf",
     );
 
-    // T8: .gitignore blob is 420330edbd2721dd41114c1a8c7653c395a4c7af
+    // T8: .gitignore blob is 24022f39d03af223750fd1dc4c25644f60eec61a
     assert_blob(
         Path::new(".gitignore"),
-        "420330edbd2721dd41114c1a8c7653c395a4c7af",
+        "24022f39d03af223750fd1dc4c25644f60eec61a",
     );
 }
 
@@ -2011,14 +2011,14 @@ fn step_210b_assertions() {
         );
     }
 
-    // T8: .gitignore is byte-identical to blob 420330edbd2721dd41114c1a8c7653c395a4c7af.
+    // T8: .gitignore is byte-identical to blob 24022f39d03af223750fd1dc4c25644f60eec61a.
     let gitignore = fs::read_to_string(".gitignore").unwrap();
     let mut sha1 = sha1_smol::Sha1::new();
     sha1.update(format!("blob {}\0", gitignore.len()).as_bytes());
     sha1.update(gitignore.as_bytes());
     assert_eq!(
         sha1.digest().to_string(),
-        "420330edbd2721dd41114c1a8c7653c395a4c7af",
+        "24022f39d03af223750fd1dc4c25644f60eec61a",
         ".gitignore was modified"
     );
 
@@ -2300,7 +2300,7 @@ fn step_27r_assertions() {
     );
     assert_blob(
         Path::new(".gitignore"),
-        "420330edbd2721dd41114c1a8c7653c395a4c7af",
+        "24022f39d03af223750fd1dc4c25644f60eec61a",
     );
 }
 
