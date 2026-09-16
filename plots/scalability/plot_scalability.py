@@ -40,7 +40,7 @@ def run_sweep_if_needed():
     if not os.path.exists(SUMMARY_CSV) or "--force" in sys.argv:
         print("Running simulator sweep for scalability... (this may take a few minutes)")
         subprocess.run(
-            ["cargo", "run", "--release", "--", "sweep_scalability.toml"],
+            ["cargo", "run", "--release", "--bin", "ctsim", "--", "sweep_scalability.toml"],
             cwd=ROOT,
             check=True
         )

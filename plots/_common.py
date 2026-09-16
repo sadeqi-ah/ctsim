@@ -7,13 +7,60 @@ These helpers make that work regardless of the current working directory.
 
 from __future__ import annotations
 
+import datetime
 import os
 import subprocess
+import sys
 from pathlib import Path
 
 # Repo root is two levels up from this file: <repo>/plots/_common.py
 REPO_ROOT = Path(__file__).resolve().parents[1]
 RESULTS_DIR = REPO_ROOT / "results"
+
+
+def record_provenance(script_name: str, toml_path: str | Path) -> None:
+    """Append a provenance record to ``<repo>/results/PROVENANCE.txt``."""
+    RESULTS_DIR.mkdir(parents=True, exist_ok=True)
+    prov_file = RESULTS_DIR / "PROVENANCE.txt"
+    iso_ts = datetime.datetime.now(datetime.timezone.utc).isoformat()
+    try:
+        head_sha = subprocess.check_output(
+            ["git", "rev-parse", "HEAD"], cwd=REPO_ROOT, text=True
+        ).strip()
+    except Exception:
+        head_sha = "unknown"
+    line = f"{iso_ts}\t{script_name}\t{toml_path}\t{head_sha}\n"
+    with open(prov_file, "a", encoding="utf-8") as f:
+        f.write(line)
+
+
+def check_provenance(expected_script: str) -> None:
+    """Warn to stderr if results/PROVENANCE.txt's last writer is unexpected."""
+    prov_file = RESULTS_DIR / "PROVENANCE.txt"
+    if not prov_file.exists():
+        sys.stderr.write(
+            f"WARNING: {prov_file} not found; cannot verify producer of results/ (expected {expected_script})\n"
+        )
+        sys.stderr.flush()
+        return
+
+    lines = [line.strip() for line in prov_file.read_text(encoding="utf-8").splitlines() if line.strip()]
+    if not lines:
+        sys.stderr.write(
+            f"WARNING: {prov_file} is empty; cannot verify producer of results/ (expected {expected_script})\n"
+        )
+        sys.stderr.flush()
+        return
+
+    last_line = lines[-1]
+    parts = last_line.split("\t") if "\t" in last_line else last_line.split()
+    last_writer = parts[1] if len(parts) >= 2 else last_line
+    if expected_script not in last_writer:
+        sys.stderr.write(
+            f"WARNING: last writer in {prov_file.name} was '{last_writer}', "
+            f"expected '{expected_script}'. Input data may be from an unexpected run!\n"
+        )
+        sys.stderr.flush()
 
 
 def academic_style():
@@ -42,8 +89,11 @@ def build_release():
     subprocess.run(["cargo", "build", "--release"], cwd=REPO_ROOT, check=True)
 
 
-def run_config(toml_path) -> None:
+def run_config(toml_path, script_name: str | None = None) -> None:
     """Run one simulation config. Output CSVs land in ``<repo>/results``."""
+    if script_name is None:
+        script_name = Path(sys.argv[0]).name if sys.argv and sys.argv[0] else "unknown"
+    record_provenance(script_name, toml_path)
     subprocess.run(
         ["cargo", "run", "--release", "--bin", "ctsim", "--", str(toml_path)],
         cwd=REPO_ROOT,

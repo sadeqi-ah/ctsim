@@ -5,15 +5,13 @@
 /results
 /sweep_results
 
-# Generated figures, tables, and derived data (regenerated from scripts)
+# Generated binary figures (textual tables like *.tex and *.csv are tracked)
 *.png
 *.pdf
 *.svg
 *.dot
-plots/**/*.tex
 
-# Fingerprints written by tools/regen_figures.py
-/MANIFEST.sha256
+# Fingerprints written by tools/regen_figures.py (MANIFEST.sha256 is tracked; JSON ignored)
 /MANIFEST.json
 
 # Python

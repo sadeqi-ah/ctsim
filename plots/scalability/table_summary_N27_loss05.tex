@@ -1,0 +1,15 @@
+% Baseline: N=27, loss=5%, random topo, 100 proposals, 15 seeds (mean)
+% Thr. = committed/end_slot; Lat. = mean slots/decision;
+% Energy/dec = (listen+flood)/committed; Eff. ∝ thr/energy
+\begin{tabular}{lrrrrr}
+\hline
+Protocol & Commit (\%) & Thr. & Lat. & Energy/dec & Eff. \\
+\hline
+TOM (CI) & 100.0 & 0.2132 & 4.7 & 88.0 & 2.43 \\
+Paxos (CI) & 100.0 & 0.1903 & 61.4 & 100.2 & 1.91 \\
+2PC (CI) & 98.9 & 0.1681 & 126.8 & 115.8 & 1.46 \\
+TOM (CE) & 100.0 & 0.2143 & 4.7 & 126.3 & 1.70 \\
+Paxos (CE) & 100.0 & 0.0704 & 14.2 & 383.6 & 0.18 \\
+2PC (CE) & 100.0 & 0.0412 & 24.3 & 657.1 & 0.06 \\
+\hline
+\end{tabular}

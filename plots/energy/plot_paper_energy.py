@@ -75,14 +75,18 @@ def academic_style():
 
 def load_amortized() -> pd.DataFrame:
     """Vectorized amortization from existing result CSVs."""
+    _common.check_provenance("plot_stacked_bar.py")
     rows: list[dict] = []
 
     for _key, label, phy, res_name, snap_name in PROTOCOLS:
         res_p = RESULTS / res_name
         snap_p = RESULTS / snap_name
         if not res_p.exists() or not snap_p.exists():
-            print(f"SKIP {label}: missing {res_p.name} or {snap_p.name}")
-            continue
+            raise FileNotFoundError(
+                f"Missing required simulation output for {label}: "
+                f"expected {res_p.name} and {snap_p.name} in {RESULTS}. "
+                "Run plots/energy/plot_stacked_bar.py first to generate results/."
+            )
 
         df_res = pd.read_csv(res_p)
         df_snap = pd.read_csv(snap_p)

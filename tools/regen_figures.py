@@ -25,21 +25,31 @@ import sys
 import time
 from pathlib import Path
 
+from typing import NamedTuple
+
 REPO = Path(__file__).resolve().parents[1]
+
+
+class Step(NamedTuple):
+    script: str
+    label: str
+    accepts_force: bool = False
+    depends_on: str | None = None
+
 
 # (script, label) in dependency order. Two hard dependencies:
 #   scalability/plot_scalability.py writes the sweep CSV the next two read
 #   energy/plot_stacked_bar.py      writes the results/ CSVs plot_paper_energy reads
 STEPS = [
-    ("plots/scalability/plot_scalability.py", "scalability sweep (1800 cells, incl. N=188)"),
-    ("plots/scalability/plot_efficiency.py", "efficiency vs N"),
-    ("plots/scalability/plot_summary_commit.py", "commit rate + summary table"),
-    ("plots/topology/plot_topology.py", "topology sensitivity sweep"),
-    ("plots/progress/plot_progress.py", "progress over time (linear)"),
-    ("plots/progress/plot_progress_log.py", "progress over time (log)"),
-    ("plots/energy/plot_stacked_bar.py", "per-proposal energy + results/ CSVs"),
-    ("plots/energy/plot_paper_energy.py", "amortized energy figures"),
-    ("plots/duty_cycle/plot_kde_awake.py", "awake PMF + duty-cycle extremes"),
+    Step("plots/scalability/plot_scalability.py", "scalability sweep (1800 cells, incl. N=188)", accepts_force=True),
+    Step("plots/scalability/plot_efficiency.py", "efficiency vs N", accepts_force=False),
+    Step("plots/scalability/plot_summary_commit.py", "commit rate + summary table", accepts_force=False),
+    Step("plots/topology/plot_topology.py", "topology sensitivity sweep", accepts_force=True),
+    Step("plots/progress/plot_progress.py", "progress over time (linear)", accepts_force=False),
+    Step("plots/progress/plot_progress_log.py", "progress over time (log)", accepts_force=False),
+    Step("plots/energy/plot_stacked_bar.py", "per-proposal energy + results/ CSVs", accepts_force=False),
+    Step("plots/energy/plot_paper_energy.py", "amortized energy figures", accepts_force=False, depends_on="plots/energy/plot_stacked_bar.py"),
+    Step("plots/duty_cycle/plot_kde_awake.py", "awake PMF + duty-cycle extremes", accepts_force=False),
 ]
 
 # Artifacts to fingerprint inside the repo, relative to the repo root.
@@ -98,15 +108,23 @@ def run_steps(only: list[str] | None, force: bool) -> bool:
 
     steps = STEPS
     if only:
-        steps = [(s, lbl) for s, lbl in STEPS if any(k in s for k in only)]
+        steps = [s for s in STEPS if any(k in s.script for k in only)]
         if not steps:
             sys.exit(f"--only {only} matched no step")
 
     ok = True
+    failed_steps: set[str] = set()
     total = len(steps)
-    for i, (script, label) in enumerate(steps, 1):
-        cmd = [sys.executable, script] + (["--force"] if force else [])
-        print(f"\n[{i}/{total}] {label}\n      {' '.join(cmd)}", flush=True)
+    for i, step in enumerate(steps, 1):
+        print(f"\n[{i}/{total}] {step.label}", flush=True)
+        if step.depends_on and step.depends_on in failed_steps:
+            ok = False
+            failed_steps.add(step.script)
+            print("      SKIPPED (dependency failed)", flush=True)
+            continue
+
+        cmd = [sys.executable, step.script] + (["--force"] if (force and step.accepts_force) else [])
+        print(f"      {' '.join(cmd)}", flush=True)
         t0 = time.time()
         proc = subprocess.run(cmd, cwd=REPO, capture_output=True, text=True)
         dt = time.time() - t0
@@ -114,6 +132,7 @@ def run_steps(only: list[str] | None, force: bool) -> bool:
             print(f"      ok  ({dt:.1f}s)", flush=True)
         else:
             ok = False
+            failed_steps.add(step.script)
             print(f"      FAILED (exit {proc.returncode}, {dt:.1f}s)", flush=True)
             tail = (proc.stderr or proc.stdout).strip().splitlines()[-15:]
             for line in tail:
@@ -228,9 +247,11 @@ def main() -> int:
             sys.exit(f"not a directory: {ref}")
         return compare(ref)
 
+    failed = False
     if not args.no_run:
         if not run_steps(args.only, args.force):
             print("\nAt least one step failed; the manifest below covers only what was produced.")
+            failed = True
 
     fp = fingerprint(REPO)
     manifest = REPO / "MANIFEST.sha256"
@@ -239,7 +260,7 @@ def main() -> int:
     (REPO / "MANIFEST.json").write_text(json.dumps(fp, indent=2, sort_keys=True) + "\n")
     print(f"\nFingerprinted {len(fp)} artifacts -> {manifest.name}, MANIFEST.json")
     print("PNG hashes are of decoded pixels, so they are comparable across Matplotlib builds.")
-    return 0
+    return 1 if failed else 0
 
 
 if __name__ == "__main__":
