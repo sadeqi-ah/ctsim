@@ -212,7 +212,9 @@ The median is exactly $27 \times 5 = 135$ node-slots.
 
 ### Verdict
 **SOURCED** (supported by
-`docs/validation/paper-audit/sources/per_decision_energy.csv:2713-4212`).
+`docs/validation/paper-audit/sources/per_decision_energy.csv:7486-8985`;
+slice corrected in step 2.35: the TOM (CE) block spans 7486-8985, while
+2713-4212 is the 2PC (CI) and TOM (CI) block).
 
 ---
 
@@ -259,7 +261,10 @@ Output:
 
 ### Verdict
 **SOURCED** (supported by
-`docs/validation/paper-audit/sources/per_decision_energy.csv:1-1500,2713-4212`).
+`docs/validation/paper-audit/sources/per_decision_energy.csv:2-1501,2986-4485`;
+slice corrected in step 2.35: 2-1501 is the Paxos (CI) block and 2986-4485
+the TOM (CI) block; the previously cited 2713-4212 mixes 2PC (CI) and TOM (CI)
+rows).
 
 ---
 
