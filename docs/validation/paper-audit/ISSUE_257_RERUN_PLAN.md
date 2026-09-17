@@ -205,19 +205,31 @@ python3 tools/audit_sources_210b.py
 
 This step RUNS THE SIMULATOR (plots/progress and plots/energy
 paths).  It writes into `docs/validation/paper-audit/sources/`,
-which is hashed by `assert_blob` in `tests/validation.rs`.
+whose git blob hashes are pinned in `tests/validation.rs`.
 
-Files hashed by assert_blob and their Step 9 impact
-(line numbers from `grep -n assert_blob tests/validation.rs`):
+Complete inventory of pinned blob hashes (line numbers from the
+greps of `sha1_smol`, `assert_blob`, and 40-hex literals in
+`tests/validation.rs` at the base of this section; mechanism is
+`assert_blob` unless marked inline `sha1_smol`):
 
-  1850, 2281: per_decision_energy.csv     -- YES, changes
-  1854, 2285: distribution_stats.csv      -- UNKNOWN - REQUIRES A RUN
-  1858, 2289: distribution_stats.md       -- UNKNOWN - REQUIRES A RUN
-  1862, 2293: integer_multiple_check.md   -- UNKNOWN - REQUIRES A RUN
-  1868, 2297: calibration.lock.toml       -- NO (pins PHY)
-  1874, 2301: .gitignore                  -- NO
+| File pinned | Test function | Assertion line(s) | Step 9? |
+|-------------|---------------|-------------------|---------|
+| `sources/per_decision_energy.csv` | step_210c | 1850, 2281 | YES, changes |
+| `sources/distribution_stats.csv` | 210c, _b | 1854, 2285 | UNKNOWN - RUN |
+| `sources/distribution_stats.md` | 210c, _b | 1858, 2289 | UNKNOWN - RUN |
+| `sources/integer_multiple_check.md` | 210c, _b | 1862, 2293 | UNKNOWN - RUN |
+| `profiles/calibration.lock.toml` | 210c, _b | 1868, 2297, 2032 inline | NO |
+| `.gitignore` | 210c, _b | 1874, 2301, 2021 inline | NO |
 
-Updating those expected hashes is a SEPARATE, OWNER-APPROVED
+Total: 6 files pinned at 14 pin sites (12 `assert_blob` calls plus
+2 inline `sha1_smol` literals at 2021, 2032).  A 15th 40-hex
+literal at line 1120 (`e69de29...`) is the empty-blob sanity
+constant inside `calibration_lock_evidence_blobs_match_their_files`,
+not a file pin.  The four `sources/`
+files are the only pinned files Step 9 can change; `.gitignore`
+and `profiles/calibration.lock.toml` cannot be affected by it.
+
+Updating any of these expected hashes is a SEPARATE, OWNER-APPROVED
 round (see Step 11 and Section 5).  Do not modify
 `tests/validation.rs` in this PR.
 
@@ -270,7 +282,9 @@ reproducibility, and regression tests must pass."  Its status:
   .gitignore blob hash after issue 348").
 - Lesson recorded: `assert_blob` can break from commits unrelated
   to regeneration, so the failure taxonomy in this section is
-  incomplete, not wrong.
+  incomplete, not wrong.  Moreover, hash pins exist outside
+  `assert_blob` (inline `sha1_smol` literals), so a taxonomy
+  keyed on `assert_blob` is structurally incomplete.
 
 When an `assert_blob` failure occurs:
 - Record the verbatim failure output (test name, expected hash,
@@ -305,8 +319,9 @@ Both are: UNKNOWN - REQUIRES A RUN
 
 ## 5. Validation Hashes That Must Be Updated After the Rerun
 
-Every `assert_blob` call in `tests/validation.rs` and the file
-it hashes, with rerun impact:
+Every pinned blob hash in `tests/validation.rs`, with rerun
+impact (mechanism is `assert_blob` unless marked inline
+`sha1_smol`; see the pin inventory in Step 9):
 
 Lines 1850, 2281: `sources/per_decision_energy.csv`
   SHA1 `7386c946...` -- YES, changes (fresh simulator run
@@ -330,6 +345,11 @@ Lines 1874, 2301: `.gitignore`
   expected hash to `24022f39...` after the issue-348 tooling
   commit changed `.gitignore`.)
 
+The two inline `sha1_smol` pins for `.gitignore` (line 2021) and
+`profiles/calibration.lock.toml` (line 2032) assert the same
+hashes as the matching `assert_blob` rows above; update them in
+the same owner-approved round if those files ever change.
+
 After regeneration, compute the new blob hashes:
 
 ```bash
@@ -341,8 +361,11 @@ git hash-object docs/validation/paper-audit/sources/integer_multiple_check.md
 
 In the separate, owner-approved round (see Step 9 and Step 11),
 update the corresponding `assert_blob` calls at lines 1852, 1856,
-1860, 1864, 2283, 2287, 2291, 2295 in `tests/validation.rs`.
-`tests/validation.rs` must NOT be edited during this rerun.
+1860, 1864, 2283, 2287, 2291, 2295 in `tests/validation.rs`, and
+the inline `sha1_smol` literals at lines 2021 and 2032 should the
+`.gitignore` or `profiles/calibration.lock.toml` hashes ever
+change.  `tests/validation.rs` must NOT be edited during this
+rerun.
 
 ## 6. Paper Numbers to Check After the Rerun
 
