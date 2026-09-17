@@ -207,19 +207,38 @@ This step RUNS THE SIMULATOR (plots/progress and plots/energy
 paths).  It writes into `docs/validation/paper-audit/sources/`,
 whose git blob hashes are pinned in `tests/validation.rs`.
 
-Complete inventory of pinned blob hashes (line numbers from the
-greps of `sha1_smol`, `assert_blob`, and 40-hex literals in
-`tests/validation.rs` at the base of this section; mechanism is
-`assert_blob` unless marked inline `sha1_smol`):
+All `tests/validation.rs` line numbers in this document were read at
+commit `44588b212574da71cd985842860048d61b29aaf4`; they drift with any
+edit to that file, so a bare number is never authoritative.
 
-| File pinned | Test function | Lines | Step 9? |
-|-------------|---------------|-------|---------|
-| `sources/per_decision_energy.csv` | 210c, 27r | 1850, 2281 | YES |
-| `sources/distribution_stats.csv` | 210c, 27r | 1854, 2285 | UNKNOWN |
-| `sources/distribution_stats.md` | 210c, 27r | 1858, 2289 | UNKNOWN |
-| `sources/integer_multiple_check.md` | 210c, 27r | 1862, 2293 | UNKNOWN |
-| `profiles/calibration.lock.toml` | 210c, 27r, 210b | 1868, 2297, 2032 | NO |
-| `.gitignore` | 210c, 27r, 210b | 1874, 2301, 2021 | NO |
+Complete inventory of pinned blob hashes (all under
+`docs/validation/paper-audit/sources/` except the last two; line
+numbers from the greps of `sha1_smol`, `assert_blob`, and 40-hex
+literals in `tests/validation.rs` at the base of this section; the
+Assertion column mixes `assert_blob` call-site lines with inline
+`sha1_smol` literal lines, marked "inl" = inline sha1_smol):
+
+| File pinned | Test function | Assertion line(s) | Step 9? |
+|-------------|---------------|-------------------|---------|
+| per_decision_energy.csv | 210c/27r | 1850, 2281 | YES, changes |
+| distribution_stats.csv | 210c/27r | 1854, 2285 | UNKNOWN - REQUIRES A RUN |
+| distribution_stats.md | 210c/27r | 1858, 2289 | UNKNOWN - REQUIRES A RUN |
+| integer_multiple_check.md | 210c/27r | 1862, 2293 | UNKNOWN - REQUIRES A RUN |
+| profiles/calibration.lock.toml | 210c/27r/210b | 1868, 2297, 2032 inl | NO |
+| .gitignore | 210c/27r/210b | 1874, 2301, 2021 inl | NO |
+
+Two families of numbers appear here and in Section 5, named by what
+they point at: the `assert_blob(` call-site lines (1850, 1854, ...,
+2301; also quoted in Section 5's per-file headings), and the
+expected-hash literal lines (1852, 1856, ..., 2295; quoted in the
+final paragraph of Section 5), which sit two lines below their
+matching call site.  Lines 2021 and 2032 belong to neither family:
+they are the inline `sha1_smol` literals in `step_210b_assertions`,
+which is why they carry the "inl" marker above.  All verified at
+the commit named above.  Re-derive each family with:
+
+    grep -n 'assert_blob' tests/validation.rs
+    grep -nE '"[0-9a-f]{40}"' tests/validation.rs
 
 Function-to-line assignment (derived from the fn grep; each
 assert_blob call site belongs to the enclosing test fn):
@@ -368,7 +387,7 @@ git hash-object docs/validation/paper-audit/sources/integer_multiple_check.md
 ```
 
 In the separate, owner-approved round (see Step 9 and Step 11),
-update the corresponding `assert_blob` calls at lines 1852, 1856,
+update the corresponding expected-hash literals at lines 1852, 1856,
 1860, 1864, 2283, 2287, 2291, 2295 in `tests/validation.rs`, and
 the inline `sha1_smol` literals at lines 2021 and 2032 should the
 `.gitignore` or `profiles/calibration.lock.toml` hashes ever

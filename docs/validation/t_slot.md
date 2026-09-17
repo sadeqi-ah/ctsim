@@ -157,9 +157,11 @@ Same semantic content, encoded as a real radio protocol would:
 
 Bit-packed, the packet fits comfortably at every `N` we simulate, and `T_slot`
 is weakly dependent on `N`: it grows by 124 µs (10 µs guard) across the whole
-range 2 → 255, because the bitmap contributes only one bit per node.
+range 2 → 255, because the bitmap contributes only one bit per node
+(every `T_slot` here is a lower bound; see section 5.5).
 
-**`T_slot` is a function of `N`, not a constant.** Any millisecond figure quoted
+**`T_slot` is a function of `N`, not a constant** (a lower bound; see section
+5.5). Any millisecond figure quoted
 for a given topology must name the `N` it used.
 
 ---
@@ -201,7 +203,7 @@ counts, so it is invariant outright. Therefore:
 | Latency in ms, throughput in tx/s | scales by `c`, exactly |
 
 Numerically, on the `full_mesh` `N = 27` CI/Paxos figure of 4.7033
-slots/decision, with `T_slot` = 318.0 µs:
+slots/decision, with `T_slot` = 318.0 µs (a lower bound; see section 5.5):
 
 | Factor | `T_slot` (µs) | Latency (ms) | Slot count |
 |---|---:|---:|---:|
@@ -241,6 +243,50 @@ above, not a sweep.
    either the manuscript states that packet length is not modelled and quotes the
    bit-packed wire model when converting to milliseconds, or the simulator gains
    a real serialiser. The second is a code change and is out of scope for step 2.1.
+
+---
+
+## 5.5 Frozen scope of the timing model
+
+By owner decision (option B), the timing model in this document is
+frozen as it stands: it is neither rewritten nor recalibrated here.
+This section records its limits explicitly.
+
+1. **Lower bound, not an estimate.** `T_slot(L) = T_air(L) + T_IFS +
+   2 x T_guard` accounts only for airtime, one inter-frame space, and
+   a guard band on each side.  It excludes MCU wake-up, radio ramp-up
+   and turnaround beyond `T_IFS`, per-packet processing, and any flood
+   repetition.  Every value in the section 3.2 table - the 306 to 610
+   microsecond range - is therefore a lower bound on a physically
+   realisable slot, not an estimate of one.  This reminder applies
+   wherever a `T_slot` value above is stated as if it were the slot
+   duration.
+2. **Conflict with published firmware slot lengths, recorded, not
+   resolved.** `docs/validation/addition14/data/published_slot_lengths.csv`
+   records nominal firmware slot lengths of 4.75 ms for the 2PC and 3PC
+   profiles and 5.00 ms for `wireless_paxos`, roughly an order of
+   magnitude above the 306 to 610 microsecond range derived here.  The
+   gap is unexplained and is precisely the part of the model being
+   frozen.  Neither figure may be used to calibrate the other; closing
+   the gap requires a dedicated, owner-approved round with a
+   measurement, not a documentation edit.
+3. **Nominal versus realised.** Realised slot lengths run about 2.34
+   percent below nominal because of 32.768 kHz timer quantisation, so
+   any comparison against a published hardware figure carries that
+   systematic bias.  This caveat is quoted, not recomputed, from
+   `docs/validation/addition14/data/run_provenance.md`;
+   `docs/validation/addition14/data/published_slot_lengths.csv` carries
+   both the `slot_ms_nominal` and `slot_ms_realised` columns.
+4. **No wall-clock claim is licensed.** Simulator round timing is
+   uncalibrated: the engines advance an integer slot counter and no
+   duration exists in the program (proved in section 4).  Every
+   millisecond figure in this document is a unit conversion applied to
+   a slot count, computed with a bracketed and not pinned `T_guard`.
+   This document licenses no wall-clock latency claim for any
+   protocol.  The A2 475 ms and Wireless Paxos 289 ms entries in
+   section 5, item 2, remain targets stated in slots, with their citation
+   debt still open, and the blind predictions already recorded
+   against them are failures, not validations.
 
 ---
 
