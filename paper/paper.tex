@@ -1417,20 +1417,35 @@ model. The slot duration $\Tslot$ is instead a paper-side unit conversion,
 not a second calibrated parameter.
 
 The prediction step freezes that parameter and tests two published results
-that played no part in calibration. At the pre-registered
+that played no part in calibration. The mechanism is the slot-duration
+model of Section~\ref{sec:method}: converting the simulated slot counts
+into milliseconds with the bracketed $\Tslot$ and comparing against the
+published testbed figures. At the pre-registered
 $T_{\mathrm{guard}}=10\,\mu\mathrm{s}$ acceptance point, with relative
 error required to remain within 20\,\%, A2 predicts
 16.722\,ms [16.527, 16.917] against 475\,ms (relative error $-0.9648$), while
 Wireless Paxos predicts 9.796\,ms [9.735, 9.858] against 289\,ms (relative
-error $-0.9661$). These are blind predictions, not fits: both fail the
-acceptance test at every $T_{\mathrm{guard}}$ from 10 to 100\,$\mu$s, with
+error $-0.9661$): both predictions fall short of the published
+figures by more than an order of magnitude. These are blind predictions, not
+fits: both fail the acceptance test at every $T_{\mathrm{guard}}$
+from 10 to 100\,$\mu$s, with
 the pre-registered-point errors reported as $-96.5\,\%$ and $-96.6\,\%$.
 The distinct raw-slot comparison gives 42.441 slots [41.946, 42.935] for A2,
 outside its pre-registered slot-equivalent interval [828, 1205], and 24.614
-slots [24.459, 24.769] for Wireless Paxos, outside [500, 726]. The failed
-predictions therefore reject cross-level agreement with the published
-testbed latencies rather than validating it. All three profiles remain
+slots [24.459, 24.769] for Wireless Paxos, outside [500, 726]---again
+mismatches, at the slot-count level this time. All three profiles remain
 regression tests so that the frozen calibration cannot silently drift.
+
+These three mismatches are failures of the blind prediction, not
+validations of the model. The simulator's wall-clock latency output is
+therefore not licensed for comparison against published figures. The
+reason remains unresolved: the slot-duration model used to convert slot
+counts into milliseconds yields a lower bound on a physically realisable
+slot; the published firmware slot lengths disagree with that model by
+roughly an order of magnitude; the gap is unexplained; no calibration of
+either against the other has been performed; and the paper accordingly
+makes no wall-clock latency claim. The 475\,ms and 289\,ms figures remain
+unverified published targets with open citation debt.
 
 \subsubsection{Layer 3: sensitivity and invariance}
 The third layer asks whether the conclusions survive perturbation of the
