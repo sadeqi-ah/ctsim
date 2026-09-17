@@ -157,9 +157,11 @@ Same semantic content, encoded as a real radio protocol would:
 
 Bit-packed, the packet fits comfortably at every `N` we simulate, and `T_slot`
 is weakly dependent on `N`: it grows by 124 µs (10 µs guard) across the whole
-range 2 → 255, because the bitmap contributes only one bit per node.
+range 2 → 255, because the bitmap contributes only one bit per node
+(every `T_slot` here is a lower bound; see section 5.5).
 
-**`T_slot` is a function of `N`, not a constant.** Any millisecond figure quoted
+**`T_slot` is a function of `N`, not a constant** (a lower bound; see section
+5.5). Any millisecond figure quoted
 for a given topology must name the `N` it used.
 
 ---
@@ -201,7 +203,7 @@ counts, so it is invariant outright. Therefore:
 | Latency in ms, throughput in tx/s | scales by `c`, exactly |
 
 Numerically, on the `full_mesh` `N = 27` CI/Paxos figure of 4.7033
-slots/decision, with `T_slot` = 318.0 µs:
+slots/decision, with `T_slot` = 318.0 µs (a lower bound; see section 5.5):
 
 | Factor | `T_slot` (µs) | Latency (ms) | Slot count |
 |---|---:|---:|---:|
@@ -282,7 +284,7 @@ This section records its limits explicitly.
    a slot count, computed with a bracketed and not pinned `T_guard`.
    This document licenses no wall-clock latency claim for any
    protocol.  The A2 475 ms and Wireless Paxos 289 ms entries in
-   section 5.2 remain targets stated in slots, with their citation
+   section 5, item 2, remain targets stated in slots, with their citation
    debt still open, and the blind predictions already recorded
    against them are failures, not validations.
 
