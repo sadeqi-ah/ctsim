@@ -42,3 +42,26 @@ section 6.5 was run at 3.75 ms.
 The `round_max_slots` column records the firmware's per-round slot
 ceiling for the same blob, so that "the published figure is below the
 cap" is a claim with a source rather than a number typed into a test.
+
+## 6. Round-cap provenance notes
+
+These notes qualify the `round_max_slots` values that have no home in
+the CSV schema (there is no note column, and prose does not belong in
+a numeric cell).
+
+- `MAX_SLOT_LEN` (max): `MAX_ROUND_MAX_SLOTS` in
+  `lib/max/max.h` (blob `515e83301bf32bca450b38c9f096da69570f169e`)
+  is an overridable default, not a fixed constant: it is wrapped in
+  `#ifndef MAX_ROUND_MAX_SLOTS` with a `#warning "define
+  MAX_ROUND_MAX_SLOTS"`. The recorded value 255 is therefore the
+  project default at that commit, and any build that defines the
+  macro itself runs with a different cap.
+- `ASSOCIATION_SLOT_LEN` (join): `chaos/chaos-config.h` (blob
+  `0122c69fb6da7113c68271090b36f1fe58937776`) defines only
+  `ASSOCIATION_SLOT_LEN`; it contains no round-slot-cap macro, so
+  the upstream value is undefined and the cell retains the literal
+  `NA` (the test suite skips `NA` rows when checking caps).
+- `THREE_PC_SLOT_LEN` (3pc): `THREE_PC_ROUND_MAX_SLOTS` in
+  `lib/3pc/3pc.h` (blob `7cdec10cd686c215a9e3a961967448b896840b68`)
+  is a plain `#define THREE_PC_ROUND_MAX_SLOTS (350)`, with no
+  `#ifndef` guard, so 350 is the fixed upstream value.
