@@ -451,7 +451,12 @@ flooding directly comparable across radios and PHYs
 \cite{baddeley22osf}. The same mechanisms have since been demonstrated on
 ultra-wideband radios, both for dissemination over complex channels
 \cite{schuh24uwb} and for closed-loop wireless control
-\cite{trobinger24uwbcontrol}. This literature has sharpened the picture
+\cite{trobinger24uwbcontrol}. Recent work has improved the reliability of
+synchronous-transmission reception itself by voting on individual bits
+\cite{rangwala24stxvote}; that line of work is complementary to, and
+orthogonal to, the concern of this paper, whose contribution lies in the
+ordering and concurrency of agreement instances rather than in raw packet
+reception. This literature has sharpened the picture
 rather than overturned it, and it is the empirical basis on which
 Section~\ref{sec:method} justifies the abstraction level of our simulator.
 
@@ -528,7 +533,11 @@ and channel diversity to achieve collision-free dissemination
 payload. Neither carries any protocol logic: there are no votes to
 collect, no quorum to evaluate, and no ordering constraint to violate, so
 the question of what happens when two logically dependent decisions
-overlap simply does not arise. To the best of our knowledge, pipelining
+overlap simply does not arise. A recent preprint extends the same
+data-moving use of constructive interference to scalable,
+energy-efficient predictive data collection in wireless sensor networks
+\cite{muldoon25stair}, and the same observation applies to it. To the
+best of our knowledge, pipelining
 has not previously been applied to the full logic of an agreement
 protocol.
 
