@@ -244,22 +244,33 @@ Unit, reproducibility, and regression tests must pass.  However, an
 (Step 9) is EXPECTED, not a defect, because the derived audit
 sources in `docs/validation/paper-audit/sources/` were recomputed.
 
-PREDICTION (original text, kept as history): this document predicted
-that any such failure would be limited to the derived audit sources
-recomputed in Step 9.  SUPERSEDED in step 2.39: the failure that
-actually occurred was on `.gitignore`, a file this section never
-predicted.  At commit `5a29d3a` ("fix(tooling): track textual
-evidence (.tex tables) and update .gitignore (issue 348)") the
-validation suite failed with:
+STEP 2.40 ANNOTATION (added in step 2.39, relabelled in step 2.40;
+this paragraph is not part of the original text). The original
+prediction is the preceding paragraph beginning "Unit,
+reproducibility, and regression tests must pass."  Its status:
+
+- The Step 9 prediction is UNTESTED, not superseded.  Step 9
+  (regenerating `docs/validation/paper-audit/sources/` via
+  `tools/audit_sources_210b.py`) has never been executed in this
+  repository: `git log --oneline --all --grep='regenerate' --
+  docs/validation/paper-audit/sources/` returns no commits.  A
+  prediction about Step 9 cannot be refuted by an event outside
+  Step 9.
+- Separately, an unpredicted `assert_blob` failure mode was
+  observed outside Step 9.  The tooling commit `5a29d3a`
+  ("fix(tooling): track textual evidence (.tex tables) and update
+  .gitignore (issue 348)") changed `.gitignore`, and the
+  validation suite failed with:
 
   Blob SHA mismatch for .gitignore
    left: 24022f39d03af223750fd1dc4c25644f60eec61a
    right: 420330edbd2721dd41114c1a8c7653c395a4c7af
 
-and this was repaired in commit `297e9bc` ("test(validation):
-update .gitignore blob hash after issue 348").  The prediction is
-retired as recorded history; it did not anticipate a `.gitignore`
-hash change caused by a tooling commit unrelated to regeneration.
+  This was repaired by commit `297e9bc` ("test(validation): update
+  .gitignore blob hash after issue 348").
+- Lesson recorded: `assert_blob` can break from commits unrelated
+  to regeneration, so the failure taxonomy in this section is
+  incomplete, not wrong.
 
 When an `assert_blob` failure occurs:
 - Record the verbatim failure output (test name, expected hash,
@@ -314,7 +325,10 @@ Lines 1868, 2297: `profiles/calibration.lock.toml`
   SHA1 `fd88f784...` -- NO (pins PHY, not protocol)
 
 Lines 1874, 2301: `.gitignore`
-  SHA1 `420330ed...` -- NO
+  SHA1 `24022f39...` -- NO
+  (step 2.40: was `420330ed...`; commit `297e9bc` repinned the
+  expected hash to `24022f39...` after the issue-348 tooling
+  commit changed `.gitignore`.)
 
 After regeneration, compute the new blob hashes:
 
