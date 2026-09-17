@@ -207,19 +207,36 @@ This step RUNS THE SIMULATOR (plots/progress and plots/energy
 paths).  It writes into `docs/validation/paper-audit/sources/`,
 whose git blob hashes are pinned in `tests/validation.rs`.
 
+All `tests/validation.rs` line numbers in this document were read at
+commit `44588b212574da71cd985842860048d61b29aaf4`; they drift with any
+edit to that file, so a bare number is never authoritative.
+
 Complete inventory of pinned blob hashes (line numbers from the
 greps of `sha1_smol`, `assert_blob`, and 40-hex literals in
-`tests/validation.rs` at the base of this section; mechanism is
-`assert_blob` unless marked inline `sha1_smol`):
+`tests/validation.rs` at the base of this section; the column mixes
+`assert_blob` call-site lines with inline `sha1_smol` literal lines,
+marked per cell):
 
-| File pinned | Test function | Lines | Step 9? |
-|-------------|---------------|-------|---------|
-| `sources/per_decision_energy.csv` | 210c, 27r | 1850, 2281 | YES |
-| `sources/distribution_stats.csv` | 210c, 27r | 1854, 2285 | UNKNOWN |
-| `sources/distribution_stats.md` | 210c, 27r | 1858, 2289 | UNKNOWN |
-| `sources/integer_multiple_check.md` | 210c, 27r | 1862, 2293 | UNKNOWN |
-| `profiles/calibration.lock.toml` | 210c, 27r, 210b | 1868, 2297, 2032 | NO |
-| `.gitignore` | 210c, 27r, 210b | 1874, 2301, 2021 | NO |
+| File pinned | Test function | Assertion line(s) | Step 9? |
+|-------------|---------------|-------------------|---------|
+| sources/per_decision_energy.csv | 210c/27r | 1850, 2281 | YES, changes |
+| sources/distribution_stats.csv | 210c/27r | 1854, 2285 | UNKNOWN -
+  REQUIRES A RUN |
+| sources/distribution_stats.md | 210c/27r | 1858, 2289 | UNKNOWN -
+  REQUIRES A RUN |
+| sources/integer_multiple_check.md | 210c/27r | 1862, 2293 |
+  UNKNOWN - REQUIRES A RUN |
+| `profiles/calibration.lock.toml` | 210c/27r/210b | 1868, 2297, 2032 inl | NO |
+| `.gitignore` | 210c/27r/210b | 1874, 2301, 2021 inl | NO |
+
+The two sets of numbers point at different lines of the same calls:
+the even set (1850, 1854, ..., 2301) is the `assert_blob(` call-site
+line; Section 5's set (1852, 1856, ..., 2295) is the expected-hash
+string literal two lines below inside that call.  Both verified at
+the commit named above.  Re-derive each family with:
+
+    grep -n 'assert_blob' tests/validation.rs
+    grep -nE '"[0-9a-f]{40}"' tests/validation.rs
 
 Function-to-line assignment (derived from the fn grep; each
 assert_blob call site belongs to the enclosing test fn):
