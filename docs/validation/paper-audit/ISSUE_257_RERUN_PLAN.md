@@ -33,12 +33,29 @@ via piggyback, without any real vote ever being observed.
 
 The fix changes the behaviour of `paxos_pipeline` (CI) runs that
 exercise piggyback recovery.  Every committed CSV containing
-`paxos_pipeline,ci` rows with `piggybacks > 0` is stale:
+`paxos_pipeline,ci` rows with `piggybacks > 0` was AT RISK:
 
-| File | Stale rows | Total paxos_pipeline,ci rows |
-|------|-----------|------------------------------|
+| File | Rows at risk (`piggybacks > 0`) | Total paxos_pipeline,ci rows |
+|------|---------------------------------|------------------------------|
 | `plots/scalability/results/sweep_summary.csv` | 158 | 300 |
 | `plots/topology/results/sweep_summary.csv` | 31 | 75 |
+
+At risk is not the same as changed.  After the post-fix rerun
+(merged in PR #56, commit `cf05dd8`), the number of `paxos_pipeline,ci`
+rows whose values actually changed is:
+
+| File | Rows actually changed |
+|------|-----------------------|
+| `plots/scalability/results/sweep_summary.csv` | 79 |
+| `plots/topology/results/sweep_summary.csv` | 16 |
+
+Counts recorded in PR #56; the establishing command is reproducible from
+the merge diff: `git show cf05dd8 -- <file> | grep '^-' | grep -v '^---'
+| grep -c paxos_pipeline` yields 79 (scalability) and 16 (topology), and
+the `+` side matches, so these are replaced-row counts, not insertion
+counts.  Every changed row has `piggybacks > 0` (awk `$19>0` over the
+minus side: 79 of 79), so the change set is a strict subset of the
+at-risk set, as expected.
 
 All other protocol/PHY combinations (2pc_pipeline, 2pc_ce,
 paxos_ce, tom_pipeline, tom_ce) are unaffected -- the fix touches
