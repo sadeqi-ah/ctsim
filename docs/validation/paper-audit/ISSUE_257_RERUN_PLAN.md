@@ -41,7 +41,8 @@ exercise piggyback recovery.  Every committed CSV containing
 | `plots/topology/results/sweep_summary.csv` | 31 | 75 |
 
 At risk is not the same as changed.  After the post-fix rerun
-(merged in PR #56, commit `cf05dd8`), the number of `paxos_pipeline,ci`
+(data commit `cf05dd8`, landed on main through PR #56, merge
+commit `589252a`), the number of `paxos_pipeline,ci`
 rows whose values actually changed is:
 
 | File | Rows actually changed |
@@ -49,13 +50,21 @@ rows whose values actually changed is:
 | `plots/scalability/results/sweep_summary.csv` | 79 |
 | `plots/topology/results/sweep_summary.csv` | 16 |
 
-Counts recorded in PR #56; the establishing command is reproducible from
-the merge diff: `git show cf05dd8 -- <file> | grep '^-' | grep -v '^---'
-| grep -c paxos_pipeline` yields 79 (scalability) and 16 (topology), and
-the `+` side matches, so these are replaced-row counts, not insertion
-counts.  Every changed row has `piggybacks > 0` (awk `$19>0` over the
-minus side: 79 of 79), so the change set is a strict subset of the
-at-risk set, as expected.
+Counts recorded in PR #56.  Commit `cf05dd8` is not a merge commit
+(single parent `d1273fb8275bb4089c64bbf32e131843a75666de`); it is
+the data commit "data(sweeps): regenerate sweep_summary.csv after
+issue 257 quorum fix" that landed on main through PR #56, whose
+merge commit is `589252a`.  The establishing command over that
+commit's diff, `git show cf05dd8 -- <file> | grep '^-' |
+grep -v '^---' | grep -c paxos_pipeline`, yields 79 (scalability)
+and 16 (topology), and the `+` side matches, so these are
+replaced-row counts, not insertion counts.  Every changed row has
+`piggybacks > 0` (awk `$19>0` over the minus side: 79 of 79
+scalability and 16 of 16 topology; command:
+`git show cf05dd8 -- <file> | grep '^-' | grep -v '^---' |
+grep paxos_pipeline | sed 's/^-//' | awk -F, '$19>0' | wc -l`),
+so the change set is a strict subset of the at-risk set, as
+expected.
 
 All other protocol/PHY combinations (2pc_pipeline, 2pc_ce,
 paxos_ce, tom_pipeline, tom_ce) are unaffected -- the fix touches
@@ -234,6 +243,23 @@ Unit, reproducibility, and regression tests must pass.  However, an
 `assert_blob` failure after regenerating the sources directory
 (Step 9) is EXPECTED, not a defect, because the derived audit
 sources in `docs/validation/paper-audit/sources/` were recomputed.
+
+PREDICTION (original text, kept as history): this document predicted
+that any such failure would be limited to the derived audit sources
+recomputed in Step 9.  SUPERSEDED in step 2.39: the failure that
+actually occurred was on `.gitignore`, a file this section never
+predicted.  At commit `5a29d3a` ("fix(tooling): track textual
+evidence (.tex tables) and update .gitignore (issue 348)") the
+validation suite failed with:
+
+  Blob SHA mismatch for .gitignore
+   left: 24022f39d03af223750fd1dc4c25644f60eec61a
+   right: 420330edbd2721dd41114c1a8c7653c395a4c7af
+
+and this was repaired in commit `297e9bc` ("test(validation):
+update .gitignore blob hash after issue 348").  The prediction is
+retired as recorded history; it did not anticipate a `.gitignore`
+hash change caused by a tooling commit unrelated to regeneration.
 
 When an `assert_blob` failure occurs:
 - Record the verbatim failure output (test name, expected hash,
