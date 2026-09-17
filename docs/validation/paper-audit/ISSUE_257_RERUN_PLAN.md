@@ -212,20 +212,28 @@ greps of `sha1_smol`, `assert_blob`, and 40-hex literals in
 `tests/validation.rs` at the base of this section; mechanism is
 `assert_blob` unless marked inline `sha1_smol`):
 
-| File pinned | Test function | Assertion line(s) | Step 9? |
-|-------------|---------------|-------------------|---------|
-| `sources/per_decision_energy.csv` | step_210c | 1850, 2281 | YES, changes |
-| `sources/distribution_stats.csv` | 210c, _b | 1854, 2285 | UNKNOWN - RUN |
-| `sources/distribution_stats.md` | 210c, _b | 1858, 2289 | UNKNOWN - RUN |
-| `sources/integer_multiple_check.md` | 210c, _b | 1862, 2293 | UNKNOWN - RUN |
-| `profiles/calibration.lock.toml` | 210c, _b | 1868, 2297, 2032 inline | NO |
-| `.gitignore` | 210c, _b | 1874, 2301, 2021 inline | NO |
+| File pinned | Test function | Lines | Step 9? |
+|-------------|---------------|-------|---------|
+| `sources/per_decision_energy.csv` | 210c, 27r | 1850, 2281 | YES |
+| `sources/distribution_stats.csv` | 210c, 27r | 1854, 2285 | UNKNOWN |
+| `sources/distribution_stats.md` | 210c, 27r | 1858, 2289 | UNKNOWN |
+| `sources/integer_multiple_check.md` | 210c, 27r | 1862, 2293 | UNKNOWN |
+| `profiles/calibration.lock.toml` | 210c, 27r, 210b | 1868, 2297, 2032 | NO |
+| `.gitignore` | 210c, 27r, 210b | 1874, 2301, 2021 | NO |
+
+Function-to-line assignment (derived from the fn grep; each
+assert_blob call site belongs to the enclosing test fn):
+1850, 1854, 1858, 1862, 1868, 1874 -> fn at 1774
+  (`step_210c_assertions`); 2281, 2285, 2289, 2293, 2297, 2301 ->
+  fn at 2039 (`step_27r_assertions`); 2021, 2032 -> fn at 1881
+  (`step_210b_assertions`, inline sha1_smol, no assert_blob).
 
 Total: 6 files pinned at 14 pin sites (12 `assert_blob` calls plus
 2 inline `sha1_smol` literals at 2021, 2032).  A 15th 40-hex
 literal at line 1120 (`e69de29...`) is the empty-blob sanity
 constant inside `calibration_lock_evidence_blobs_match_their_files`,
-not a file pin.  The four `sources/`
+not a file pin.  `step_210b_assertions` owns only the two inline
+pins and contains no `assert_blob` call.  The four `sources/`
 files are the only pinned files Step 9 can change; `.gitignore`
 and `profiles/calibration.lock.toml` cannot be affected by it.
 
