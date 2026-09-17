@@ -278,7 +278,7 @@ boundary-anchored patterns (step 2.37) classifies each:
 
 | Value | In manuscript? | Evidence (boundary-safe) |
 |---|---|---|
-| Pooled CI min 70.0 | NOT CLAIMED | no boundary-safe match |
+| Pooled CI min 70.0 | NOT CLAIMED | none; 1728/2656 are `70.07%`, unrelated |
 | Pooled CI p1 77.0 | NOT CLAIMED | no boundary-safe match |
 | Pooled CI q1 85.7 | NOT CLAIMED | no boundary-safe match |
 | Pooled CI median 89.3 | NOT CLAIMED | no boundary-safe match |
