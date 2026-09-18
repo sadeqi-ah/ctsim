@@ -1143,42 +1143,214 @@ itself.
 \subsubsection{Paxos}
 \label{sec:design-paxos}
 
-\begin{figure}[!t]
+\begin{figure*}[!t]
 \centering
-\resizebox{3.4in}{!}{%
-\begin{tikzpicture}[
-  font=\scriptsize,
-  turn/.style={draw, minimum width=1.35cm, minimum height=0.44cm,
-               inner sep=1pt},
-  st/.style={font=\ttfamily\scriptsize},
+\resizebox{0.92\textwidth}{!}{%
+\begin{tikzpicture}[font=\scriptsize]
+
+\tikzset{
+  paxcell/.style={
+    draw,
+    minimum height=0.42cm,
+    align=center,
+    inner sep=1pt
+  },
+  actor/.style={
+    circle,
+    draw,
+    minimum size=0.46cm,
+    inner sep=0pt,
+    font=\bfseries
+  }
+}
+
+% #1 = width
+% #2 = fill color
+% #3 = x coordinate
+% #4 = y coordinate
+% #5 = contents
+\newcommand{\Pcell}[5]{%
+  \node[
+    paxcell,
+    minimum width=#1,
+    fill=#2
+  ] at (#3,#4) {#5};
+}
+
+% ------------------------------------------------------------------
+% Centered three-node communication topology
+% ------------------------------------------------------------------
+
+\draw[
+  gray!65,
+  line width=0.5pt
 ]
-\node[turn] (t1) at (0.00,0) {turn of $n_1$};
-\node[turn] (t2) at (1.95,0) {turn of $n_2$};
-\node[turn] (t3) at (3.90,0) {turn of $n_3$};
-\node[turn] (t4) at (5.85,0) {turn of $n_4$};
-\draw[-{Latex[length=1.5mm]}] (t1) -- (t2);
-\draw[-{Latex[length=1.5mm]}] (t2) -- (t3);
-\draw[-{Latex[length=1.5mm]}] (t3) -- (t4);
-\node[st, below=2mm of t1] {1000};
-\node[st, below=2mm of t2] {1100};
-\node[st, below=2mm of t3] {1110};
-\node[st, below=2mm of t4] {1111};
-\node[anchor=north, align=center, below=7mm of t1]
-  {proposal for\\term $k$};
-\node[anchor=north, align=center, below=7mm of t2]
-  {bitmap grows\\by overhearing};
-\node[anchor=north, align=center, below=7mm of t3]
-  {majority quorum\\reached};
-\node[anchor=north, align=center, below=7mm of t4]
-  {last accepted\\term $:=k$};
-\node[anchor=south, font=\scriptsize] at (2.925,0.40)
-  {participation bitmap, example with four nodes};
-\end{tikzpicture}}
-\caption{Pipelined Paxos over \CI: implicit vote aggregation through the
-participation bitmap and cumulative acknowledgement through the last
-accepted term.}
-\label{fig:paxos}
-\end{figure}
+(4.55,0.6) -- (5.38,1) -- (6.21,0.6) -- cycle;
+
+\node[
+  actor,
+  fill=orange!30
+] at (4.55,0.6) {A};
+
+\node[
+  actor,
+  fill=blue!30
+] at (5.38,1) {C};
+
+\node[
+  actor,
+  fill=green!30
+] at (6.21,0.6) {B};
+
+% ------------------------------------------------------------------
+% Table header
+% ------------------------------------------------------------------
+
+\Pcell{0.72cm}{black!12}{0.36}{0}{Round}
+\Pcell{0.82cm}{black!12}{1.20}{0}{Init.}
+\Pcell{1.32cm}{orange!18}{2.45}{0}{New term}
+\Pcell{1.18cm}{black!12}{3.85}{0}{$T_1$}
+\Pcell{1.18cm}{black!12}{5.15}{0}{$T_2$}
+\Pcell{1.18cm}{black!12}{6.45}{0}{$T_3$}
+\Pcell{1.18cm}{black!12}{7.75}{0}{$T_4$}
+\Pcell{1.18cm}{black!12}{9.05}{0}{$T_5$}
+\Pcell{0.92cm}{green!15}{10.30}{0}{last}
+
+% ------------------------------------------------------------------
+% Round 1: A opens T_1.
+% ------------------------------------------------------------------
+
+\Pcell{0.72cm}{black!3}{0.36}{-0.62}{$R_1$}
+\Pcell{0.82cm}{orange!18}{1.20}{-0.62}{A}
+\Pcell{1.32cm}{orange!18}{2.45}{-0.62}{$T_1:v_A$}
+\Pcell{1.18cm}{blue!7}{3.85}{-0.62}{\texttt{A--}}
+\Pcell{1.18cm}{black!3}{5.15}{-0.62}{--}
+\Pcell{1.18cm}{black!3}{6.45}{-0.62}{--}
+\Pcell{1.18cm}{black!3}{7.75}{-0.62}{--}
+\Pcell{1.18cm}{black!3}{9.05}{-0.62}{--}
+\Pcell{0.92cm}{green!5}{10.30}{-0.62}{0}
+
+% ------------------------------------------------------------------
+% Round 2: B opens T_2 and votes for T_1.
+% ------------------------------------------------------------------
+
+\Pcell{0.72cm}{black!3}{0.36}{-1.24}{$R_2$}
+\Pcell{0.82cm}{orange!18}{1.20}{-1.24}{B}
+\Pcell{1.32cm}{orange!18}{2.45}{-1.24}{$T_2:v_B$}
+\Pcell{1.18cm}{blue!7}{3.85}{-1.24}{\texttt{AB--}}
+\Pcell{1.18cm}{blue!7}{5.15}{-1.24}{\texttt{-B-}}
+\Pcell{1.18cm}{black!3}{6.45}{-1.24}{--}
+\Pcell{1.18cm}{black!3}{7.75}{-1.24}{--}
+\Pcell{1.18cm}{black!3}{9.05}{-1.24}{--}
+\Pcell{0.92cm}{green!5}{10.30}{-1.24}{0}
+
+% ------------------------------------------------------------------
+% Round 3: C opens T_3 and votes for T_1 and T_2.
+% ------------------------------------------------------------------
+
+\Pcell{0.72cm}{black!3}{0.36}{-1.86}{$R_3$}
+\Pcell{0.82cm}{orange!18}{1.20}{-1.86}{C}
+\Pcell{1.32cm}{orange!18}{2.45}{-1.86}{$T_3:v_C$}
+\Pcell{1.18cm}{blue!7}{3.85}{-1.86}{\texttt{ABC}}
+\Pcell{1.18cm}{blue!7}{5.15}{-1.86}{\texttt{-BC}}
+\Pcell{1.18cm}{blue!7}{6.45}{-1.86}{\texttt{--C}}
+\Pcell{1.18cm}{black!3}{7.75}{-1.86}{--}
+\Pcell{1.18cm}{black!3}{9.05}{-1.86}{--}
+\Pcell{0.92cm}{green!5}{10.30}{-1.86}{0}
+
+% ------------------------------------------------------------------
+% Round 4: A commits T_1 and opens T_4.
+% ------------------------------------------------------------------
+
+\Pcell{0.72cm}{black!3}{0.36}{-2.48}{$R_4$}
+\Pcell{0.82cm}{orange!18}{1.20}{-2.48}{A}
+\Pcell{1.32cm}{orange!18}{2.45}{-2.48}{$T_4:v_A$}
+\Pcell{1.18cm}{green!22}{3.85}{-2.48}
+{\texttt{ABC}\\[-1pt]\scriptsize quorum}
+\Pcell{1.18cm}{blue!7}{5.15}{-2.48}{\texttt{ABC}}
+\Pcell{1.18cm}{blue!7}{6.45}{-2.48}{\texttt{A-C}}
+\Pcell{1.18cm}{blue!7}{7.75}{-2.48}{\texttt{A--}}
+\Pcell{1.18cm}{black!3}{9.05}{-2.48}{--}
+\Pcell{0.92cm}{green!22}{10.30}{-2.48}{1}
+
+% ------------------------------------------------------------------
+% Round 5: B commits T_2 and opens T_5.
+% ------------------------------------------------------------------
+
+\Pcell{0.72cm}{black!3}{0.36}{-3.10}{$R_5$}
+\Pcell{0.82cm}{orange!18}{1.20}{-3.10}{B}
+\Pcell{1.32cm}{orange!18}{2.45}{-3.10}{$T_5:v_B$}
+\Pcell{1.18cm}{green!22}{3.85}{-3.10}{\texttt{ABC}}
+\Pcell{1.18cm}{green!22}{5.15}{-3.10}
+{\texttt{ABC}\\[-1pt]\scriptsize quorum}
+\Pcell{1.18cm}{blue!7}{6.45}{-3.10}{\texttt{ABC}}
+\Pcell{1.18cm}{blue!7}{7.75}{-3.10}{\texttt{AB--}}
+\Pcell{1.18cm}{blue!7}{9.05}{-3.10}{\texttt{-B-}}
+\Pcell{0.92cm}{green!22}{10.30}{-3.10}{2}
+
+% ------------------------------------------------------------------
+% Round 6: C commits T_3 and opens T_6.
+% ------------------------------------------------------------------
+
+\Pcell{0.72cm}{black!3}{0.36}{-3.72}{$R_6$}
+\Pcell{0.82cm}{orange!18}{1.20}{-3.72}{C}
+\Pcell{1.32cm}{orange!18}{2.45}{-3.72}{$T_6:v_C$}
+\Pcell{1.18cm}{green!22}{3.85}{-3.72}{\texttt{ABC}}
+\Pcell{1.18cm}{green!22}{5.15}{-3.72}{\texttt{ABC}}
+\Pcell{1.18cm}{green!22}{6.45}{-3.72}
+{\texttt{ABC}\\[-1pt]\scriptsize quorum}
+\Pcell{1.18cm}{blue!7}{7.75}{-3.72}{\texttt{ABC}}
+\Pcell{1.18cm}{blue!7}{9.05}{-3.72}{\texttt{-BC}}
+\Pcell{0.92cm}{green!22}{10.30}{-3.72}{3}
+
+\end{tikzpicture}%
+}
+\caption{Worked six-round trace of pipelined Paxos over constructive
+interference on the three-node communication graph shown above. The
+initiator order is $A\rightarrow B\rightarrow C$, the majority quorum is
+$q=2$, and all nodes vote affirmatively. Each round initiates a new term
+while the participation bitmaps of earlier terms advance concurrently.
+A term is committed when its initiator observes a majority quorum. Each
+CI flood contains one byte-identical frame; pipelining occurs across
+successive flood rounds.}
+\label{fig:pipeline}
+\end{figure*}
+% \begin{figure}[!t]
+% \centering
+% \resizebox{3.4in}{!}{%
+% \begin{tikzpicture}[
+%   font=\scriptsize,
+%   turn/.style={draw, minimum width=1.35cm, minimum height=0.44cm,
+%                inner sep=1pt},
+%   st/.style={font=\ttfamily\scriptsize},
+% ]
+% \node[turn] (t1) at (0.00,0) {turn of $n_1$};
+% \node[turn] (t2) at (1.95,0) {turn of $n_2$};
+% \node[turn] (t3) at (3.90,0) {turn of $n_3$};
+% \node[turn] (t4) at (5.85,0) {turn of $n_4$};
+% \draw[-{Latex[length=1.5mm]}] (t1) -- (t2);
+% \draw[-{Latex[length=1.5mm]}] (t2) -- (t3);
+% \draw[-{Latex[length=1.5mm]}] (t3) -- (t4);
+% \node[st, below=2mm of t1] {1000};
+% \node[st, below=2mm of t2] {1100};
+% \node[st, below=2mm of t3] {1110};
+% \node[st, below=2mm of t4] {1111};
+% \node[anchor=north, align=center, below=7mm of t1]
+%   {proposal for\\term $k$};
+% \node[anchor=north, align=center, below=7mm of t2]
+%   {bitmap grows\\by overhearing};
+% \node[anchor=north, align=center, below=7mm of t3]
+%   {majority quorum\\reached};
+% \node[anchor=north, align=center, below=7mm of t4]
+%   {last accepted\\term $:=k$};
+% \node[anchor=south, font=\scriptsize] at (2.925,0.40)
+%   {participation bitmap, example with four nodes};
+% \end{tikzpicture}}
+% \caption{Pipelined Paxos over \CI: implicit vote aggregation through the
+% participation bitmap and cumulative acknowledgement through the last
+% accepted term.}
+% \label{fig:paxos}
+% \end{figure}
 
 Combining Paxos with the round-robin schedule removes several of the
 costs that the protocol incurs in an asynchronous setting. As established
