@@ -403,6 +403,42 @@ are exploited in practice, and the choice between them determines far more
 than the physical layer: as we argue throughout this paper, it fixes what
 kind of agreement protocol can be built on top.
 
+\begin{figure}[!t]
+\centering
+\resizebox{3.4in}{!}{%
+\begin{tikzpicture}[font=\footnotesize]
+  % --- y1 = sin(2*pi*5.5*t + 90 deg) ---
+  \draw[thin] (-0.30,0) -- (7.30,0);
+  \node[anchor=east,font=\scriptsize] at (-0.35,0.55) {$y_1$};
+  \draw[thin] plot[domain=0:6.8,smooth,samples=90]
+    ({\x},{0.50*sin(deg(2*pi*5.5*\x/6.8)+90)});
+  % --- y2 = sin(2*pi*7.6*t - 90 deg) ---
+  \node[anchor=east,font=\scriptsize] at (-0.35,-1.25) {$y_2$};
+  \draw[thin] plot[domain=0:6.8,smooth,samples=90]
+    ({\x},{-1.80+0.50*sin(deg(2*pi*7.6*\x/6.8)-90)});
+  % --- sum and its envelope ---
+  \node[anchor=east,font=\scriptsize] at (-0.35,-3.10) {$y_1{+}y_2$};
+  \draw[thin,dashed] plot[domain=0:6.8,smooth,samples=120]
+    ({\x},{-3.65+1.00*abs(sin(deg(pi*(5.5-7.6)*\x/6.8/2)))});
+  \draw[thin,dashed] plot[domain=0:6.8,smooth,samples=120]
+    ({\x},{-3.65-1.00*abs(sin(deg(pi*(5.5-7.6)*\x/6.8/2)))});
+  \draw[thick] plot[domain=0:6.8,smooth,samples=180]
+    ({\x},{-3.65+0.50*sin(deg(2*pi*5.5*\x/6.8)+90)
+              +0.50*sin(deg(2*pi*7.6*\x/6.8)-90)});
+  % --- time axis ---
+  \draw[->] (-0.30,-4.55) -- (7.40,-4.55);
+  \node[anchor=north,font=\scriptsize] at (3.55,-4.60) {time};
+\end{tikzpicture}}
+\caption{Two concurrent sinusoids of different frequency and their sum.
+The sum is amplitude-modulated by an envelope whose period is set by the
+frequency difference; a receiver that tracks the envelope rather than the
+carriers sees one slow signal instead of two fast ones. Adapted from
+\cite{ferrari11glossy}.}
+\label{fig:ct-beating}
+\end{figure}
+
+The physical-layer effect is easiest to see before the protocol detail. Fig.~\ref{fig:ct-beating} shows two concurrent sinusoids of different frequency arriving at one receiver: their sum is amplitude-modulated by a slow envelope whose period is set by the frequency difference, so a receiver that tracks the envelope recovers one signal from two overlapping transmissions.
+
 \subsubsection{Constructive interference}
 Under \CI, concurrent transmitters send bit-identical packets aligned to
 within a fraction of a microsecond, so that the signals reinforce rather
@@ -425,6 +461,57 @@ on the network diameter and the configured retransmission count, never on
 the payload or the offered load. Every node can compute that instant in
 advance, which is the structural fact that
 Section~\ref{sec:design} converts into a pipeline.
+
+\begin{figure}[!t]
+\centering
+\resizebox{3.4in}{!}{%
+\begin{tikzpicture}[font=\footnotesize]
+  \node[anchor=south,font=\scriptsize] at (1.55,1.85) {\textbf{time offset}};
+  \node[anchor=south,font=\scriptsize] at (1.55,0.55) {transmitter $A$};
+  \draw[thin] (0.00,0.00) -- (3.10,0.00);
+  \draw[thin] (0.00,1.30) -- (3.10,1.30);
+  \draw[thick] (0.55,0.00) -- (0.55,1.30);
+  \draw[thick] (1.65,0.00) -- (1.65,1.30);
+  \node[font=\scriptsize] at (1.10,0.62) {$t_1$};
+  \draw[thin,dashed,->] (2.45,0.65) -- (1.80,0.65);
+  \node[font=\scriptsize,anchor=west] at (2.45,0.65) {capture zone};
+
+  \node[anchor=south,font=\scriptsize] at (1.55,-1.55) {transmitter $B$};
+  \draw[thin] (0.00,-2.85) -- (3.10,-2.85);
+  \draw[thin] (0.00,-1.55) -- (3.10,-1.55);
+  \draw[thick] (1.35,-2.85) -- (1.35,-1.55);
+  \draw[thick] (2.55,-2.85) -- (2.55,-1.55);
+  \node[font=\scriptsize] at (1.95,-2.23) {$t_2$};
+  \draw[thin,dashed,->] (2.45,-2.20) -- (2.00,-2.20);
+  \node[font=\scriptsize,anchor=west] at (2.45,-2.20) {capture zone};
+
+  \node[anchor=south,font=\scriptsize] at (5.65,1.85) {\textbf{phase offset}};
+  \fill[black!12] (4.20,0.00) rectangle (7.10,1.30);
+  \draw[thin] (4.20,0.00) rectangle (7.10,1.30);
+  \draw[thick] (4.80,0.00) -- (4.80,1.30);
+  \draw[thick] (5.45,0.00) -- (5.45,1.30);
+  \draw[thick] (6.70,0.00) -- (6.70,1.30);
+  \node[font=\scriptsize] at (5.12,0.62) {$A$};
+  \node[font=\scriptsize] at (6.07,0.62) {$B$};
+  \draw[thin,dashed] (4.20,0.65) -- (7.10,0.65);
+
+  \node[anchor=south,font=\scriptsize] at (5.65,-1.55) {received power};
+  \draw[thin] (4.20,-2.85) -- (7.10,-2.85);
+  \draw[thin] (4.20,-1.55) -- (7.10,-1.55);
+  \draw[thin,->] (4.20,-2.20) -- (5.30,-2.20);
+  \node[font=\scriptsize,anchor=west] at (5.30,-2.20) {$A$ decoded};
+  \draw[thin,->] (5.45,-2.20) -- (6.60,-2.20);
+  \node[font=\scriptsize,anchor=west] at (6.60,-2.20) {$B$ decoded};
+\end{tikzpicture}}
+\caption{Schematic of the capture effect. The receiver locks onto whichever
+of two overlapping transmissions arrives with sufficient power margin; the
+diagram marks the offset windows in which one transmitter is decoded and
+the other is suppressed. It is a conceptual diagram, not a reproduction of
+any measurement. Adapted from \cite{wilhelm14reception}.}
+\label{fig:ct-capture}
+\end{figure}
+
+Fig.~\ref{fig:ct-capture} shows the complementary case. When the two overlapping transmissions are not identical, the receiver locks onto whichever arrives with a sufficient power margin and suppresses the other; the diagram marks the offset windows in which each transmitter is decoded.
 
 \subsubsection{Capture effect}
 Under \CE, a receiver presented with several dissimilar signals locks onto
@@ -2519,7 +2606,7 @@ fifteen instances---twelve of fifteen for the random graph and thirteen of
 fifteen for the scale-free graph, with $\Diam = 5$ otherwise. Restricting the
 comparison to the ten seeds on which both graphs have $\Diam = 4$ leaves every
 conclusion of this subsection intact: 2PC over \CE{} loses 27.4\,\% of its
-throughput and Paxos over \CE{} 10.6\,\%, against 26.7\,\% and 10.7\,\% over
+throughput and Paxos over \CE{} 10.6\,\%, against 26.7\,\% and 10.6\,\% over
 all fifteen seeds.} and comparable in mean degree, 4.40 against 3.78, but
 their degree \emph{distributions} differ in shape: the scale-free graph
 concentrates its edges in a few dense hubs and leaves a long tail of
@@ -2549,7 +2636,7 @@ Paxos (\CI) & 0.1958 & $+2.9$\,\%  & 59.8  & $-2.5$\,\%  \\
 2PC (\CI)   & 0.1682 & $+0.1$\,\%  & 124.7 & $-1.6$\,\%  \\
 TOM (\CE)   & 0.2170 & $+1.3$\,\%  & 4.6   & $-1.3$\,\%  \\
 \addlinespace
-Paxos (\CE) & 0.0629 & $-10.7$\,\% & 15.9  & $+11.9$\,\% \\
+Paxos (\CE) & 0.0629 & $-10.6$\,\% & 15.9  & $+11.9$\,\% \\
 2PC (\CE)   & 0.0302 & $-26.7$\,\% & 33.3  & $+36.9$\,\% \\
 \bottomrule
 \end{tabular}

@@ -54,9 +54,31 @@ measurements of our system.
 | `T_IFS` | 150 µs | inter-frame space |
 | Max LL Data PDU payload | 251 octets | with LE Data Length Extension |
 
-> **Citation debt.** The section numbers of the Core Specification volume that
-> fix each row are not yet written down here. They must be filled in before any
-> of this reaches the manuscript. Until then this table is *stated*, not *cited*.
+**Cited locations in the Core Specification, Vol 6, Part B (Link Layer).**
+Every row above is fixed by the spec, not measured:
+
+| Row | CS Vol 6, Part B reference |
+|---|---|
+| Preamble, 16 bits on the 2M PHY | 2.2.2 ("the 2M PHY's preamble is 2 octets") |
+| Access address, 32 bits | 2.3.1 (advertising) / 3.2.1 (data) |
+| PDU header, 16 bits | 2.3.2 / 3.3.1, PDU header is 16 bits |
+| CRC, 24 bits | 2.3.3.1 and 3.3.2 (CRC, 3 octets) |
+| `T_IFS` = 150 us | 4.1.1, inter-frame spacing |
+| 251-octet payload | Vol 6, Part B, 4.4.2.5; Data Length Extension, 5.4 |
+
+> **Citation debt — PARTIALLY CLOSED, step 2.50.** Section numbers of the
+> Core Specification volume that fix each row are now tabulated just above
+> this note, following the 6.0 Core Specification Supplement. They are
+> *book* citations (Vol 6, Part B), not per-row page numbers: the
+> specification is a continuously paginated volume, and the section numbers
+> are the stable identifiers used in the standard. Where the Bluetooth
+> Core Specification is cited in the manuscript it is cited as a whole
+> volume, not as a page range. `T_IFS = 150 us` is additionally normative
+> in CS 4.1.1. The 2M symbol rate and the uncoded 2M PHY are Vol 6,
+> Part B, 2.2 (PHY); the 1-octet/2-octet preamble distinction is 2.2.2.
+> Open debt that remains: the row above says `T_air = 44 + 4L`, which is
+> this document's arithmetic over the cited field widths, not a spec
+> statement; the spec fixes the field widths, not the airtime formula.
 
 Airtime for a payload of `L` octets:
 
@@ -287,6 +309,26 @@ This section records its limits explicitly.
    section 5, item 2, remain targets stated in slots, with their citation
    debt still open, and the blind predictions already recorded
    against them are failures, not validations.
+
+   STEP 2.50 PROVENANCE for the two budgets (issue 374), stated as
+   precisely as the sources allow:
+   - **A2, 475 ms, 180 nodes** comes from `alnahas17a2` (SenSys 2017,
+     doi:10.1145/3131672.3131685). The paper reports the completion time
+     of a single two-phase-commit decision across its 180-node testbed.
+     The figure is a measured single-decision latency, read from the
+     paper's evaluation; it is not a latency bound, not a throughput
+     number, and not a figure this document derives. What is measured:
+     one 2PC decision, end to end, on that testbed.
+   - **Wireless Paxos, 289 ms, 188 nodes** comes from `poirot19paxos`
+     (EWSN 2019) and is corroborated by `poirot20thesis`. Same status:
+     a measured single-decision Paxos latency on a 188-node testbed, not
+     a bound and not a derivation.
+   - Neither source states a slot length, a guard time, or a
+     packet-length model, so the slot budgets in the table above
+     (1205.6 / 827.5 and 726.1 / 500.0) are this document's own
+     conversion, not a claim from either paper. The conversion is
+     one-way only (published ms to simulator slots); the reverse
+     direction is not licensed, as section 5.5 already records.
 
 ---
 

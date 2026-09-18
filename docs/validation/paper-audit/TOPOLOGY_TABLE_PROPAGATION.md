@@ -156,8 +156,17 @@ convention across the entire table.
   `-10.6476%` (`-10.6%`), whereas the published value `-10.7%` reproduces only
   from the 4-decimal means `0.0629 / 0.0704` (`-10.6534%`).
 - The discrepancy is `0.006` percentage points from the one-decimal rounding
-  boundary, and the prose at `paper/paper.tex:2495` states the same `10.7%`.
-- The manuscript is deliberately left unchanged: the CE rows are affected by
-  neither issue 257 nor decision-9, and changing a published figure for a
-  rounding-boundary artefact is out of scope for this PR. Recorded as an open
-  question.
+  boundary, and the prose stated the same `10.7%`.
+- STEP 2.50 RESOLUTION (issue 351): the governing contract is the table
+  caption -- "each change is the ratio of the means" -- which is the raw
+  per-seed mean basis. The raw basis is authoritative for eleven of the
+  twelve cells and gives `-10.6476%`, correctly rounding to `-10.6%`, not
+  `-10.7%`. The published `-10.7%` was reproducible only from the
+  4-decimal printed means (`0.0629 / 0.0704 -> -10.6534%`), which is not the
+  captioned basis. The manuscript has therefore been corrected to the
+  raw-basis value in both sites: the Table IV (`tab:degree`) cell and the
+  matching prose. Command evidence (15 seeds each, from
+  `plots/topology/results/sweep_summary.csv`):
+  `paxos_ce` throughput, scale-free mean / random mean - 1 = -10.6476%.
+- No other number in the table or the prose was changed. The remaining
+  eleven cells were already raw-basis correct.
