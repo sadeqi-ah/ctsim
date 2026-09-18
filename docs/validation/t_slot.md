@@ -66,19 +66,25 @@ Every row above is fixed by the spec, not measured:
 | `T_IFS` = 150 us | 4.1.1, inter-frame spacing |
 | 251-octet payload | Vol 6, Part B, 4.4.2.5; Data Length Extension, 5.4 |
 
-> **Citation debt — PARTIALLY CLOSED, step 2.50.** Section numbers of the
-> Core Specification volume that fix each row are now tabulated just above
-> this note, following the 6.0 Core Specification Supplement. They are
-> *book* citations (Vol 6, Part B), not per-row page numbers: the
-> specification is a continuously paginated volume, and the section numbers
-> are the stable identifiers used in the standard. Where the Bluetooth
-> Core Specification is cited in the manuscript it is cited as a whole
-> volume, not as a page range. `T_IFS = 150 us` is additionally normative
-> in CS 4.1.1. The 2M symbol rate and the uncoded 2M PHY are Vol 6,
-> Part B, 2.2 (PHY); the 1-octet/2-octet preamble distinction is 2.2.2.
-> Open debt that remains: the row above says `T_air = 44 + 4L`, which is
-> this document's arithmetic over the cited field widths, not a spec
-> statement; the spec fixes the field widths, not the airtime formula.
+> **Citation status - normative inputs closed, arithmetic explicit, step 2.50.**
+> The normative PHY inputs are CLOSED: symbol rate, preamble, access
+> address, PDU header, CRC, `T_IFS`, and the payload limit are each
+> identified by Core Specification section numbers in the table just above
+> (Vol 6, Part B, following the 6.0 Core Specification Supplement). These
+> are *book* citations (section numbers, not per-row page numbers): the
+> specification is a continuously paginated volume and its section numbers
+> are the stable identifiers used in the standard. What is deliberately
+> NOT claimed as closed: the airtime row. `T_air(L) = (88 + 8L) x 0.5 us
+> = 44.0 + 4.0 x L` is not a specification quotation and needs no separate
+> external citation; it is this document's transparent arithmetic
+> derivation over the cited field widths and symbol rate, and it must not
+> be read as if the specification itself states `44 + 4L` -- the spec
+> fixes the field widths, not the airtime formula. `T_guard` remains an
+> implementation parameter, not a spec constant, and stays bracketed at
+> 10 us and 100 us per side below; it is a model assumption, not a
+> normative input. No specification PDF was added and no page-level
+> verification was performed; what is closed is the identification of the
+> normative inputs by section number, nothing more.
 
 Airtime for a payload of `L` octets:
 
@@ -260,7 +266,9 @@ above, not a sweep.
    These are *targets*, computed here so the prediction can be stated in slots
    before any run. They are not results, and the citation debt on both budgets
    is still open.
-3. **The framing table needs spec section numbers** (section 2) before use.
+3. **The framing table's normative inputs are now section-cited** (section 2),
+   and the airtime formula is explicitly this document's own derivation
+   over those cited inputs, not a specification statement.
 4. **The `L_json` finding needs a decision**, recorded but not taken here:
    either the manuscript states that packet length is not modelled and quotes the
    bit-packed wire model when converting to milliseconds, or the simulator gains
