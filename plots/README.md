@@ -2,8 +2,11 @@
 
 Each script is **self-contained**: run it from anywhere and it will compile the
 simulator (release mode), run the experiments it needs, and write its figures
-**next to itself**. Nothing here is committed — every `.png`, `.pdf`, `.csv` and
-`.tex` is reproduced from source and is git-ignored.
+**next to itself**. Generated figures and LaTeX tables are not committed:
+every `.png`, `.pdf`, and `.tex` is reproduced from source and git-ignored.
+The two sweep-summary CSVs below are the exception: they are committed inputs
+for downstream plotting and table generation; other generated CSVs remain
+ignored.
 
 ## Regenerate everything
 
@@ -61,7 +64,7 @@ Shared helpers live in [`_common.py`](_common.py).
 | `duty_cycle/plot_kde_awake.py` | awake-node PMF and duty-cycle extremes | 6 single runs |
 
 Tables are written as both `.csv` (for inspection) and `.tex` (a bare
-`tabular` block, ready to `\input`). The scripts also print each table to
+`tabular` block, ready to `\\input`). The scripts also print each table to
 stdout, so a run doubles as a readable report.
 
 ## Dependency order
@@ -88,9 +91,12 @@ python3 plots/duty_cycle/plot_kde_awake.py
 The same command produces byte-identical output on the same machine. Two RNGs
 have to be pinned for that to hold, and both already are:
 
+- **Seed 99 is retired and must not be used for published results** (Decision
+  27). It may appear only in historical validation records; published
+  aggregates use the registered fifteen-seed set.
 - The simulator is seeded from the TOML (`seed`), and graph construction sorts
   every set before use — an unsorted `HashSet` would make the topology depend on
   per-process hash order.
 - Seaborn's default `errorbar` is a bootstrap that draws from NumPy's global
   RNG, and `stripplot`'s jitter does too. Scripts using them pass `seed=0` /
-  call `np.random.seed(0)`. `errorbar="sd"` is closed-form and needs neither.
+  call `np.random.seed(0)`. `errorbar=\"sd\"` is closed-form and needs neither.
