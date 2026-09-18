@@ -145,10 +145,11 @@ the deterministic, bounded flood rounds of constructive interference (CI) to
 bring pipelined execution, previously used only for one-way bulk
 dissemination, to the full logic of consensus protocols. We design and
 implement pipelined Paxos, non-blocking two-phase commit (2PC), and
-total-order multicast (TOM) on a CI substrate, using a unified message
-format that combines a participation bitmap, cumulative commitment, and
-NACK-driven cascading recovery to keep several decisions in flight while
-preserving total order. Extensive slot-level simulation shows that the
+total-order multicast (TOM) on a CI substrate, using a unified logical message format with a current-term participation
+bitmap, cumulative commitment, and NACK-driven cascading recovery. The
+bitmap is merged locally into the pending state of the current and earlier
+terms, allowing several decisions to remain in flight while preserving
+total order. Extensive slot-level simulation shows that the
 pipeline sustains, on average, about 12 concurrent proposals for Paxos and
 about 21 for 2PC, yielding 4.083x higher baseline throughput (global maximum 4.268x) and 5.672x better
 baseline per-decision energy efficiency (global maximum 5.987x) than CE-based counterparts. We
@@ -287,15 +288,17 @@ applied to the logic of consensus protocols, which require round-trip
 voting, quorum accounting, and a guaranteed global order.
 
 We design a unified pipelined message format---an initiator-generated
-control header carrying a term identifier, a last-accepted term for
-cumulative commitment, an $\Nnodes$-bit participation bitmap for implicit
-vote aggregation, and a NACK field for cascading recovery---and use it to
+control header carrying the current term, a cumulative commitment marker,
+a current-term participation bitmap, and a NACK term. At receivers, the
+bitmap is OR-merged into the local pending state of the current and
+earlier terms---and use it to
 implement three protocols over \CI: pipelined Paxos, non-blocking 2PC, and
 total-order multicast with distributed sequencing. Because the round-robin
 schedule partitions the term space in advance, proposal collisions become
 structurally impossible and Paxos loses its Promise phase entirely; because
-every node observes the same flooded bitmap at the same deterministic
-instant, 2PC commits without a coordinator and therefore never blocks,
+every node observes the same deterministic sequence of
+current-term participation markers and applies the same local merge rule,
+2PC commits without a coordinator and therefore never blocks,
 achieving 3PC-grade availability \cite{skeen81nonblocking} at 2PC message
 cost. Evaluating all six protocol--substrate combinations in a slot-level
 simulator, we find that the pipeline sustains about 12 concurrent proposals
@@ -971,7 +974,7 @@ pay for.
 \end{tikzpicture}}
 \caption{Pipelined execution: the phases of several agreement instances
 overlap on a chain of deterministic flood rounds.}
-\label{fig:pipeline}
+\label{fig:pipeline-overlap}
 \end{figure}
 
 A conventional agreement protocol serialises its phases: the system waits
@@ -990,7 +993,7 @@ and simultaneously piggybacks the proposal or vote belonging to instance
 $k$, which is entering its first phase. Under sustained load the network
 is therefore always advancing several phases of several different
 agreements concurrently, and the medium is never idle waiting for a
-round trip to close. Fig.~\ref{fig:pipeline} sketches that overlap on a
+round trip to close. Fig.~\ref{fig:pipeline-overlap} sketches that overlap on a
 chain of consecutive flood rounds.
 
 It is worth distinguishing this from batching, with which it is easily
@@ -1043,38 +1046,125 @@ merged in flight.
 
 \begin{figure}[!t]
 \centering
-\resizebox{3.4in}{!}{%
+\resizebox{\linewidth}{!}{%
 \begin{tikzpicture}[
   font=\scriptsize,
-  fld/.style={draw, minimum height=0.95cm, inner sep=2pt, align=center},
-  br/.style={decorate, decoration={brace, amplitude=4pt}},
+  fld/.style={
+    draw,
+    minimum height=0.82cm,
+    inner sep=2pt,
+    align=center
+  },
+  header/.style={
+    fld,
+    fill=black!7
+  },
+  payload/.style={
+    fld,
+    fill=orange!10
+  },
+  br/.style={
+    decorate,
+    decoration={
+      brace,
+      amplitude=3pt
+    }
+  }
 ]
-\node[fld, minimum width=1.35cm] (f1) at (0,0) {term\\ident.};
-\node[fld, minimum width=1.45cm, right=0pt of f1] (f2)
-  {last acc.\\term};
-\node[fld, minimum width=1.95cm, right=0pt of f2] (f3)
-  {particip.\ bitmap\\($\Nnodes$ bits)};
-\node[fld, minimum width=1.00cm, right=0pt of f3] (f4) {NACK};
-\node[fld, minimum width=1.75cm, right=0pt of f4, fill=black!8] (f5)
-  {pipelined\\payload};
+
+% Logical control header
+
+\node[
+  header,
+  minimum width=1.35cm
+] (f1) at (0,0)
+{current\\term};
+
+\node[
+  header,
+  minimum width=1.65cm,
+  right=0pt of f1
+] (f2)
+{last accepted\\term\\[-1pt]\scriptsize(optional)};
+
+\node[
+  header,
+  minimum width=2.35cm,
+  right=0pt of f2
+] (f3)
+{current-term\\participation bitmap\\[-1pt]
+\scriptsize($N$ logical bits)};
+
+\node[
+  header,
+  minimum width=1.35cm,
+  right=0pt of f3
+] (f4)
+{NACK term\\[-1pt]\scriptsize(0 = none)};
+
+% Payload
+
+\node[
+  payload,
+  minimum width=1.45cm,
+  right=0pt of f4
+] (f5)
+{proposal\\data};
+
+\node[
+  payload,
+  minimum width=1.45cm,
+  right=0pt of f5
+] (f6)
+{piggyback\\term\\[-1pt]\scriptsize(optional)};
+
+\node[
+  payload,
+  minimum width=1.75cm,
+  right=0pt of f6
+] (f7)
+{piggyback\\recovery data};
+
+% Group labels
+
 \draw[br]
-  ($(f1.north west)+(0,2pt)$) -- ($(f4.north east)+(0,2pt)$)
-  node[midway, above=4pt] {control header};
+  ($(f1.north west)+(0,2pt)$) --
+  ($(f4.north east)+(0,2pt)$)
+  node[
+    midway,
+    above=4pt
+  ] {control header};
+
 \draw[br]
-  ($(f5.north west)+(0,2pt)$) -- ($(f5.north east)+(0,2pt)$)
-  node[midway, above=4pt] {payload};
-\end{tikzpicture}}
-\caption{Unified frame format: a control header (term identifier, last
-accepted term, participation bitmap and NACK field) followed by the
-pipelined payload.}
+  ($(f5.north west)+(0,2pt)$) --
+  ($(f7.north east)+(0,2pt)$)
+  node[
+    midway,
+    above=4pt
+  ] {payload};
+
+\end{tikzpicture}%
+}
+\caption{Logical Paxos-over-CI packet format used by the simulator. Each
+flood carries one bitmap for the current term. At every receiver, the
+bitmap is merged into the local pending state of that term and all earlier
+terms, which provides cumulative vote aggregation across successive flood
+rounds. The payload carries the current proposal and optional recovery data
+for a missing term.}
 \label{fig:frame}
 \end{figure}
 
 Low-power radios impose tight frame budgets, so pipelining and state
-recovery must share one compact structure rather than each introducing its
-own control traffic. The frame has two parts: a control header that drives
-the state machine, and a payload that carries protocol content.
-Fig.~\ref{fig:frame} shows the field layout.
+recovery must share one compact logical packet structure rather than each
+introducing its own control traffic. The packet has two parts: a control
+header that identifies the current term and carries the current-term
+participation bitmap, cumulative commitment marker, and NACK term, followed
+by a payload carrying the current proposal and optional recovery data. Only
+one bitmap is transmitted in each flood. At the receiver, that bitmap is
+OR-merged into the local pending state of the current term and all earlier
+terms, so cumulative aggregation occurs in local protocol state rather than
+as a multi-term bitmap inside one packet. Fig.~\ref{fig:frame} shows this
+logical packet structure.
 
 \subsubsection{Control header}
 The header carries four fields.
@@ -1091,42 +1181,48 @@ single field acknowledges that decision and every decision preceding it,
 which is what allows commit notifications to occupy no payload space at
 all.
 
-\item \textbf{Participation bitmap.} A field of $\Nnodes$ bits, one per
-node. The sender writes the bits it currently holds for the instance named
-in the header; a node that receives or merely overhears the frame merges
-those bits into its own record of that instance and of every earlier one,
-and contributes its own bit when its turn to flood arrives. Because a
-constructive-interference flood requires every retransmission to carry a
-byte-identical payload, a relay cannot modify the frame in flight: the
-bitmap therefore accumulates in the replicated local state of the nodes
-rather than inside a single travelling frame, and it still costs no
-dedicated acknowledgement message.
+\item \textbf{Current-term participation bitmap.}
+The packet carries one $N$-bit logical bitmap for the term named in
+\texttt{current\_term}. Bit $i$ indicates that node $i$ has participated in,
+and voted affirmatively for, that term in the sender's local view. During
+proposal-generation rounds, the bitmap is normally one-hot because each
+round has one scheduled initiator. When a node receives the bitmap, it
+OR-merges the set bits into the local pending state of the current term and
+all earlier pending terms. Thus, only one bitmap is transmitted in each
+flood, while older terms accumulate participation information across later
+rounds. Each in-flight term maintains its own bitmap in the node's local
+pending state.
 
-\item \textbf{NACK field.} Zero in normal operation. A node that infers
-from the term identifier that it has fallen behind writes the identifier
-of its last successful decision here, thereby requesting recovery.
+\item \textbf{NACK term.}
+The field is zero during normal operation. If a node detects a missing
+term, it places the identifier of that term in \texttt{nack\_term}. A node
+that already stores the requested term may return its proposal data through
+the optional piggyback recovery fields in a later flood.
 \end{itemize}
 
 \subsubsection{Pipelined payload}
-The payload holds the proposal data requiring agreement, followed by
-piggybacked pipeline data: the state of the preceding transaction, or the
-content requested by an outstanding NACK. This is the field that makes
-the overlap of Section~\ref{sec:design-pipeline} concrete, and it is also
-what allows a lagging node to be brought up to date without interrupting
-the pipeline, since recovery data travels in the same frames that carry
-new decisions forward.
+The payload has three logical components. The \texttt{proposal\_data} field
+carries the proposal associated with \texttt{current\_term}. The optional
+\texttt{piggyback\_term} field identifies a missing term requested by a
+NACK. The \texttt{piggyback\_data} field carries the corresponding recovery
+data. These recovery fields allow a lagging node to catch up without
+interrupting the pipeline, because recovery data travels in the same floods
+that carry new proposals forward.
+
+The payload does not contain a separate bitmap for every in-flight term.
+Each node stores those per-term bitmaps locally in its pending state, and
+the current-term bitmap received in a flood is merged into the current and
+earlier pending terms.
 
 \subsubsection{Frame size and scalability}
-The only component of the header that grows with the network is the
-bitmap, at one bit per node: for the $\Nnodes = 27$ network used
-throughout Section~\ref{sec:results} it occupies four bytes, which is
-negligible beside the payload capacity available on the Bluetooth~5
-physical layers targeted by BlueFlood \cite{alnahas21blueflood}. We note
-for completeness that this linear growth bounds the design: at several
-hundred nodes the bitmap would begin to compete with the payload for frame
-space, and a coarser representation would be required. We have not
-evaluated such a representation, and the networks studied here are far
-from that regime.
+The logical participation bitmap contains one bit per node, so its logical
+size is $N$ bits. In the current simulator, the bitmap is represented as a
+\texttt{Vec<bool>} inside the protocol state and is carried by the internal
+packet serializer. The current serializer does not implement a bit-packed
+wire representation. A future bit-packed implementation would require
+$\lceil N/8\rceil$ bytes for this field. Therefore, the bitmap-size
+statement in this paper refers to the logical protocol format, not to the
+literal byte length of the simulator's JSON representation.
 
 %%---------------------------------------------------------------------
 \subsection{Protocol Instantiations}
@@ -1312,8 +1408,12 @@ $q=2$, and all nodes vote affirmatively. Each round initiates a new term
 while the participation bitmaps of earlier terms advance concurrently.
 A term is committed when its initiator observes a majority quorum. Each
 CI flood contains one byte-identical frame; pipelining occurs across
-successive flood rounds.}
-\label{fig:pipeline}
+successive flood rounds. The table shows the local pending-state view after
+each round; each flood itself carries only one bitmap for its current term.
+Older terms accumulate participation information because each received
+current-term bitmap is merged into the local state of the current and
+earlier terms.}
+\label{fig:paxos}
 \end{figure*}
 % \begin{figure}[!t]
 % \centering
@@ -1368,13 +1468,15 @@ and initiates the flood.
 
 \paragraph{Implicit, concurrent quorum}
 Instead of soliciting dedicated acknowledgements, the protocol relies on
-overhearing. Every node that receives the frame sets its own bit for the
-current instance and floods that bit when its own turn arrives, so votes
-accumulate as the schedule advances through the remaining nodes of the
-cycle. A vote is cumulative: a bit set for the term named in the header
-also counts for every earlier term still in flight, so a single bitmap
-advances several in-flight decisions at once and no instance has to be
-suspended while another collects its votes.
+the deterministic sequence of flood rounds. Each flood carries one
+current-term participation bitmap. A node that receives the frame records
+the bitmap in its local pending state and sets its own participation bit
+for the current and earlier pending terms. When the initiator's turn
+returns, the node checks the relevant local bitmap for a majority quorum.
+Consequently, the packet does not carry separate bitmaps for all in-flight
+terms; cumulative aggregation is performed by OR-merging each received
+current-term bitmap into the local pending state of that term and all
+earlier terms.
 
 \paragraph{Cumulative commit}
 When the turn returns to the original proposer, it inspects the bitmap and
