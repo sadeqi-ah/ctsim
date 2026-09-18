@@ -79,8 +79,13 @@ def main():
         f.write("Snapshots sample in-flight slot state inside the round loop (`src/phy/ci.rs:67`, `src/phy/ce.rs:51`). The run terminates immediately after the 100th decision is finalised (`src/sim.rs:134-138`, `src/sim/pipeline.rs:145-165`, `src/sim/paxos_pipeline.rs:264-278`) without ticking a further slot; therefore the final snapshot reads 99 decisions while the run totals record 100/100 committed.\n")
 
     print("Running A2...")
+    # Reference operating point is configuration-driven: the same TOML that
+    # builds `ref_op` above (issue 357). The sweep filter must not hard-code
+    # values that can drift from the canonical config.
     df_sweep = pd.read_csv(ROOT / "plots/scalability/results/sweep_summary.csv")
-    df_ref = df_sweep[(df_sweep["nodes"] == 27) & (df_sweep["loss_rate"] == 0.05)].copy()
+    ref_n = t["network"]["num_nodes"]
+    ref_loss = t["network"]["loss_rate"]
+    df_ref = df_sweep[(df_sweep["nodes"] == ref_n) & (df_sweep["loss_rate"] == ref_loss)].copy()
     
     df_ref["slots_per_decision"] = df_ref["end_slot"] / df_ref["committed"]
     df_ref[["phy", "protocol", "seed", "end_slot", "committed", "slots_per_decision"]].rename(
