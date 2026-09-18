@@ -2423,6 +2423,88 @@ thesis of this paper but its simplest instance: even in the worst case for
 pipelining---where there is no phase to overlap at all---the \CI{}
 architecture consumes less energy at no cost in speed.
 
+\subsection{Hardware Sanity Check: Pipelined versus Sequential Execution}
+\label{sec:results-hardware}
+
+The slot-level simulation predicts that pipelining should primarily improve
+the rate at which a workload completes, while leaving the lifetime of an
+individual consensus largely unchanged. We tested this qualitative
+prediction in an 8-node BlueFlood hardware experiment using the same
+workload of 200 committed messages in both modes. The experiment compared
+a sequential, non-pipelined configuration with the proposed pipelined
+configuration.
+
+\begin{table}[!t]
+\caption{Hardware comparison for a workload of 200 committed messages.
+Throughput is reported in decisions per local communication slot and
+therefore measures slot-normalised protocol efficiency rather than
+wall-clock throughput.}
+\label{tab:hardware-pipeline}
+\centering
+\footnotesize
+\setlength{\tabcolsep}{3.5pt}
+\begin{tabular}{@{}lrrr@{}}
+\toprule
+\textbf{Metric} &
+\textbf{Non-pipeline} &
+\textbf{Pipeline, fill} &
+\textbf{Pipeline, steady state} \\
+\midrule
+Committed messages & 200 & 200 & 200 \\
+Communication rounds & 1626 & 207 & 200 \\
+Local communication slots & 6504 & 828 & 800 \\
+Slot-normalised throughput &
+0.030750 & 0.241545 & 0.250000 \\
+Mean consensus latency (ms) &
+1345 & 1338.890 & 1338.890 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The hardware result confirms the qualitative prediction of the simulation.
+In the first 200-commit window, pipelining reduced the number of
+communication rounds and local communication slots by 87.27\%. After the
+pipeline had filled, the system produced one committed decision per round,
+requiring 800 slots for 200 decisions. The mean lifetime of an individual
+consensus, however, remained approximately eight rounds and 29 slots in
+both pipelined windows. Thus, the principal benefit came from overlapping
+independent consensus instances rather than from shortening the lifetime
+of one instance.
+
+The slot-normalised throughput increased by a factor of
+$0.241545/0.030750 = 7.86$ in the initial pipelined window and by a factor
+of $0.250000/0.030750 = 8.13$ after pipeline fill. These ratios should not
+be interpreted as an eight-fold increase in wall-clock throughput: their
+denominator is the number of local communication slots. Using the elapsed
+experiment time reported by the hardware logs, the first pipelined window
+completed 200 decisions in 39.392\,s, compared with 42.308\,s for the
+non-pipelined run, corresponding to a 1.07-fold or 7.4\% increase in
+wall-clock throughput. The steady-state pipelined window completed in
+38.241\,s, corresponding to a 1.11-fold or 10.6\% increase relative to
+the non-pipelined run.
+
+The direct latency of one consensus changed only slightly, from
+approximately 1.345\,s without pipelining to 1.338890\,s with pipelining,
+a reduction of about 6.11\,ms or 0.45\%. This separation between nearly
+unchanged single-decision latency and substantially lower amortised
+communication work is consistent with the central mechanism of the
+proposed architecture.
+
+Both configurations completed the compared 200-commit workload without a
+failed decision. The pipelined run reported 100\% local RX reliability in
+the compared windows, whereas the non-pipelined run reported 96.38\%
+local RX reliability and five CRC failures. These reliability figures are
+reported as observations from one hardware run and are not used as a
+statistical comparison.
+
+Finally, the hardware experiment measured communication activity rather
+than electrical energy. The reductions in communication slots, TX slots,
+RX slots, and TX airtime are therefore energy proxies, not joule
+measurements. The hardware result should consequently be read as an
+independent sanity check that the simulated concurrency mechanism appears
+on the target platform, rather than as a complete replicated hardware
+validation or a direct measurement of electrical energy.
+
 %%---------------------------------------------------------------------
 \subsection{Energy Consumption}
 \label{sec:results-energy}
@@ -3074,10 +3156,14 @@ blocking, in other words, inflates latency without destroying efficiency.
 
 Beyond this design limitation, two further boundaries of validity have
 already been stated and are collected here for the reader's convenience.
-First, all results are obtained in simulation at the granularity of a
-slot, and the scope of that abstraction, the direction of the bias it
-introduces and the calibration procedure used to control it are set out in
-Section~\ref{sec:method-validation}. Second, the fault model covers packet
+First, the main parameter sweep, topology study and generalisation results
+are obtained in simulation at the granularity of a slot. The scope of that
+abstraction, the direction of the bias it introduces and the calibration
+procedure used to control it are set out in
+Section~\ref{sec:method-validation}. Section~\ref{sec:results-hardware}
+provides a separate 8-node hardware sanity check, but it is a single
+workload comparison and does not replace replicated hardware experiments or
+a direct measurement of electrical energy. Second, the fault model covers packet
 loss only; crash and Byzantine behaviour are outside the scope of this
 evaluation, for the reasons given in Section~\ref{sec:model-fault}.
 
