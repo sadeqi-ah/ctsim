@@ -291,8 +291,7 @@ We design a unified pipelined message format---an initiator-generated
 control header carrying the current term, a cumulative commitment marker,
 a current-term participation bitmap, and a NACK term. At receivers, the
 bitmap is OR-merged into the local pending state of the current and
-earlier terms---and use it to
-implement three protocols over \CI: pipelined Paxos, non-blocking 2PC, and
+earlier terms. We use this format to implement three protocols over \CI: pipelined Paxos, non-blocking 2PC, and
 total-order multicast with distributed sequencing. Because the round-robin
 schedule partitions the term space in advance, proposal collisions become
 structurally impossible and Paxos loses its Promise phase entirely; because
