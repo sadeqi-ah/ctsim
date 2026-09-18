@@ -205,6 +205,42 @@ output is not committed in the repository.
 
 \* Note on latency figures: Latency is read directly from `avg_latency` (not arithmetically derived from `committed`), but it is measured inside simulation runs where the defect fabricated quorums; thus the plotted Paxos(CI) data points consume exposed runs.
 
+STEP 2.51 FIGURE-DATA AUDIT (for the rows historically numbered Fig 3b,
+Fig 4, Fig 12b above): repository labels are authoritative; the historical
+issue numbering is not the current figure number. Current labels and
+verified provenance, recomputed from the committed CSVs only (no generator
+or simulator run), under the exact filters of the named scripts:
+
+- `fig:thr-loss` (`throughput_vs_loss.pdf`; `plot_scalability.py:146`;
+  filter `nodes == 27`, `loss_rate > 0`, `paxos_pipeline` + `ci`;
+  throughput = `committed` / `end_slot`; mean over 15 seeds):
+  0.05 -> 0.1903, 0.1 -> 0.1829, 0.2 -> 0.1699.
+- `fig:lat-nodes` (`latency_vs_nodes.pdf`; `plot_scalability.py:107`;
+  filter `loss_rate == 0.05`; y = `avg_latency`; mean over 15 seeds):
+  N=6 -> 8.1147, N=13 -> 23.4280, N=27 -> 61.3940, N=54 -> 147.5440,
+  N=188 -> 645.7140.
+- `fig:lat-topo` (`lat_vs_topology.pdf`; `plot_topology.py:95`;
+  N=27, loss 0.05; y = `avg_latency`; mean over 15 seeds):
+  full_mesh 35.4333, line 273.3813, partial_mesh 44.1693,
+  random 61.3940, scale_free 59.8500.
+
+These reproduce from the committed sweep CSVs under the scripts' filters;
+the "Exposed rows" column above describes the pre-fix dataset and is kept
+as the historical record of the impact analysis.
+
+STEP 2.51 A3 (issue 386) - the reciprocal sentence (currently
+`paper/paper.tex:2187`, historically cited as 2116): "the measured radio
+duty cycle of $0.69$ predicts $1/0.69 = 1.443$". Recomputed from the
+committed scalability sweep (TOM `tom_pipeline`+`ci`, N=27, loss=0.05,
+15 seeds): duty = (listen + flood) / (listen + flood + sleep) =
+131987 / 190485 = 0.6929; 1 / 0.6929 = 1.4432, which rounds to the
+printed 1.443. The sentence is a computed reciprocal of the rounded
+displayed duty, consistent with the committed data; the literal
+arithmetic 1/0.69 = 1.4493 is not what the printed value preserves.
+The basis of "to within 0.6 %": UNKNOWN - REQUIRES SOURCE; no committed
+document defines that tolerance.
+
+
 
 ## 4. Worst-Case Analytical Bounds
 
