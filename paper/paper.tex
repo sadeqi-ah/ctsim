@@ -808,11 +808,14 @@ transmissions to work at all rather than a design preference
 \cite{zimmerling20survey}.
 
 \subsubsection{Slots}
-Time is divided into discrete slots of fixed duration $\Tslot$, each long
-enough to transmit or receive one radio packet and perform the associated
-local processing \cite{ferrari11glossy}. In every slot a node is in
-exactly one of three states: transmitting (Tx), receiving (Rx), or asleep
-with the radio powered down. The third state is what makes energy a
+Time is divided into discrete slots. A simulator slot is a dimensionless
+scheduling unit, not a calibrated physical duration: the simulator itself
+contains no wall-clock duration. A physical implementation must simply
+make each slot long enough to transmit or receive one radio packet and
+perform the associated local processing \cite{ferrari11glossy}. In every
+slot a node is in exactly one of three states: transmitting (Tx), receiving
+(Rx), or asleep with the radio powered down. The third state is what makes
+energy a
 design variable rather than a fixed cost, and
 Section~\ref{sec:results} shows that the ability to enter it is
 responsible for a substantial part of the efficiency gain we report.
@@ -1845,6 +1848,16 @@ denominator includes inter-round idle time that the simulator does not
 model. The slot duration $\Tslot$ is instead a paper-side unit conversion,
 not a second calibrated parameter.
 
+This conversion is a lower bound only. The identity
+$\Tslot = T_{\mathrm{air}} + T_{\mathrm{IFS}} + 2\,T_{\mathrm{guard}}$
+counts airtime, interface spacing and guard bands, and excludes MCU
+wake-up, radio ramp-up, local packet processing, turnaround beyond
+$T_{\mathrm{IFS}}$, and repeated transmissions within a flood. Published
+nominal firmware slot lengths are therefore not interchangeable with this
+lower-bound conversion. Realised firmware slot lengths are approximately
+2.34\,\% below nominal because of 32.768\,kHz timer quantisation, which
+introduces a systematic bias in any comparison with hardware timing.
+
 The prediction step freezes that parameter and tests two published results
 that played no part in calibration. The mechanism is the slot-duration
 model of Section~\ref{sec:method}: converting the simulated slot counts
@@ -1877,16 +1890,22 @@ makes no wall-clock latency claim. The 475\,ms and 289\,ms figures remain
 unverified published targets with open citation debt.
 
 \subsubsection{Layer 3: sensitivity and invariance}
-The third layer asks whether the conclusions survive perturbation of the
-abstraction itself. We sweep the number of retransmissions $\Nretx$, the
-slot duration $\Tslot$, and the loss process---replacing the
-independent model of Section~\ref{sec:model-fault} with a correlated,
-bursty one---and verify that the ordering of the architectures does not
-invert. What matters for a comparative claim is not that the numbers are
-reproduced exactly under every assumption, but that the sign of the
-difference is stable; we report the range over which it holds. The topology
-sweep of Section~\ref{sec:results}, spanning diameters from 1 to 26, is itself
-an invariance test of this kind. The line topology is the regime in which the
+The third layer evaluates robustness to assumptions represented by the
+simulator. We compare the two configured flood-retransmission settings,
+$\Nretx \in \{0,1\}$, and evaluate the protocols across topologies spanning
+diameters from 1 to 26. Physical slot duration is treated analytically:
+because no wall-clock duration enters the simulator's transition relation,
+changing $\Tslot$ leaves all slot counts, node-slot counts, duty-cycle
+ratios, and CI/CE ratios unchanged, and only rescales quantities subsequently
+expressed in milliseconds or decisions per second. It is therefore a unit
+conversion rather than an experimental sensitivity axis. Reception losses
+are drawn independently for each link and attempt. The evaluation therefore
+supports conclusions under this i.i.d. loss model; temporally correlated and
+bursty losses are outside its scope. What matters for a comparative claim is
+not that the numbers are reproduced exactly under every assumption, but that
+the sign of the difference is stable; we report the range over which it
+holds. The topology sweep of Section~\ref{sec:results} is itself an
+invariance test of this kind. The line topology is the regime in which the
 sign does not hold: there, a pipelined protocol is not competitive.
 
 \subsubsection{Scope of abstraction and direction of bias}
@@ -1926,7 +1945,7 @@ Identical in both architectures; cancels in the comparison \\
 \addlinespace
 Correlated (bursty) packet loss &
 Unknown &
-Examined in the Layer~3 sensitivity sweep \\
+Not modelled; conclusions are limited to i.i.d. loss \\
 \addlinespace
 Node crash failures &
 Neither &
