@@ -2434,7 +2434,7 @@ workload of 200 committed messages in both modes. The experiment compared
 a sequential, non-pipelined configuration with the proposed pipelined
 configuration.
 
-\begin{table}[!t]
+\begin{table*}[!t]
 \caption{Hardware comparison for a workload of 200 committed messages.
 Throughput is reported in decisions per local communication slot and
 therefore measures slot-normalised protocol efficiency rather than
@@ -2442,7 +2442,7 @@ wall-clock throughput.}
 \label{tab:hardware-pipeline}
 \centering
 \footnotesize
-\setlength{\tabcolsep}{3.5pt}
+\setlength{\tabcolsep}{8pt}
 \begin{tabular}{@{}lrrr@{}}
 \toprule
 \textbf{Metric} &
@@ -2450,16 +2450,14 @@ wall-clock throughput.}
 \textbf{Pipeline, fill} &
 \textbf{Pipeline, steady state} \\
 \midrule
-Committed messages & 200 & 200 & 200 \\
-Communication rounds & 1626 & 207 & 200 \\
-Local communication slots & 6504 & 828 & 800 \\
-Slot-normalised throughput &
-0.030750 & 0.241545 & 0.250000 \\
-Mean consensus latency (ms) &
-1345 & 1338.890 & 1338.890 \\
+Committed messages             & 200      & 200      & 200      \\
+Communication rounds            & 1626     & 207      & 200      \\
+Local communication slots       & 6504     & 828      & 800      \\
+Slot-normalised throughput      & 0.030750 & 0.241545 & 0.250000 \\
+Mean consensus latency (ms)     & 1345     & 1338.890 & 1338.890 \\
 \bottomrule
 \end{tabular}
-\end{table}
+\end{table*}
 
 The hardware result confirms the qualitative prediction of the simulation.
 In the first 200-commit window, pipelining reduced the number of
