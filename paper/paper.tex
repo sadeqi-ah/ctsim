@@ -1850,9 +1850,11 @@ not a second calibrated parameter.
 
 This conversion is a lower bound only. The identity
 $\Tslot = T_{\mathrm{air}} + T_{\mathrm{IFS}} + 2\,T_{\mathrm{guard}}$
-counts airtime, interface spacing and guard bands, and excludes MCU
-wake-up, radio ramp-up, local packet processing, turnaround beyond
-$T_{\mathrm{IFS}}$, and repeated transmissions within a flood. Published
+accounts for packet airtime, one inter-frame space, and the two guard
+intervals. It excludes MCU wake-up, radio ramp-up, local packet processing,
+and turnaround beyond $T_{\mathrm{IFS}}$; it also does not by itself account
+for the multiple physical slots consumed by repeated transmissions within
+a flood. Published
 nominal firmware slot lengths are therefore not interchangeable with this
 lower-bound conversion. Realised firmware slot lengths are approximately
 2.34\,\% below nominal because of 32.768\,kHz timer quantisation, which
